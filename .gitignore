@@ -1,29 +1,143 @@
-# Logs
-logs
+# ===============================================
+# XSCAN PROJECT - COMPREHENSIVE .GITIGNORE
+# ===============================================
+
+# ===== DEPENDENCIES =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# ===== ENVIRONMENT & SENSITIVE FILES =====
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+config/secrets.json
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ===== BUILD OUTPUTS =====
+/dist/
+/build/
+/out/
+/.next/
+.nuxt
+.vuepress/dist
+
+# ===== LOGS =====
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
 dev-debug.log
 
-# Dependency directories
-node_modules/
+# ===== RUNTIME DATA =====
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# Environment variables
-.env
+# ===== COVERAGE & TESTING =====
+.nyc_output
+coverage/
+*.lcov
+.coverage/
+.jest/
+.coverage-final.json
 
-# Editor directories and files
-.idea
-.vscode
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# ===== CACHE DIRECTORIES =====
+.npm
+.eslintcache
+.stylelintcache
+.cache/
+.parcel-cache/
+.next/cache/
+.turbo/
 
-# OS specific
+# ===== EDITOR & IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ===== OS SPECIFIC =====
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
-# Task files
+# ===== DOCKER =====
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# ===== DATABASE =====
+*.sqlite
+*.sqlite3
+*.db
+dump.rdb
+*.dump
+mongo-data/
+redis-data/
+postgres-data/
+
+# ===== TYPESCRIPT =====
+*.tsbuildinfo
+.tscache/
+
+# ===== NESTJS SPECIFIC =====
+/dist/
+.webpack/
+.serverless/
+
+# ===== REACT SPECIFIC =====
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== TEMPORARY FILES =====
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# ===== TASKMASTER FILES =====
+# Keep taskmaster config but ignore generated files
 tasks.json
-tasks/ 
+tasks/
+.taskmaster/reports/
+.taskmaster/logs/
+
+# ===== DEPLOYMENT & CI/CD =====
+.vercel/
+.netlify/
+.github/workflows/secrets.yml
+
+# ===== MISC =====
+.yarn/install-state.gz
+.pnp.*
+.yarnrc.yml
+.zero-installs 
