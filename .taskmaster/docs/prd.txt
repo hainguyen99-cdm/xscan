@@ -1,0 +1,473 @@
+# Streamer Donation Platform - Technical Specification
+
+## 1. Project Overview
+
+### 1.1 Purpose
+Build a web-based donation platform that enables viewers to financially support streamers and Key Opinion Leaders (KOLs) through a secure, user-friendly interface.
+
+### 1.2 Key Features
+- User registration and authentication system
+- Digital wallet with deposit/withdrawal functionality
+- Stream management and unique donation links
+- Real-time donation processing
+- Admin dashboard for platform management
+- Transaction history and analytics
+
+## 2. User Roles & Permissions
+
+### 2.1 Admin Role
+**Responsibilities:**
+- Platform management and configuration
+- User account management
+- Transaction monitoring and dispute resolution
+- Analytics and reporting
+- Content moderation
+- Fee management
+
+**Permissions:**
+- Full system access
+- User account suspension/activation
+- Transaction refunds and adjustments
+- Platform configuration changes
+- Access to all analytics and reports
+
+### 2.2 User Roles
+
+#### 2.2.1 Streamer/KOL
+**Responsibilities:**
+- Create and manage streaming sessions
+- Generate donation links
+- Customize donation forms
+- Manage earnings and withdrawals
+- Interact with supporters
+
+**Permissions:**
+- Create/edit profile and streaming information
+- Generate unique donation links
+- View donation history and analytics
+- Withdraw earnings (after platform fee deduction)
+- Customize donation messages and alerts
+
+#### 2.2.2 Donor/Supporter
+**Responsibilities:**
+- Deposit funds into platform wallet
+- Make donations to streamers/KOLs
+- Manage account and transaction history
+
+**Permissions:**
+- Deposit funds via multiple payment methods
+- Send donations with custom messages
+- View transaction history
+- Manage payment methods
+
+## 3. Core System Features
+
+### 3.1 User Management System
+
+#### 3.1.1 Registration & Authentication
+- **Multi-role registration**: Users select role during signup (Streamer/KOL or Supporter)
+- **Email verification**: Mandatory email verification for account activation
+- **Two-factor authentication**: Optional 2FA for enhanced security
+- **Social login**: Integration with Google, Facebook, Twitter
+- **Password requirements**: Strong password policy with complexity requirements
+
+#### 3.1.2 Profile Management
+- **Personal information**: Name, email, bio, profile picture
+- **Streaming information** (for streamers): Platform handles, streaming schedule, content categories
+- **Verification system**: Blue checkmark for verified streamers/KOLs
+- **Privacy settings**: Control visibility of donation history and personal information
+
+### 3.2 Digital Wallet System
+
+#### 3.2.1 Wallet Features
+- **Multi-currency support**: USD, EUR, cryptocurrency options
+- **Real-time balance tracking**: Instant balance updates
+- **Transaction history**: Detailed record of all transactions
+- **Security measures**: Encrypted storage, transaction limits
+
+#### 3.2.2 Deposit Methods
+- **Credit/Debit Cards**: Visa, MasterCard, American Express
+- **Digital wallets**: PayPal, Apple Pay, Google Pay
+- **Bank transfers**: Direct bank account linking
+- **Cryptocurrency**: Bitcoin, Ethereum support
+- **Minimum deposit**: $5 minimum deposit requirement
+
+#### 3.2.3 Withdrawal System
+- **Multiple withdrawal options**: Bank transfer, PayPal, cryptocurrency
+- **Processing time**: 1-3 business days for bank transfers
+- **Withdrawal limits**: Daily/monthly limits for security
+- **Fee structure**: Transparent fee display before confirmation
+
+### 3.3 Streaming & Donation Management
+
+#### 3.3.1 Stream Creation
+- **Stream setup**: Title, description, category, thumbnail
+- **Scheduling**: Set start time and estimated duration
+- **Privacy settings**: Public, private, or subscriber-only streams
+- **Auto-generation**: Unique donation link for each stream
+
+#### 3.3.2 Donation Link System
+- **Unique URLs**: Each stream gets a unique donation link
+- **QR code generation**: Mobile-friendly donation access
+- **Customizable landing page**: Streamer branding and information
+- **Social sharing**: Easy sharing across social media platforms
+
+#### 3.3.3 Donation Form Features
+- **Amount selection**: Preset amounts ($5, $10, $25, $50, custom)
+- **Message system**: Optional public/private messages
+- **Anonymous donations**: Option to donate anonymously
+- **Recurring donations**: Monthly subscription-style donations
+- **Real-time processing**: Instant balance deduction and notification
+
+### 3.4 Real-time Features
+
+#### 3.4.1 Live Notifications
+- **Donation alerts**: Real-time notifications for streamers
+- **Sound effects**: Customizable notification sounds
+- **Visual effects**: On-screen donation animations
+- **Chat integration**: Display donations in stream chat
+
+#### 3.4.2 Dashboard Updates
+- **Real-time analytics**: Live donation tracking
+- **Earnings counter**: Running total of session earnings
+- **Supporter list**: Recent donors and top contributors
+- **Goal tracking**: Donation goal progress bars
+
+## 4. Technical Architecture
+
+### 4.1 Backend Technology Stack
+- **Framework**: Node.js with NestJS
+- **Database**: MongoDB for document-based data, Redis for caching
+- **Authentication**: JWT tokens with refresh token rotation
+- **Payment processing**: Stripe API for card payments, PayPal API
+- **Real-time communication**: WebSocket (Socket.io) for live updates
+- **File storage**: AWS S3 or Google Cloud Storage for media files
+
+### 4.2 Frontend Technology Stack
+- **Framework**: React.js with TypeScript or Vue.js
+- **State management**: Redux/Zustand or Vuex
+- **UI library**: Material-UI, Ant Design, or Tailwind CSS
+- **Real-time updates**: Socket.io client for live features
+- **Payment forms**: Stripe Elements for secure payment processing
+
+### 4.3 Infrastructure
+- **Hosting**: AWS, Google Cloud, or Azure
+- **CDN**: CloudFlare for global content delivery
+- **Monitoring**: Application monitoring with error tracking
+- **Load balancing**: Auto-scaling for high traffic periods
+
+## 5. Database Design
+
+### 5.1 Core Entities
+
+#### Users Collection (MongoDB)
+```json
+{
+  "_id": ObjectId,
+  "email": String,
+  "username": String,
+  "password_hash": String,
+  "role": String, // admin, streamer, supporter
+  "first_name": String,
+  "last_name": String,
+  "profile_picture_url": String,
+  "bio": String,
+  "is_verified": Boolean,
+  "is_active": Boolean,
+  "created_at": Date,
+  "updated_at": Date
+}
+```
+
+#### Wallets Collection (MongoDB)
+```json
+{
+  "_id": ObjectId,
+  "user_id": ObjectId, // Reference to Users
+  "balance_usd": Number,
+  "currency": String,
+  "created_at": Date,
+  "updated_at": Date
+}
+```
+
+#### Streams Collection (MongoDB)
+```json
+{
+  "_id": ObjectId,
+  "streamer_id": ObjectId, // Reference to Users
+  "title": String,
+  "description": String,
+  "category": String,
+  "thumbnail_url": String,
+  "donation_link_id": String, // Unique
+  "status": String, // scheduled, live, ended
+  "start_time": Date,
+  "end_time": Date,
+  "total_donations": Number,
+  "created_at": Date
+}
+```
+
+#### Donations Collection (MongoDB)
+```json
+{
+  "_id": ObjectId,
+  "donor_id": ObjectId, // Reference to Users
+  "stream_id": ObjectId, // Reference to Streams
+  "amount": Number,
+  "currency": String,
+  "message": String,
+  "is_anonymous": Boolean,
+  "status": String, // pending, completed, failed, refunded
+  "created_at": Date
+}
+```
+
+#### Transactions Collection (MongoDB)
+```json
+{
+  "_id": ObjectId,
+  "user_id": ObjectId, // Reference to Users
+  "type": String, // deposit, withdrawal, donation_sent, donation_received
+  "amount": Number,
+  "currency": String,
+  "status": String,
+  "payment_method": String,
+  "external_transaction_id": String,
+  "created_at": Date
+}
+```
+
+## 6. API Design
+
+### 6.1 Authentication Endpoints
+```
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/refresh-token
+POST /api/auth/forgot-password
+POST /api/auth/reset-password
+```
+
+### 6.2 User Management
+```
+GET /api/users/profile
+PUT /api/users/profile
+GET /api/users/streamers
+GET /api/users/:userId/public-profile
+```
+
+### 6.3 Wallet Operations
+```
+GET /api/wallet/balance
+POST /api/wallet/deposit
+POST /api/wallet/withdraw
+GET /api/wallet/transactions
+GET /api/wallet/payment-methods
+```
+
+### 6.4 Stream Management
+```
+GET /api/streams/my-streams
+POST /api/streams/create
+PUT /api/streams/:streamId
+DELETE /api/streams/:streamId
+GET /api/streams/:streamId/donations
+GET /api/streams/donation-link/:linkId
+```
+
+### 6.5 Donation Processing
+```
+POST /api/donations/create
+GET /api/donations/history
+POST /api/donations/refund/:donationId
+GET /api/donations/analytics
+```
+
+### 6.6 Admin Operations
+```
+GET /api/admin/users
+PUT /api/admin/users/:userId/status
+GET /api/admin/transactions
+GET /api/admin/analytics
+POST /api/admin/refund/:transactionId
+```
+
+## 7. Security Considerations
+
+### 7.1 Data Protection
+- **Encryption**: All sensitive data encrypted at rest and in transit
+- **PCI DSS compliance**: For credit card processing
+- **GDPR compliance**: Data privacy and user rights
+- **Regular security audits**: Quarterly penetration testing
+
+### 7.2 Fraud Prevention
+- **Transaction monitoring**: Automated fraud detection
+- **Rate limiting**: API call limits and donation frequency controls
+- **Account verification**: Multi-step verification for high-value transactions
+- **Chargeback protection**: Integration with payment processor fraud tools
+
+### 7.3 Platform Security
+- **Input validation**: Comprehensive input sanitization
+- **SQL injection protection**: Parameterized queries
+- **XSS prevention**: Content Security Policy headers
+- **DDoS protection**: CloudFlare DDoS mitigation
+
+## 8. User Experience Design
+
+### 8.1 Donation Flow
+1. **Discovery**: User finds streamer through platform or external link
+2. **Stream access**: Click donation link to access stream page
+3. **Donation form**: Select amount, add message, choose visibility
+4. **Payment confirmation**: Review donation details
+5. **Processing**: Real-time balance deduction and confirmation
+6. **Feedback**: Success message and optional social sharing
+
+### 8.2 Responsive Design
+- **Mobile-first approach**: Optimized for smartphone donations
+- **Touch-friendly interface**: Large buttons and intuitive navigation
+- **Fast loading**: Optimized images and lazy loading
+- **Offline capability**: Basic functionality when connection is poor
+
+### 8.3 Accessibility
+- **WCAG 2.1 compliance**: Level AA accessibility standards
+- **Screen reader support**: Proper ARIA labels and semantic HTML
+- **Keyboard navigation**: Full functionality without mouse
+- **Color contrast**: Sufficient contrast ratios for readability
+
+## 9. Analytics & Reporting
+
+### 9.1 Streamer Analytics
+- **Donation metrics**: Total donations, average donation, top donors
+- **Time analysis**: Peak donation times, stream performance
+- **Audience insights**: Donor demographics and behavior
+- **Revenue tracking**: Earnings over time with trend analysis
+
+### 9.2 Platform Analytics
+- **User growth**: Registration and retention metrics
+- **Transaction volume**: Total platform transaction volume
+- **Revenue metrics**: Platform fees and commission tracking
+- **Performance monitoring**: System performance and uptime
+
+## 10. Development Phases
+
+### Phase 1: Core Platform (8-10 weeks)
+- User registration and authentication
+- Basic profile management
+- Wallet system with deposit/withdrawal
+- Simple donation functionality
+- Basic admin dashboard
+
+### Phase 2: Enhanced Features (6-8 weeks)
+- Stream management system
+- Unique donation links
+- Real-time notifications
+- Advanced user profiles
+- Mobile responsive design
+
+### Phase 3: Advanced Features (4-6 weeks)
+- Analytics dashboard
+- Recurring donations
+- Social media integration
+- Advanced security features
+- Performance optimization
+
+### Phase 4: Launch Preparation (2-4 weeks)
+- Security audit and testing
+- Documentation completion
+- User training materials
+- Marketing website
+- Beta testing program
+
+## 11. Budget Estimation
+
+### 11.1 Development Costs
+- **Backend Development**: $15,000 - $25,000
+- **Frontend Development**: $12,000 - $20,000
+- **Database Design & Setup**: $3,000 - $5,000
+- **Payment Integration**: $5,000 - $8,000
+- **Security Implementation**: $4,000 - $6,000
+- **Testing & QA**: $3,000 - $5,000
+
+### 11.2 Infrastructure Costs (Monthly)
+- **Cloud hosting**: $200 - $500
+- **Database hosting**: $100 - $300
+- **CDN services**: $50 - $150
+- **Payment processing**: 2.9% + $0.30 per transaction
+- **Security services**: $100 - $200
+
+### 11.3 Ongoing Costs (Monthly)
+- **Maintenance & updates**: $2,000 - $4,000
+- **Customer support**: $1,500 - $3,000
+- **Marketing & growth**: $2,000 - $5,000
+- **Legal & compliance**: $500 - $1,000
+
+## 12. Revenue Model
+
+### 12.1 Platform Fees
+- **Transaction fee**: 5-8% of each donation
+- **Withdrawal fee**: $2-5 per withdrawal
+- **Premium features**: Monthly subscription for advanced analytics
+- **Verification fees**: One-time fee for account verification
+
+### 12.2 Additional Revenue Streams
+- **Advertising**: Sponsored content and banner ads
+- **White-label solutions**: Custom platforms for large streamers
+- **API access**: Premium API access for third-party integrations
+- **Merchandise integration**: Commission on merchandise sales
+
+## 13. Legal Considerations
+
+### 13.1 Compliance Requirements
+- **Money transmission licenses**: Required in applicable jurisdictions
+- **Tax reporting**: 1099 forms for US-based streamers
+- **International regulations**: Compliance with local financial laws
+- **Terms of service**: Comprehensive user agreements
+
+### 13.2 Risk Management
+- **Insurance coverage**: Technology E&O and cyber liability
+- **Dispute resolution**: Clear policies for donation disputes
+- **Content moderation**: Guidelines for appropriate content
+- **Account suspension**: Clear policies for policy violations
+
+## 14. Conclusion
+
+This specification provides a comprehensive framework for building a robust donation platform for streamers and KOLs. The phased approach allows for iterative development and testing, ensuring a high-quality product that meets user needs while maintaining security and scalability.
+
+The platform's success will depend on:
+- Seamless user experience
+- Robust security measures
+- Competitive fee structure
+- Strong marketing and user acquisition
+- Continuous feature development based on user feedback
+
+Regular reviews and updates of this specification will be necessary as the project progresses and market conditions evolve.
+
+## 15. UI Theme & Branding
+
+### 15.1 Main Theme Colors
+- **Primary Color:** Dark Indigo
+  - HEX: #1A237E
+  - RGB: 26, 35, 126
+- **Accent Color:** Neon Blue
+  - HEX: #00FFFF
+  - RGB: 0, 255, 255
+
+### 15.2 Usage Guidelines
+- **Backgrounds:** Use Dark Indigo as the main background color for pages, navigation bars, and cards to create a modern, immersive feel.
+- **Primary Actions & Highlights:** Use Neon Blue for buttons, links, highlights, and interactive elements to draw attention and provide a vibrant, energetic contrast.
+- **Typography:** Use white or light gray (#F5F5F5) for text on Dark Indigo backgrounds for readability. Use Neon Blue sparingly for headings or important labels.
+- **Borders & Dividers:** Subtle use of lighter indigo or blue-gray (#3949AB) for borders and dividers.
+
+### 15.3 Visual Style
+- The overall look should be sleek, modern, and energetic, appealing to a tech-savvy, youthful audience.
+- Neon Blue accents should be used to create a sense of excitement and interactivity, especially around donation actions and notifications.
+- Maintain high contrast for accessibility and visual impact.
+
+### 15.4 Example Usage
+- **Header/Nav Bar:** Dark Indigo background, Neon Blue logo or highlights
+- **Primary Button:** Neon Blue background, white text
+- **Donation Progress Bar:** Neon Blue fill on Dark Indigo track
+- **Active States:** Neon Blue glow or border for active elements 
