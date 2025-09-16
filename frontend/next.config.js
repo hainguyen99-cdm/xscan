@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const path = require('path')
+
 const nextConfig = {
   images: {
     domains: ['localhost', 'xscan-api.example.com'],
@@ -20,6 +22,17 @@ const nextConfig = {
     serverComponentsExternalPackages: [],
   },
   output: 'standalone',
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': path.resolve(__dirname, 'src'),
+      '@/components': path.resolve(__dirname, 'src/components'),
+      '@/lib': path.resolve(__dirname, 'src/lib'),
+      '@/styles': path.resolve(__dirname, 'src/styles'),
+      '@/types': path.resolve(__dirname, 'src/types'),
+    }
+    return config
+  },
   async rewrites() {
     return [
       // Proxy /uploads/* requests to backend
