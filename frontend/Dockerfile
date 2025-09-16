@@ -6,7 +6,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache libc6-compat
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 # Ensure standalone output
 ENV NEXT_TELEMETRY_DISABLED=1

@@ -6,8 +6,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache libc6-compat
 COPY package*.json ./
-# Install full deps to build
-RUN npm ci
+# Install full deps to build (no lockfile present)
+RUN npm install
 COPY . .
 RUN npm run build
 
@@ -20,7 +20,7 @@ ENV NODE_ENV=production \
     PORT=3001
 # Only copy required artifacts
 COPY --from=builder /app/package*.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm install --omit=dev --no-audit --no-fund
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/tsconfig*.json ./
 COPY --from=builder /app/public ./public
