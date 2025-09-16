@@ -3,6 +3,8 @@ import { Providers } from './providers';
 import { ToastContainer } from '@/components/ui/toast';
 import './globals.css';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'DonationPlatform - Streamer Donation System',
   description: 'Professional donation platform for streamers and KOLs with OBS alert integration',
