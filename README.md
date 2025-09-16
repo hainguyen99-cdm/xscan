@@ -62,6 +62,25 @@ npm run <command> --workspace=frontend
 
 ## Development
 
+## Docker deployment (Ubuntu)
+
+Prerequisites:
+- Docker and Docker Compose installed
+
+Steps:
+1. Create backend env file from example:
+   - Copy `backend/.env.example` to `backend/.env` and set production values
+2. Build and run:
+   - `docker compose up -d --build`
+3. Services:
+   - Backend API on `http://<server-ip>:3001`
+   - Frontend on `http://<server-ip>:3000`
+
+Environment overrides (optional):
+- `MONGO_ROOT_USER`, `MONGO_ROOT_PASS`, `MONGO_DB`
+- `PUBLIC_API_URL` for frontend `NEXT_PUBLIC_API_URL`
+- `CORS_ORIGIN`, `BASE_URL` for backend
+
 - Backend runs on: http://localhost:3000 (default NestJS port)
 - Frontend runs on: http://localhost:3001 (Next.js will auto-assign if 3000 is taken)
 

@@ -1,23 +1,30 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine
-
-# Set working directory
+########################
+# Build stage
+########################
+FROM node:18-alpine AS builder
 WORKDIR /app
-
-# Copy package files
+ENV NODE_ENV=production
+RUN apk add --no-cache libc6-compat
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy source code
+# Install full deps to build
+RUN npm ci
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Expose port
-EXPOSE 3001
+########################
+# Runtime stage
+########################
+FROM node:18-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3001
+# Only copy required artifacts
+COPY --from=builder /app/package*.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/tsconfig*.json ./
+COPY --from=builder /app/public ./public
 
-# Start the application
-CMD ["npm", "run", "start:prod"] 
+EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:3001/api/health || exit 1
+CMD ["node", "dist/main.js"]

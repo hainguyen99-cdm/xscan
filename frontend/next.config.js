@@ -19,6 +19,7 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: [],
   },
+  output: 'standalone',
   async rewrites() {
     return [
       // Proxy /uploads/* requests to backend
