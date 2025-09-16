@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donation WebSocket Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .connecting { background-color: #fff3cd; color: #856404; }
+        .donation-alert {
+            background-color: #e7f3ff;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 Donation WebSocket Test Client</h1>
+        <p>This client tests the donation WebSocket gateway for OBS alerts.</p>
+
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <div class="form-group">
+            <label for="streamerId">Streamer ID:</label>
+            <input type="text" id="streamerId" placeholder="Enter streamer ID" value="test-streamer-123">
+        </div>
+
+        <div class="form-group">
+            <label for="authToken">Auth Token (JWT):</label>
+            <input type="text" id="authToken" placeholder="Enter JWT token" value="test-token">
+        </div>
+
+        <button onclick="connect()" id="connectBtn">Connect</button>
+        <button onclick="disconnect()" id="disconnectBtn" disabled>Disconnect</button>
+        <button onclick="joinRoom()" id="joinBtn" disabled>Join Streamer Room</button>
+        <button onclick="leaveRoom()" id="leaveBtn" disabled>Leave Room</button>
+        <button onclick="ping()" id="pingBtn" disabled>Ping</button>
+
+        <h3>📊 Connection Info</h3>
+        <div id="connectionInfo">
+            <p><strong>Socket ID:</strong> <span id="socketId">-</span></p>
+            <p><strong>Current Room:</strong> <span id="currentRoom">-</span></p>
+            <p><strong>Connected Streamers:</strong> <span id="connectedStreamers">-</span></p>
+        </div>
+
+        <h3>🎁 Donation Alerts</h3>
+        <div id="alerts"></div>
+
+        <h3>📝 Event Log</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script>
+        let socket = null;
+        let currentStreamerId = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(status, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${className}`;
+            statusDiv.textContent = status;
+        }
+
+        function updateConnectionInfo() {
+            if (socket) {
+                document.getElementById('socketId').textContent = socket.id || '-';
+                document.getElementById('currentRoom').textContent = currentStreamerId ? `streamer:${currentStreamerId}` : '-';
+            } else {
+                document.getElementById('socketId').textContent = '-';
+                document.getElementById('currentRoom').textContent = '-';
+            }
+        }
+
+        function connect() {
+            const streamerId = document.getElementById('streamerId').value;
+            const authToken = document.getElementById('authToken').value;
+
+            if (!streamerId || !authToken) {
+                alert('Please enter both Streamer ID and Auth Token');
+                return;
+            }
+
+            updateStatus('Connecting...', 'connecting');
+            log('Connecting to WebSocket server...');
+
+            // Connect to the WebSocket server
+            socket = io('http://localhost:3001/donations', {
+                auth: {
+                    token: authToken
+                }
+            });
+
+            socket.on('connect', () => {
+                updateStatus('Connected', 'connected');
+                log('Connected to WebSocket server');
+                
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                document.getElementById('joinBtn').disabled = false;
+                document.getElementById('pingBtn').disabled = false;
+                
+                updateConnectionInfo();
+            });
+
+            socket.on('disconnect', () => {
+                updateStatus('Disconnected', 'disconnected');
+                log('Disconnected from WebSocket server');
+                
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                document.getElementById('joinBtn').disabled = true;
+                document.getElementById('leaveBtn').disabled = true;
+                document.getElementById('pingBtn').disabled = true;
+                
+                currentStreamerId = null;
+                updateConnectionInfo();
+            });
+
+            socket.on('joinedStreamerRoom', (data) => {
+                currentStreamerId = data.streamerId;
+                log(`Joined streamer room: ${data.roomName}`);
+                document.getElementById('leaveBtn').disabled = false;
+                updateConnectionInfo();
+            });
+
+            socket.on('leftStreamerRoom', (data) => {
+                currentStreamerId = null;
+                log(`Left streamer room: ${data.roomName}`);
+                document.getElementById('leaveBtn').disabled = true;
+                updateConnectionInfo();
+            });
+
+            socket.on('donationAlert', (alert) => {
+                log(`Received donation alert: ${alert.donorName} donated ${alert.amount} ${alert.currency}`);
+                
+                const alertsDiv = document.getElementById('alerts');
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'donation-alert';
+                alertDiv.innerHTML = `
+                    <h4>🎉 New Donation!</h4>
+                    <p><strong>From:</strong> ${alert.donorName}</p>
+                    <p><strong>Amount:</strong> ${alert.amount} ${alert.currency}</p>
+                    <p><strong>Message:</strong> ${alert.message || 'No message'}</p>
+                    <p><strong>Time:</strong> ${new Date(alert.timestamp).toLocaleString()}</p>
+                `;
+                
+                alertsDiv.insertBefore(alertDiv, alertsDiv.firstChild);
+                
+                // Remove old alerts after 10 seconds
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 10000);
+            });
+
+            socket.on('pong', (data) => {
+                log(`Received pong: ${data.timestamp}`);
+            });
+
+            socket.on('connect_error', (error) => {
+                updateStatus('Connection Failed', 'disconnected');
+                log(`Connection error: ${error.message}`);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        }
+
+        function joinRoom() {
+            if (socket && socket.connected) {
+                const streamerId = document.getElementById('streamerId').value;
+                socket.emit('joinStreamerRoom', streamerId);
+                log(`Joining streamer room: ${streamerId}`);
+            }
+        }
+
+        function leaveRoom() {
+            if (socket && socket.connected && currentStreamerId) {
+                socket.emit('leaveStreamerRoom', currentStreamerId);
+                log(`Leaving streamer room: ${currentStreamerId}`);
+            }
+        }
+
+        function ping() {
+            if (socket && socket.connected) {
+                socket.emit('ping');
+                log('Sent ping');
+            }
+        }
+
+        // Auto-connect on page load (for testing)
+        window.addEventListener('load', () => {
+            log('Page loaded. Ready to connect.');
+        });
+    </script>
+</body>
+</html> 

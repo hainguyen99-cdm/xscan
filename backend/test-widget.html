@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Widget Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .widget-frame {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>OBS Widget Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Test Widget Endpoint</h2>
+        <p>This page allows you to test the OBS widget endpoint by providing an alert token.</p>
+        
+        <div class="form-group">
+            <label for="alertToken">Alert Token:</label>
+            <input type="text" id="alertToken" placeholder="Enter alert token (e.g., abc123...)">
+        </div>
+        
+        <div class="form-group">
+            <label for="backendUrl">Backend URL:</label>
+            <input type="text" id="backendUrl" value="http://localhost:3001" placeholder="Backend URL">
+        </div>
+        
+        <button onclick="testWidget()">Test Widget</button>
+        <button onclick="testTokenEndpoint()">Test Token Endpoint</button>
+        
+        <div id="status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Widget Preview</h2>
+        <p>If the widget loads successfully, you'll see it below. This simulates how it would appear in OBS.</p>
+        <iframe id="widgetFrame" class="widget-frame" style="display: none;"></iframe>
+        <div id="widgetPlaceholder" style="text-align: center; color: #666; padding: 40px;">
+            Enter an alert token and click "Test Widget" to see the preview
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Make sure your backend server is running on the specified URL</li>
+            <li>Enter a valid alert token from your OBS settings</li>
+            <li>Click "Test Widget" to see the widget in action</li>
+            <li>Use "Test Token Endpoint" to verify the token is valid</li>
+            <li>The widget should display with animations and be ready for alerts</li>
+        </ol>
+        
+        <h3>Expected Behavior</h3>
+        <ul>
+            <li>Widget should load with a transparent background</li>
+            <li>Connection status indicator should show connection state</li>
+            <li>Test alert should appear after 2 seconds if connected</li>
+            <li>Widget should be responsive and properly styled</li>
+        </ul>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function testTokenEndpoint() {
+            const alertToken = document.getElementById('alertToken').value.trim();
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            
+            if (!alertToken) {
+                showStatus('Please enter an alert token', 'error');
+                return;
+            }
+            
+            showStatus('Testing token endpoint...', 'info');
+            
+            fetch(`${backendUrl}/obs-settings/token/${alertToken}`)
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                })
+                .then(data => {
+                    showStatus(`Token valid! Streamer ID: ${data.streamerId}, Alert Token: ${data.alertToken}`, 'success');
+                })
+                .catch(error => {
+                    showStatus(`Token test failed: ${error.message}`, 'error');
+                });
+        }
+        
+        function testWidget() {
+            const alertToken = document.getElementById('alertToken').value.trim();
+            const backendUrl = document.getElementById('backendUrl').value.trim();
+            
+            if (!alertToken) {
+                showStatus('Please enter an alert token', 'error');
+                return;
+            }
+            
+            showStatus('Loading widget...', 'info');
+            
+            const widgetUrl = `${backendUrl}/obs-settings/widget/${alertToken}`;
+            const iframe = document.getElementById('widgetFrame');
+            const placeholder = document.getElementById('widgetPlaceholder');
+            
+            // Show iframe and hide placeholder
+            iframe.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            // Load widget
+            iframe.src = widgetUrl;
+            
+            iframe.onload = function() {
+                showStatus('Widget loaded successfully!', 'success');
+            };
+            
+            iframe.onerror = function() {
+                showStatus('Failed to load widget', 'error');
+                iframe.style.display = 'none';
+                placeholder.style.display = 'block';
+            };
+        }
+        
+        // Auto-fill with a sample token for testing
+        document.addEventListener('DOMContentLoaded', function() {
+            // You can set a default token here for testing
+            // document.getElementById('alertToken').value = 'your-test-token-here';
+        });
+    </script>
+</body>
+</html> 

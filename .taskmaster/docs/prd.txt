@@ -1,0 +1,139 @@
+Product Requirement Document (PRD)
+
+Project Name: Farcaster Interaction Tool
+Platform: WebApp (FE: Next.js, BE: NestJS, DB: MongoDB)
+Date: 09/10/2025
+
+1. Product Objectives
+
+Build a WebApp for managing and automating Farcaster interactions with the following features:
+
+Account management (import, add/edit/delete, status).
+
+Customizable interaction scenarios (Like, Delay, Join Channel).
+
+Support for custom action ordering, shuffling, and looping.
+
+Detailed logging stored in MongoDB.
+
+2. Key Features
+2.1 Account Management
+
+Import accounts from CSV/JSON.
+
+Add, edit, delete accounts.
+
+Display account status (Active, Expired, Error).
+
+Token/API key encrypted before being stored in MongoDB.
+
+2.2 Scenario Management
+
+Create, edit, delete scenarios.
+
+Build scenarios with a drag & drop action builder.
+
+Config options:
+
+Order: manual ordering.
+
+Shuffle: enable/disable randomization.
+
+Loop: repeat the entire flow or individual actions.
+
+Supported Actions:
+
+Get Feed (fetch random castHash from feed).
+
+Like Cast (like a random post).
+
+Delay (pause execution based on configured time).
+
+Join Channel (via channelKey + inviteCode).
+
+Logging: detailed logs per account and action.
+
+3. API Integrations
+3.1 Get Feed
+POST https://client.farcaster.xyz/v2/feed-items
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "feedKey": "home",
+  "feedType": "default",
+  "castViewEvents": [],
+  "updateState": true
+}
+
+
+👉 Backend randomly selects one cast.hash for the Like action.
+
+3.2 Like Cast
+PUT https://client.farcaster.xyz/v2/cast-likes
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "castHash": "<random_cast_hash>"
+}
+
+3.3 Join Channel
+PUT https://client.farcaster.xyz/v1/join-channel-via-code
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "channelKey": "<channel_key>",
+  "inviteCode": "<invite_code>"
+}
+
+4. Non-Functional Requirements
+
+Frontend: Next.js (UI, drag-and-drop workflow builder, dashboard).
+
+Backend: NestJS (API Gateway, queue processing, action logic).
+
+Database: MongoDB (accounts, scenarios, logs).
+
+Recommended Collections:
+
+accounts (account info + encrypted token).
+
+scenarios (scenario config, action list, shuffle, loop).
+
+logs (detailed execution results per action).
+
+Task Queue: Redis + BullMQ (for delay, retry, multi-account execution).
+
+Security:
+
+Tokens encrypted with AES before being stored in MongoDB.
+
+Frontend never displays raw tokens.
+
+5. Sample Workflow
+
+User creates a scenario with:
+
+Action 1: Get Feed
+
+Action 2: Like Cast
+
+Action 3: Delay 5s
+
+Action 4: Join Channel
+
+Config:
+
+Loop = 5 times
+
+Shuffle = ON
+
+Execution Flow:
+
+Backend (NestJS) reads config → pushes jobs into Redis queue → executes per account.
+
+MongoDB logs every action.
+
+Frontend (Next.js) displays action results (Success/Fail).

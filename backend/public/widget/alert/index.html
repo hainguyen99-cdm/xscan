@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Alert Widget</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .widget-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #00ff00;
+        }
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .status.connected {
+            background-color: #00ff00;
+            color: #000000;
+        }
+        .status.disconnected {
+            background-color: #ff4444;
+            color: #ffffff;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .info-card {
+            background-color: #3d3d3d;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00ff00;
+        }
+        .info-card h3 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .info-card p {
+            margin: 0;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+        .test-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #3d3d3d;
+            border-radius: 8px;
+        }
+        .test-button {
+            background-color: #00ff00;
+            color: #000000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background-color: #00cc00;
+        }
+        .test-button:disabled {
+            background-color: #666666;
+            cursor: not-allowed;
+        }
+        .log {
+            background-color: #000000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        .error {
+            color: #ff4444;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <div class="header">
+            <h1>📺 OBS Alert Widget</h1>
+            <div id="connectionStatus" class="status disconnected">Disconnected</div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>Streamer ID</h3>
+                <p id="streamerId">Loading...</p>
+            </div>
+            <div class="info-card">
+                <h3>Alert Token</h3>
+                <p id="alertToken">Loading...</p>
+            </div>
+            <div class="info-card">
+                <h3>Widget URL</h3>
+                <p id="widgetUrl">Loading...</p>
+            </div>
+            <div class="info-card">
+                <h3>Connection</h3>
+                <p id="connectionInfo">Loading...</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Controls</h3>
+            <button id="testAlertBtn" class="test-button">Send Test Alert</button>
+            <button id="testDonationBtn" class="test-button">Send Test Donation</button>
+            <button id="verifyTokenBtn" class="test-button">Verify Token</button>
+            
+            <div class="log" id="log">
+                <div class="success">Widget loaded successfully!</div>
+                <div class="info">Extracting streamer ID and alert token from URL...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Extract streamerId and alertToken from URL
+        function extractUrlParams() {
+            const path = window.location.pathname;
+            const pathParts = path.split('/');
+            
+            // Expected format: /widget/alert/{streamerId}/{alertToken}
+            if (pathParts.length >= 5 && pathParts[1] === 'widget' && pathParts[2] === 'alert') {
+                const streamerId = pathParts[3];
+                const alertToken = pathParts[4];
+                
+                if (streamerId && alertToken) {
+                    return { streamerId, alertToken };
+                }
+            }
+            
+            return null;
+        }
+
+        // Update UI with extracted parameters
+        function updateUI(params) {
+            if (params) {
+                document.getElementById('streamerId').textContent = params.streamerId;
+                document.getElementById('alertToken').textContent = params.alertToken;
+                document.getElementById('widgetUrl').textContent = window.location.href;
+                
+                log('success', `Extracted streamer ID: ${params.streamerId}`);
+                log('success', `Extracted alert token: ${params.alertToken.substring(0, 8)}...`);
+                
+                return params;
+            } else {
+                log('error', 'Invalid URL format. Expected: /widget/alert/{streamerId}/{alertToken}');
+                document.getElementById('streamerId').textContent = 'Invalid URL';
+                document.getElementById('alertToken').textContent = 'Invalid URL';
+                document.getElementById('widgetUrl').textContent = 'Invalid URL';
+                return null;
+            }
+        }
+
+        // Logging function
+        function log(type, message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Test alert function
+        async function sendTestAlert() {
+            const params = extractUrlParams();
+            if (!params) {
+                log('error', 'Cannot send test alert: Invalid URL parameters');
+                return;
+            }
+
+            try {
+                log('info', 'Sending test alert...');
+                const response = await fetch(`/api/obs-settings/widget/${params.alertToken}/alert`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        donorName: 'Test User',
+                        amount: '25.00',
+                        message: 'This is a test alert from the widget!'
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log('success', `Test alert sent successfully! Alert ID: ${result.alertId}`);
+                } else {
+                    const error = await response.text();
+                    log('error', `Failed to send test alert: ${error}`);
+                }
+            } catch (error) {
+                log('error', `Error sending test alert: ${error.message}`);
+            }
+        }
+
+        // Test donation function
+        async function sendTestDonation() {
+            const params = extractUrlParams();
+            if (!params) {
+                log('error', 'Cannot send test donation: Invalid URL parameters');
+                return;
+            }
+
+            try {
+                log('info', 'Sending test donation alert...');
+                const response = await fetch(`/api/obs-settings/widget/${params.alertToken}/donation-alert`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        donorName: 'Test Donor',
+                        amount: '50.00',
+                        currency: 'USD',
+                        message: 'This is a test donation alert!',
+                        donationId: `test_${Date.now()}`,
+                        paymentMethod: 'test',
+                        isAnonymous: false
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    log('success', `Test donation alert sent successfully! Alert ID: ${result.alertId}`);
+                } else {
+                    const error = await response.text();
+                    log('error', `Failed to send test donation alert: ${error}`);
+                }
+            } catch (error) {
+                log('error', `Error sending test donation alert: ${error.message}`);
+            }
+        }
+
+        // Verify token function
+        async function verifyToken() {
+            const params = extractUrlParams();
+            if (!params) {
+                log('error', 'Cannot verify token: Invalid URL parameters');
+                return;
+            }
+
+            try {
+                log('info', 'Verifying alert token...');
+                const response = await fetch(`/api/obs-settings/verify/${params.streamerId}/${params.alertToken}`);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.isValid) {
+                        log('success', 'Token verified successfully!');
+                        log('info', `Streamer ID: ${result.streamerId}`);
+                        log('info', `Widget URL: ${result.widgetUrl}`);
+                    } else {
+                        log('warning', `Token verification failed: ${result.message}`);
+                    }
+                } else {
+                    const error = await response.text();
+                    log('error', `Failed to verify token: ${error}`);
+                }
+            } catch (error) {
+                log('error', `Error verifying token: ${error.message}`);
+            }
+        }
+
+        // Initialize widget
+        function initWidget() {
+            log('info', 'Initializing OBS Alert Widget...');
+            
+            const params = updateUI(extractUrlParams());
+            if (params) {
+                log('success', 'Widget initialized successfully!');
+                
+                // Test the token verification
+                verifyToken();
+            } else {
+                log('error', 'Widget initialization failed due to invalid URL format');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('testAlertBtn').addEventListener('click', sendTestAlert);
+        document.getElementById('testDonationBtn').addEventListener('click', sendTestDonation);
+        document.getElementById('verifyTokenBtn').addEventListener('click', verifyToken);
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initWidget);
+
+        // Update connection status (this would normally connect to WebSocket)
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'status connected';
+                statusElement.textContent = 'Connected';
+                document.getElementById('connectionInfo').textContent = 'WebSocket Connected';
+            } else {
+                statusElement.className = 'status disconnected';
+                statusElement.textContent = 'Disconnected';
+                document.getElementById('connectionInfo').textContent = 'WebSocket Disconnected';
+            }
+        }
+
+        // Simulate connection status for demo
+        setTimeout(() => {
+            updateConnectionStatus(true);
+            log('success', 'WebSocket connection established');
+        }, 2000);
+    </script>
+</body>
+</html> 

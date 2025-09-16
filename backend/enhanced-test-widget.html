@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced OBS Alert Widget Test</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .widget-preview {
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .widget-frame {
+            width: 400px;
+            height: 300px;
+            border: 1px solid #666;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0 auto;
+            background: #1a1a1a;
+            position: relative;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-group h3 {
+            margin-top: 0;
+            color: #ffd700;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #666;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button.danger {
+            background: #f44336;
+        }
+        
+        button.danger:hover {
+            background: #da190b;
+        }
+        
+        .test-buttons {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .feature-list {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .feature-list h3 {
+            color: #ffd700;
+            margin-top: 0;
+        }
+        
+        .feature-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .feature-list li:before {
+            content: "✅ ";
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Enhanced OBS Alert Widget Test</h1>
+            <p>Test all the advanced features of the OBS donation alert widget</p>
+        </div>
+        
+        <div class="feature-list">
+            <h3>✨ New Features Implemented</h3>
+            <ul>
+                <li><strong>Advanced Animations:</strong> Fade, slide, bounce, zoom with customizable duration and easing</li>
+                <li><strong>Sound System:</strong> Audio playback with volume control, fade in/out, and looping</li>
+                <li><strong>Queue System:</strong> Handle multiple consecutive alerts without overlap</li>
+                <li><strong>Customization:</strong> Colors, fonts, borders, shadows, and positioning</li>
+                <li><strong>Responsive Design:</strong> Mobile-friendly scaling and positioning</li>
+                <li><strong>Progress Bar:</strong> Visual countdown with customizable appearance</li>
+                <li><strong>Connection Status:</strong> Real-time WebSocket connection indicator</li>
+                <li><strong>Sound Controls:</strong> Mute, volume up/down buttons for streamer control</li>
+            </ul>
+        </div>
+        
+        <div class="widget-preview">
+            <h3>Widget Preview</h3>
+            <div class="widget-frame" id="widgetFrame">
+                <!-- Widget will be loaded here -->
+                <div style="text-align: center; padding: 50px; color: #666;">
+                    Widget loading...
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>🎨 Style Settings</h3>
+                <div class="form-group">
+                    <label for="backgroundColor">Background Color:</label>
+                    <input type="color" id="backgroundColor" value="#1a1a1a">
+                </div>
+                <div class="form-group">
+                    <label for="textColor">Text Color:</label>
+                    <input type="color" id="textColor" value="#ffffff">
+                </div>
+                <div class="form-group">
+                    <label for="accentColor">Accent Color:</label>
+                    <input type="color" id="accentColor" value="#00ff00">
+                </div>
+                <div class="form-group">
+                    <label for="fontSize">Font Size:</label>
+                    <input type="range" id="fontSize" min="12" max="72" value="16">
+                    <span id="fontSizeValue">16px</span>
+                </div>
+                <div class="form-group">
+                    <label for="fontFamily">Font Family:</label>
+                    <select id="fontFamily">
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="Helvetica, sans-serif">Helvetica</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="Times New Roman, serif">Times New Roman</option>
+                        <option value="Courier New, monospace">Courier New</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎭 Animation Settings</h3>
+                <div class="form-group">
+                    <label for="animationType">Animation Type:</label>
+                    <select id="animationType">
+                        <option value="fade">Fade</option>
+                        <option value="slide">Slide</option>
+                        <option value="bounce">Bounce</option>
+                        <option value="zoom">Zoom</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="animationDuration">Duration (ms):</label>
+                    <input type="range" id="animationDuration" min="200" max="5000" value="500">
+                    <span id="animationDurationValue">500ms</span>
+                </div>
+                <div class="form-group">
+                    <label for="easing">Easing:</label>
+                    <select id="easing">
+                        <option value="ease">Ease</option>
+                        <option value="ease-in">Ease In</option>
+                        <option value="ease-out">Ease Out</option>
+                        <option value="ease-in-out">Ease In Out</option>
+                        <option value="linear">Linear</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🔊 Sound Settings</h3>
+                <div class="form-group">
+                    <label for="soundEnabled">Enable Sound:</label>
+                    <input type="checkbox" id="soundEnabled" checked>
+                </div>
+                <div class="form-group">
+                    <label for="volume">Volume:</label>
+                    <input type="range" id="volume" min="0" max="100" value="80">
+                    <span id="volumeValue">80%</span>
+                </div>
+                <div class="form-group">
+                    <label for="fadeIn">Fade In (ms):</label>
+                    <input type="range" id="fadeIn" min="0" max="5000" value="0">
+                    <span id="fadeInValue">0ms</span>
+                </div>
+                <div class="form-group">
+                    <label for="fadeOut">Fade Out (ms):</label>
+                    <input type="range" id="fadeOut" min="0" max="5000" value="0">
+                    <span id="fadeOutValue">0ms</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>📱 Display Settings</h3>
+                <div class="form-group">
+                    <label for="displayDuration">Display Duration (ms):</label>
+                    <input type="range" id="displayDuration" min="1000" max="30000" value="5000">
+                    <span id="displayDurationValue">5000ms</span>
+                </div>
+                <div class="form-group">
+                    <label for="fadeInDuration">Fade In Duration (ms):</label>
+                    <input type="range" id="fadeInDuration" min="0" max="5000" value="300">
+                    <span id="fadeInDurationValue">300ms</span>
+                </div>
+                <div class="form-group">
+                    <label for="fadeOutDuration">Fade Out Duration (ms):</label>
+                    <input type="range" id="fadeOutDuration" min="0" max="5000" value="300">
+                    <span id="fadeOutDurationValue">300ms</span>
+                </div>
+                <div class="form-group">
+                    <label for="showProgress">Show Progress Bar:</label>
+                    <input type="checkbox" id="showProgress" checked>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-buttons">
+            <h3>🧪 Test Alerts</h3>
+            <button onclick="testAlert('John Doe', '50.00', 'Amazing stream! Keep it up!')">Test Alert 1</button>
+            <button onclick="testAlert('Anonymous', '25.00', 'Great content!')">Test Alert 2</button>
+            <button onclick="testAlert('Sarah Smith', '100.00', 'You deserve this!')">Test Alert 3</button>
+            <button onclick="testMultipleAlerts()" class="danger">Test Multiple Alerts</button>
+            <button onclick="clearQueue()">Clear Queue</button>
+        </div>
+        
+        <div class="control-group">
+            <h3>📋 Current Configuration</h3>
+            <pre id="currentConfig" style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 5px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Mock widget for testing
+        class MockOBSWidget {
+            constructor() {
+                this.alertQueue = [];
+                this.currentAlert = null;
+                this.isConnected = true;
+                this.settings = this.getDefaultSettings();
+                this.init();
+            }
+            
+            getDefaultSettings() {
+                return {
+                    imageSettings: {
+                        width: 400,
+                        height: 200,
+                        borderRadius: 8,
+                        shadow: true
+                    },
+                    soundSettings: {
+                        enabled: true,
+                        volume: 80,
+                        fadeIn: 0,
+                        fadeOut: 0,
+                        loop: false
+                    },
+                    animationSettings: {
+                        type: 'fade',
+                        duration: 500,
+                        easing: 'ease-out',
+                        direction: 'right',
+                        bounceIntensity: 20,
+                        zoomScale: 1.2
+                    },
+                    styleSettings: {
+                        backgroundColor: '#1a1a1a',
+                        textColor: '#ffffff',
+                        accentColor: '#00ff00',
+                        borderColor: '#333333',
+                        borderWidth: 2,
+                        borderStyle: 'solid',
+                        fontFamily: 'Arial, sans-serif',
+                        fontSize: 16,
+                        fontWeight: 'normal',
+                        fontStyle: 'normal',
+                        textShadow: true,
+                        textShadowColor: '#000000',
+                        textShadowBlur: 3,
+                        textShadowOffsetX: 1,
+                        textShadowOffsetY: 1
+                    },
+                    positionSettings: {
+                        x: 100,
+                        y: 100,
+                        anchor: 'top-left',
+                        zIndex: 1000,
+                        responsive: true,
+                        mobileScale: 0.8
+                    },
+                    displaySettings: {
+                        duration: 5000,
+                        fadeInDuration: 300,
+                        fadeOutDuration: 300,
+                        autoHide: true,
+                        showProgress: true,
+                        progressColor: '#00ff00',
+                        progressHeight: 3
+                    },
+                    generalSettings: {
+                        enabled: true,
+                        maxAlerts: 3,
+                        alertSpacing: 20,
+                        cooldown: 1000,
+                        priority: 'medium'
+                    }
+                };
+            }
+            
+            init() {
+                this.updateDisplay();
+                this.updateConfigDisplay();
+            }
+            
+            updateSettings(newSettings) {
+                this.settings = { ...this.settings, ...newSettings };
+                this.updateDisplay();
+                this.updateConfigDisplay();
+            }
+            
+            updateDisplay() {
+                const frame = document.getElementById('widgetFrame');
+                frame.innerHTML = this.generateWidgetHTML();
+            }
+            
+            generateWidgetHTML() {
+                const settings = this.settings;
+                return `
+                    <div style="
+                        background: ${settings.styleSettings.backgroundColor};
+                        color: ${settings.styleSettings.textColor};
+                        width: 100%;
+                        height: 100%;
+                        padding: 20px;
+                        border-radius: ${settings.imageSettings.borderRadius}px;
+                        border: ${settings.styleSettings.borderWidth}px ${settings.styleSettings.borderStyle} ${settings.styleSettings.borderColor};
+                        font-family: ${settings.styleSettings.fontFamily};
+                        font-size: ${settings.styleSettings.fontSize}px;
+                        position: relative;
+                        overflow: hidden;
+                    ">
+                        <div style="position: absolute; top: 10px; right: 10px; width: 12px; height: 12px; border-radius: 50%; background: #44ff44; animation: pulse 2s infinite;"></div>
+                        
+                        <div style="text-align: center; margin-top: 40px;">
+                            <h3 style="color: ${settings.styleSettings.accentColor}; margin-bottom: 10px;">OBS Widget Active</h3>
+                            <p>Connection: <span style="color: #44ff44;">Connected</span></p>
+                            <p>Queue: <span id="queueCount">0</span> alerts</p>
+                            <p>Current Settings Applied</p>
+                        </div>
+                        
+                        <div style="position: absolute; bottom: 10px; left: 10px; right: 10px;">
+                            <div style="height: ${settings.displaySettings.progressHeight}px; background: rgba(255,255,255,0.3); border-radius: 3px; overflow: hidden;">
+                                <div style="height: 100%; background: ${settings.displaySettings.progressColor}; width: 100%; animation: progress ${settings.displaySettings.duration}ms linear infinite;"></div>
+                            </div>
+                        </div>
+                        
+                        <style>
+                            @keyframes pulse {
+                                0% { opacity: 1; }
+                                50% { opacity: 0.5; }
+                                100% { opacity: 1; }
+                            }
+                            @keyframes progress {
+                                0% { width: 100%; }
+                                100% { width: 0%; }
+                            }
+                        </style>
+                    </div>
+                `;
+            }
+            
+            updateConfigDisplay() {
+                document.getElementById('currentConfig').textContent = JSON.stringify(this.settings, null, 2);
+            }
+            
+            testAlert(donorName, amount, message) {
+                const alertData = {
+                    donorName,
+                    amount,
+                    message,
+                    timestamp: new Date()
+                };
+                
+                this.queueAlert(alertData);
+            }
+            
+            queueAlert(alertData) {
+                this.alertQueue.push(alertData);
+                this.updateQueueDisplay();
+                
+                if (!this.currentAlert) {
+                    this.processQueue();
+                }
+            }
+            
+            processQueue() {
+                if (this.alertQueue.length === 0) return;
+                
+                const alertData = this.alertQueue.shift();
+                this.currentAlert = alertData;
+                this.updateQueueDisplay();
+                
+                // Simulate alert display
+                setTimeout(() => {
+                    this.currentAlert = null;
+                    this.processQueue();
+                }, this.settings.displaySettings.duration);
+            }
+            
+            updateQueueDisplay() {
+                const queueCount = document.getElementById('queueCount');
+                if (queueCount) {
+                    queueCount.textContent = this.alertQueue.length;
+                }
+            }
+            
+            clearQueue() {
+                this.alertQueue = [];
+                this.currentAlert = null;
+                this.updateQueueDisplay();
+            }
+        }
+        
+        // Initialize mock widget
+        let mockWidget;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            mockWidget = new MockOBSWidget();
+            
+            // Set up control listeners
+            setupControls();
+        });
+        
+        function setupControls() {
+            // Style controls
+            document.getElementById('backgroundColor').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    styleSettings: { ...mockWidget.settings.styleSettings, backgroundColor: e.target.value }
+                });
+            });
+            
+            document.getElementById('textColor').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    styleSettings: { ...mockWidget.settings.styleSettings, textColor: e.target.value }
+                });
+            });
+            
+            document.getElementById('accentColor').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    styleSettings: { ...mockWidget.settings.styleSettings, accentColor: e.target.value }
+                });
+            });
+            
+            document.getElementById('fontSize').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('fontSizeValue').textContent = value + 'px';
+                mockWidget.updateSettings({
+                    styleSettings: { ...mockWidget.settings.styleSettings, fontSize: value }
+                });
+            });
+            
+            document.getElementById('fontFamily').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    styleSettings: { ...mockWidget.settings.styleSettings, fontFamily: e.target.value }
+                });
+            });
+            
+            // Animation controls
+            document.getElementById('animationType').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    animationSettings: { ...mockWidget.settings.animationSettings, type: e.target.value }
+                });
+            });
+            
+            document.getElementById('animationDuration').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('animationDurationValue').textContent = value + 'ms';
+                mockWidget.updateSettings({
+                    animationSettings: { ...mockWidget.settings.animationSettings, duration: value }
+                });
+            });
+            
+            document.getElementById('easing').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    animationSettings: { ...mockWidget.settings.animationSettings, easing: e.target.value }
+                });
+            });
+            
+            // Sound controls
+            document.getElementById('soundEnabled').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    soundSettings: { ...mockWidget.settings.soundSettings, enabled: e.target.checked }
+                });
+            });
+            
+            document.getElementById('volume').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('volumeValue').textContent = value + '%';
+                mockWidget.updateSettings({
+                    soundSettings: { ...mockWidget.settings.soundSettings, volume: value }
+                });
+            });
+            
+            document.getElementById('fadeIn').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('fadeInValue').textContent = value + 'ms';
+                mockWidget.updateSettings({
+                    soundSettings: { ...mockWidget.settings.soundSettings, fadeIn: value }
+                });
+            });
+            
+            document.getElementById('fadeOut').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('fadeOutValue').textContent = value + 'ms';
+                mockWidget.updateSettings({
+                    soundSettings: { ...mockWidget.settings.soundSettings, fadeOut: value }
+                });
+            });
+            
+            // Display controls
+            document.getElementById('displayDuration').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('displayDurationValue').textContent = value + 'ms';
+                mockWidget.updateSettings({
+                    displaySettings: { ...mockWidget.settings.displaySettings, duration: value }
+                });
+            });
+            
+            document.getElementById('fadeInDuration').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('fadeInDurationValue').textContent = value + 'ms';
+                mockWidget.updateSettings({
+                    displaySettings: { ...mockWidget.settings.displaySettings, fadeInDuration: value }
+                });
+            });
+            
+            document.getElementById('fadeOutDuration').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                document.getElementById('fadeOutDurationValue').textContent = value + 'ms';
+                mockWidget.updateSettings({
+                    displaySettings: { ...mockWidget.settings.displaySettings, fadeOutDuration: value }
+                });
+            });
+            
+            document.getElementById('showProgress').addEventListener('change', (e) => {
+                mockWidget.updateSettings({
+                    displaySettings: { ...mockWidget.settings.displaySettings, showProgress: e.target.checked }
+                });
+            });
+        }
+        
+        function testAlert(donorName, amount, message) {
+            if (mockWidget) {
+                mockWidget.testAlert(donorName, amount, message);
+            }
+        }
+        
+        function testMultipleAlerts() {
+            if (mockWidget) {
+                mockWidget.testAlert('Alice', '15.00', 'First alert!');
+                mockWidget.testAlert('Bob', '30.00', 'Second alert!');
+                mockWidget.testAlert('Charlie', '45.00', 'Third alert!');
+                mockWidget.testAlert('Diana', '60.00', 'Fourth alert!');
+            }
+        }
+        
+        function clearQueue() {
+            if (mockWidget) {
+                mockWidget.clearQueue();
+            }
+        }
+    </script>
+</body>
+</html> 

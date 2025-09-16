@@ -1,0 +1,33 @@
+import { Model } from 'mongoose';
+import { AnalyticsEventDocument } from './schemas/analytics-event.schema';
+import { DonationLinkDocument } from './schemas/donation-link.schema';
+import { DonationDocument } from './schemas/donation.schema';
+import { Request } from 'express';
+export declare class AnalyticsService {
+    private analyticsEventModel;
+    private donationLinkModel;
+    private donationModel;
+    private readonly logger;
+    constructor(analyticsEventModel: Model<AnalyticsEventDocument>, donationLinkModel: Model<DonationLinkDocument>, donationModel: Model<DonationDocument>);
+    trackPageView(donationLinkId: string, req: Request, metadata?: any): Promise<void>;
+    trackDonationStarted(donationLinkId: string, req: Request, metadata?: any): Promise<void>;
+    trackDonationCompleted(donationLinkId: string, req: Request, metadata?: any): Promise<void>;
+    trackQRCodeScanned(donationLinkId: string, req: Request, metadata?: any): Promise<void>;
+    trackSocialShare(donationLinkId: string, req: Request, metadata?: any): Promise<void>;
+    trackLinkClick(donationLinkId: string, req: Request, metadata?: any): Promise<void>;
+    getAnalyticsSummary(donationLinkId: string, days?: number): Promise<any>;
+    getRealTimeAnalytics(donationLinkId: string): Promise<any>;
+    getConversionFunnel(donationLinkId: string, days?: number): Promise<any>;
+    getGeographicAnalytics(donationLinkId: string, days?: number): Promise<any>;
+    getPerformanceMetrics(donationLinkId: string, days?: number): Promise<any>;
+    getSocialMediaAnalytics(donationLinkId: string, days?: number): Promise<any>;
+    getUTMAnalytics(donationLinkId: string, days?: number): Promise<any>;
+    exportAnalyticsData(donationLinkId: string, startDate: Date, endDate: Date, format?: 'json' | 'csv'): Promise<any>;
+    getStreamerAnalyticsDashboard(streamerId: string, days?: number): Promise<any>;
+    cleanupOldEvents(daysToKeep?: number): Promise<void>;
+    private buildEventData;
+    private extractUTMParams;
+    private getDeviceType;
+    private generateSessionId;
+    private generateVisitorId;
+}
