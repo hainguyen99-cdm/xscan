@@ -70,6 +70,20 @@ services:
     networks:
       - xscan-network
 
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: xscan-nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - xscan-network
+
 volumes:
   mongodb_data:
   redis_data:

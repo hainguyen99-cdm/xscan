@@ -73,13 +73,19 @@ Steps:
 2. Build and run:
    - `docker compose up -d --build`
 3. Services:
-   - Backend API on `http://<server-ip>:3001`
-   - Frontend on `http://<server-ip>:3000`
+   - Public via Nginx: `http://<server-ip>` (proxies to frontend and `/api` to backend)
+   - Backend API direct: `http://<server-ip>:3001`
+   - Frontend direct: `http://<server-ip>:3000`
 
 Environment overrides (optional):
 - `MONGO_ROOT_USER`, `MONGO_ROOT_PASS`, `MONGO_DB`
 - `PUBLIC_API_URL` for frontend `NEXT_PUBLIC_API_URL`
 - `CORS_ORIGIN`, `BASE_URL` for backend
+
+### Add TLS (optional)
+- Point your domain DNS to the server.
+- Replace Nginx with a certbot-enabled image or mount certs and add a `server` block for 443.
+- I can automate with `nginxproxy/nginx-proxy` + `acme-companion` on request.
 
 - Backend runs on: http://localhost:3000 (default NestJS port)
 - Frontend runs on: http://localhost:3001 (Next.js will auto-assign if 3000 is taken)
