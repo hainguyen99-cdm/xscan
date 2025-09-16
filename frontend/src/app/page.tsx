@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { Suspense } from 'react';
 import { Header } from '@/components/Header';
 import { Dashboard } from '@/components/Dashboard';
