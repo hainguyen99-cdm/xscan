@@ -9,6 +9,8 @@ const nextConfig = {
   env: {
     // Used by client-side code; point to Nginx (port 80)
     NEXT_PUBLIC_API_URL: 'http://14.225.211.248',
+    // Used by server-side API routes; point to backend directly
+    BACKEND_URL: 'http://xscan-backend:3001',
   },
   eslint: {
     // Skip ESLint during builds to unblock CI; keep linting in dev/CI separately
