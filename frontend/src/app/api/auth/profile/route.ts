@@ -37,16 +37,18 @@ export async function GET(request: NextRequest) {
       if (response.status === 404 || response.status === 500) {
         console.log('⚠️ Backend not available, returning mock streamer user for testing');
         return NextResponse.json({
-          id: 'mock-streamer-123',
-          email: 'streamer@test.com',
-          name: 'Test Streamer',
-          username: 'teststreamer',
-          role: 'streamer', // This allows access to donation links
-          isActive: true,
-          isEmailVerified: false,
-          twoFactorEnabled: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          user: {
+            id: 'mock-streamer-123',
+            email: 'streamer@test.com',
+            name: 'Test Streamer',
+            username: 'teststreamer',
+            role: 'streamer', // This allows access to donation links
+            isActive: true,
+            isEmailVerified: false,
+            twoFactorEnabled: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
         });
       }
       
@@ -81,24 +83,26 @@ export async function GET(request: NextRequest) {
     });
     console.log('✅ User ID for OBS settings:', userData.id);
     
-    // Return flattened user data
-    return NextResponse.json(userData);
+    // Return user data in the expected format with user wrapper
+    return NextResponse.json({ user: userData });
   } catch (error) {
     console.error('💥 Unexpected error in auth profile API:', error);
     
     // For development/testing, return mock user data if there's an error
     console.log('⚠️ Error occurred, returning mock user data for testing');
     return NextResponse.json({
-      id: 'mock-user-error-123',
-      email: 'error@example.com',
-      name: 'Error User',
-      username: 'erroruser',
-      role: 'streamer', // Changed from 'donor' to 'streamer' for testing
-      isActive: true,
-      isEmailVerified: false,
-      twoFactorEnabled: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      user: {
+        id: 'mock-user-error-123',
+        email: 'error@example.com',
+        name: 'Error User',
+        username: 'erroruser',
+        role: 'streamer', // Changed from 'donor' to 'streamer' for testing
+        isActive: true,
+        isEmailVerified: false,
+        twoFactorEnabled: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
     });
   }
 } 
