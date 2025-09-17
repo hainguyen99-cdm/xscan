@@ -7,7 +7,8 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
   },
   env: {
-    NEXT_PUBLIC_API_URL: 'http://localhost:3001',
+    // Used by client-side code; point to Nginx (port 80)
+    NEXT_PUBLIC_API_URL: 'http://14.225.211.248',
   },
   eslint: {
     // Skip ESLint during builds to unblock CI; keep linting in dev/CI separately
@@ -43,45 +44,45 @@ const nextConfig = {
       // Proxy /uploads/* requests to backend
       {
         source: '/uploads/:path*',
-        destination: 'http://localhost:3001/uploads/:path*',
+        destination: 'http://xscan-backend:3001/uploads/:path*',
       },
       // Proxy specific API routes to backend (exclude local API routes)
       {
         source: '/api/auth/:path*',
-        destination: 'http://localhost:3001/api/auth/:path*',
+        destination: 'http://xscan-backend:3001/api/auth/:path*',
       },
       {
         source: '/api/users/:path*',
-        destination: 'http://localhost:3001/api/users/:path*',
+        destination: 'http://xscan-backend:3001/api/users/:path*',
       },
       {
         source: '/api/payments/:path*',
-        destination: 'http://localhost:3001/api/payments/:path*',
+        destination: 'http://xscan-backend:3001/api/payments/:path*',
       },
       {
         source: '/api/wallets/:path*',
-        destination: 'http://localhost:3001/api/wallets/:path*',
+        destination: 'http://xscan-backend:3001/api/wallets/:path*',
       },
       {
         source: '/api/obs-settings/:path*',
-        destination: 'http://localhost:3001/api/obs-settings/:path*',
+        destination: 'http://xscan-backend:3001/api/obs-settings/:path*',
       },
       {
         source: '/api/admin/:path*',
-        destination: 'http://localhost:3001/api/admin/:path*',
+        destination: 'http://xscan-backend:3001/api/admin/:path*',
       },
       {
         source: '/api/donations/:path*',
-        destination: 'http://localhost:3001/api/donations/:path*',
+        destination: 'http://xscan-backend:3001/api/donations/:path*',
       },
       {
         source: '/api/health',
-        destination: 'http://localhost:3001/api/health',
+        destination: 'http://xscan-backend:3001/api/health',
       },
       // Catch-all for any other API routes not handled locally
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
+        destination: 'http://xscan-backend:3001/api/:path*',
         has: [
           {
             type: 'header',
