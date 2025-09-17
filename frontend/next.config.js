@@ -21,9 +21,11 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: [],
   },
+  // Disable static optimization completely
+  staticPageGenerationTimeout: 0,
+  generateBuildId: () => 'build',
   output: 'standalone',
   trailingSlash: true,
-  generateStaticParams: false,
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
