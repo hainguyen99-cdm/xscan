@@ -25,6 +25,7 @@ import { SecurityHeadersMiddleware } from './common/middleware/security-headers.
 import { GDPRComplianceMiddleware } from './common/middleware/gdpr-compliance.middleware';
 import { WidgetModule } from './widget/widget.module';
 import { BankSyncModule } from './bank-sync/bank-sync.module';
+import { WalletsModule } from './wallets/wallets.module';
 
 @Controller('test-widget')
 export class TestWidgetController {
@@ -88,6 +89,7 @@ export class TestWidgetController {
     StreamerApplicationsModule,
     WidgetModule,
     BankSyncModule,
+    WalletsModule,
   ],
   controllers: [TestWidgetController],
   providers: [
