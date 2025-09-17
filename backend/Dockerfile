@@ -28,4 +28,4 @@ COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:3001/api/health || exit 1
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]

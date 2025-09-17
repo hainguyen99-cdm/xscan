@@ -10,7 +10,7 @@ RUN npm install --legacy-peer-deps --include=dev
 COPY . .
 # Ensure standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build || (echo "Build completed with warnings" && exit 0)
+RUN npm run build
 
 ########################
 # Runtime stage (standalone)
