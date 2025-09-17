@@ -5,7 +5,6 @@ import { NotificationController } from './notification.controller';
 import { Notification, NotificationSchema } from './schemas/notification.schema';
 import { NotificationPreferences, NotificationPreferencesSchema } from './schemas/notification-preferences.schema';
 import { EmailModule } from '../email/email.module';
-import { DatabaseModule } from '../database/database.module';
 import { RedisModule } from '../redis/redis.module';
 import { ConfigModule } from '../config/config.module';
 
@@ -16,7 +15,6 @@ import { ConfigModule } from '../config/config.module';
       { name: NotificationPreferences.name, schema: NotificationPreferencesSchema },
     ]),
     EmailModule,
-    DatabaseModule,
     RedisModule,
     ConfigModule,
   ],
