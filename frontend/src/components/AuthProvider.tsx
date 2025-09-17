@@ -67,6 +67,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const isPublicRoute = normalizedPublic.includes(current);
         const isLoginOnlyRoute = normalizedLoginOnly.includes(current);
         
+        // Check if we have a token in storage as a fallback
+        const hasToken = typeof window !== 'undefined' && (
+          localStorage.getItem('auth-token') || 
+          document.cookie.includes('auth-token=')
+        );
+        
         console.log('Auth state check:', { 
           isAuthenticated, 
           pathname: current, 
@@ -74,10 +80,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isLoginOnlyRoute,
           authError,
           isInitializing,
-          hasInitialized
+          hasInitialized,
+          hasToken
         });
         
         if (!isAuthenticated && !isPublicRoute) {
+          // If we have a token but authentication failed, try to re-initialize
+          if (hasToken) {
+            console.log('Found token but not authenticated, attempting re-initialization...');
+            initializeAuth().catch(console.error);
+            return; // Don't redirect yet, let re-initialization complete
+          }
+          
           // User is not authenticated and trying to access a protected route
           console.log('Redirecting to login: not authenticated on protected route');
           router.push('/login');
@@ -87,11 +101,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           router.push('/dashboard');
         }
         // Note: Authenticated users can now access /register and other non-login public routes
-      }, 300); // Increased delay to 300ms for better state stability
+      }, 500); // Increased delay to 500ms for better state stability
 
       return () => clearTimeout(timeoutId);
     }
-  }, [isAuthenticated, pathname, isInitializing, hasInitialized, router, publicRoutes, loginOnlyRoutes, authError]);
+  }, [isAuthenticated, pathname, isInitializing, hasInitialized, router, publicRoutes, loginOnlyRoutes, authError, initializeAuth]);
 
   // Add a periodic token validation check (every 5 minutes)
   useEffect(() => {
@@ -116,10 +130,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing...</p>
+          <p className="text-gray-600">Initializing authentication...</p>
           {authError && (
             <p className="text-red-500 text-sm mt-2">{authError}</p>
           )}
+          <p className="text-xs text-gray-400 mt-2">
+            Debug: {isAuthenticated ? 'Authenticated' : 'Not authenticated'} | 
+            {hasInitialized ? 'Initialized' : 'Not initialized'}
+          </p>
         </div>
       </div>
     );

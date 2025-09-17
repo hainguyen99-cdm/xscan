@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { apiClient, setAuthToken, removeAuthToken, validateAuthToken, isTokenExpired } from '@/lib/api';
+import { apiClient, setAuthToken, removeAuthToken, validateAuthToken, isTokenExpired, getStoredToken } from '@/lib/api';
 import { User, Wallet, Donation, DonationLink, OBSSettings, Transaction } from '@/types';
 
 // Main application store
@@ -98,6 +98,11 @@ export const useAppStore = create<AppState>()(
         initializeAuth: async () => {
           try {
             console.log('Initializing authentication...');
+            const currentState = get();
+            console.log('Current persisted state:', { 
+              hasUser: !!currentState.user, 
+              isAuthenticated: currentState.isAuthenticated 
+            });
             
             // Check if token is expired first
             if (isTokenExpired()) {
@@ -107,17 +112,52 @@ export const useAppStore = create<AppState>()(
               return;
             }
             
-            const { isValid, user } = await validateAuthToken();
-            console.log('Token validation result:', { isValid, user: user ? 'exists' : 'null' });
+            // If we already have a user in state and a token, validate it
+            const token = getStoredToken();
+            if (currentState.user && currentState.isAuthenticated && token) {
+              console.log('Found persisted user and token, validating...');
+              try {
+                const { isValid, user } = await validateAuthToken();
+                console.log('Token validation result:', { isValid, user: user ? 'exists' : 'null' });
+                
+                if (isValid && user) {
+                  console.log('Token valid, keeping existing user:', user.name);
+                  // Update user data if needed, but keep authentication state
+                  set({ user: { ...currentState.user, ...user }, isAuthenticated: true });
+                  return;
+                } else {
+                  console.log('Token invalid, clearing auth state');
+                  removeAuthToken();
+                  set({ user: null, isAuthenticated: false });
+                  return;
+                }
+              } catch (error: any) {
+                console.error('Token validation error:', error);
+                // For network errors, keep the existing state
+                if (error?.response?.status === 401 || error?.response?.status === 403) {
+                  console.log('Authentication error, clearing auth state');
+                  removeAuthToken();
+                  set({ user: null, isAuthenticated: false });
+                } else {
+                  console.log('Network error, keeping existing auth state');
+                }
+                return;
+              }
+            }
             
-            if (isValid && user) {
-              console.log('Setting authenticated user:', user.name);
-              set({ user, isAuthenticated: true });
-            } else {
-              console.log('Token invalid, clearing auth state');
-              // Token is invalid, clear it
-              removeAuthToken();
-              set({ user: null, isAuthenticated: false });
+            // If no persisted user or token, try to validate from scratch
+            if (!currentState.user && !currentState.isAuthenticated) {
+              console.log('No persisted state, validating token from scratch...');
+              const { isValid, user } = await validateAuthToken();
+              console.log('Token validation result:', { isValid, user: user ? 'exists' : 'null' });
+              
+              if (isValid && user) {
+                console.log('Setting authenticated user:', user.name);
+                set({ user, isAuthenticated: true });
+              } else {
+                console.log('No valid token found');
+                set({ user: null, isAuthenticated: false });
+              }
             }
           } catch (error: any) {
             console.error('Authentication initialization error:', error);
