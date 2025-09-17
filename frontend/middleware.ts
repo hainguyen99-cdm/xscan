@@ -15,11 +15,17 @@ const roleRestrictedRoutes = {
 };
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname: rawPathname } = request.nextUrl;
+  const normalizePath = (value: string): string => {
+    if (!value) return '/';
+    const trimmed = value.replace(/\/+$/, '');
+    return trimmed.length === 0 ? '/' : trimmed;
+  };
+  const pathname = normalizePath(rawPathname);
   
   // Check if the route is public
-  const isPublicRoute = publicRoutes.includes(pathname);
-  const isAuthRedirectRoute = authRedirectRoutes.includes(pathname);
+  const isPublicRoute = publicRoutes.map(normalizePath).includes(pathname);
+  const isAuthRedirectRoute = authRedirectRoutes.map(normalizePath).includes(pathname);
   
   // Get token from cookies (more reliable than localStorage for middleware)
   const token = request.cookies.get('auth-token')?.value;

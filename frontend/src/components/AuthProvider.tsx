@@ -22,6 +22,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Routes that authenticated users should be redirected from (login-related only)
   const loginOnlyRoutes = ['/login', '/forgot-password', '/reset-password'];
 
+  // Normalize paths to avoid trailing slash issues
+  const normalizePath = (value: string): string => {
+    if (!value) return '/';
+    const trimmed = value.replace(/\/+$/, '');
+    return trimmed.length === 0 ? '/' : trimmed;
+  };
+
   // Memoize the initialization function to prevent unnecessary re-renders
   const initializeAuthentication = useCallback(async () => {
     try {
@@ -51,12 +58,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Add a small delay to ensure authentication state is stable
       const timeoutId = setTimeout(() => {
-        const isPublicRoute = publicRoutes.includes(pathname);
-        const isLoginOnlyRoute = loginOnlyRoutes.includes(pathname);
+        const current = normalizePath(pathname || '/');
+        const normalizedPublic = publicRoutes.map(normalizePath);
+        const normalizedLoginOnly = loginOnlyRoutes.map(normalizePath);
+        const isPublicRoute = normalizedPublic.includes(current);
+        const isLoginOnlyRoute = normalizedLoginOnly.includes(current);
         
         console.log('Auth state check:', { 
           isAuthenticated, 
-          pathname, 
+          pathname: current, 
           isPublicRoute, 
           isLoginOnlyRoute,
           authError
