@@ -5,11 +5,13 @@ import { ApiResponse, PaginatedResponse, User, Wallet, Transaction, BankAccount,
 const TOKEN_KEY = 'auth-token'; // Changed to match middleware cookie name
 
 // Create axios instance with default configuration
-// Use window.location.origin in browser to match current protocol (avoid mixed content)
+// Use configured API URL or fallback to localhost
 const resolveBaseUrl = (): string => {
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin;
+  // In browser, use the configured API URL or current origin
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL || window.location.origin;
   }
+  // On server side, use the configured API URL or localhost
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 };
 

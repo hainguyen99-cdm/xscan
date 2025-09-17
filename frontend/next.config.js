@@ -7,8 +7,8 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
   },
   env: {
-    // Used by client-side code; point to Nginx (port 80)
-    NEXT_PUBLIC_API_URL: 'http://14.225.211.248',
+    // Used by client-side code; point to frontend server (port 3000) for proxying
+    NEXT_PUBLIC_API_URL: 'http://14.225.211.248:3000',
     // Used by server-side API routes; point to backend directly
     BACKEND_URL: 'http://xscan-backend:3001',
   },
