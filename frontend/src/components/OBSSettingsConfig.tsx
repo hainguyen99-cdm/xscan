@@ -128,10 +128,15 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
       const keys = path.split('.');
       let current: any = newData;
       
+      // Navigate to the parent object, creating intermediate objects if they don't exist
       for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
+        }
         current = current[keys[i]];
       }
       
+      // Set the final value
       current[keys[keys.length - 1]] = value;
       return newData;
     });
