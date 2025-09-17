@@ -22,6 +22,8 @@ const nextConfig = {
     serverComponentsExternalPackages: [],
   },
   output: 'standalone',
+  trailingSlash: true,
+  generateStaticParams: false,
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
