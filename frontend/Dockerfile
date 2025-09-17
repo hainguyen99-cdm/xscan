@@ -11,6 +11,8 @@ COPY . .
 # Build tolerant to export errors (use SSR at runtime)
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build || (echo "Build completed with export errors (ignored for runtime SSR)" && exit 0)
+# Ensure prerender manifest exists to allow `next start`
+RUN node -e "const fs=require('fs');const dir='.next';const file=dir+'/prerender-manifest.json';if(!fs.existsSync(dir)){fs.mkdirSync(dir,{recursive:true});}if(!fs.existsSync(file)){fs.writeFileSync(file, JSON.stringify({version:3,routes:{},dynamicRoutes:{},notFoundRoutes:[],preview:{previewModeId:'',previewModeSigningKey:'',previewModeEncryptionKey:''}}, null, 2));}"
 
 ########################
 # Runtime stage (standalone)
