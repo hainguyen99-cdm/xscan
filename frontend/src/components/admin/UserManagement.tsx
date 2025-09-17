@@ -90,171 +90,36 @@ export function UserManagement() {
   const [isLoadingAction, setIsLoadingAction] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock user data for now - replace with API call when ready
-  const mockUsers: ExtendedUser[] = [
-    {
-      id: "689945bd6ff0a4a6cc2b68d2",
-      _id: "689945bd6ff0a4a6cc2b68d2",
-      username: "haidb.1280_fhnr",
-      email: "haidb.1280@gmail.com",
-      firstName: "hainv",
-      lastName: "User",
-      name: "hainv User",
-      role: "admin",
-      isActive: true,
-      twoFactorEnabled: false,
-      profileVisibility: "public",
-      showEmail: true,
-      showPhone: false,
-      showAddress: false,
-      showLastLogin: false,
-      profileCompletionPercentage: 63,
-      verificationBadges: [],
-      profileViews: 0,
-      profileViewers: [],
-      createdAt: "2025-08-11T01:22:05.874Z",
-      updatedAt: "2025-08-23T20:08:37.530Z",
-      lastLoginAt: "2025-08-23T20:08:37.528Z",
-      status: "active",
-      avatar: undefined,
-      isEmailVerified: true
-    },
-    {
-      id: "689d15fd9a2b74d59063afe9",
-      _id: "689d15fd9a2b74d59063afe9",
-      username: "haistreamer_bsan",
-      email: "haistreamer@gmail.com",
-      firstName: "haistreamer",
-      lastName: "User",
-      name: "haistreamer User",
-      role: "streamer",
-      isActive: true,
-      twoFactorEnabled: false,
-      profileVisibility: "public",
-      showEmail: true,
-      showPhone: false,
-      showAddress: false,
-      showLastLogin: false,
-      profileCompletionPercentage: 63,
-      verificationBadges: [],
-      profileViews: 0,
-      profileViewers: [],
-      createdAt: "2025-08-13T22:47:26.000Z",
-      updatedAt: "2025-08-25T03:40:59.887Z",
-      lastLoginAt: "2025-08-25T03:40:59.887Z",
-      status: "active",
-      avatar: undefined,
-      isEmailVerified: true
-    },
-    {
-      id: "68a38c9d5252317f490f24f7",
-      _id: "68a38c9d5252317f490f24f7",
-      username: "haiuser_0mx9",
-      email: "haiuser@gmail.com",
-      firstName: "haiuser",
-      lastName: "User",
-      name: "haiuser User",
-      role: "donor",
-      isActive: true,
-      twoFactorEnabled: false,
-      profileVisibility: "public",
-      showEmail: true,
-      showPhone: false,
-      showAddress: false,
-      showLastLogin: false,
-      profileCompletionPercentage: 75,
-      verificationBadges: [],
-      profileViews: 0,
-      profileViewers: [],
-      createdAt: "2025-08-18T20:27:09.636Z",
-      updatedAt: "2025-08-28T04:36:53.922Z",
-      lastLoginAt: "2025-08-28T04:36:53.921Z",
-      lastProfileUpdate: "2025-08-23T21:40:20.314Z",
-      profilePicture: "uploads/profiles/68a38c9d5252317f490f24f7_f383ea03eb4df1526dbab32128466959.jpg",
-      coverPhoto: "uploads/covers/68a38c9d5252317f490f24f7_cover_5b5484c864c05e5cdd60edac790bb2d0.gif",
-      status: "active",
-      avatar: "uploads/profiles/68a38c9d5252317f490f24f7_f383ea03eb4df1526dbab32128466959.jpg",
-      isEmailVerified: true
-    },
-    {
-      id: "68ab8685e5cfa6ec428c9560",
-      _id: "68ab8685e5cfa6ec428c9560",
-      username: "haistream2_hopz",
-      email: "haistream2@gmail.com",
-      firstName: "haistream2",
-      lastName: "User",
-      name: "haistream2 User",
-      role: "streamer",
-      isActive: true,
-      twoFactorEnabled: false,
-      profileVisibility: "public",
-      showEmail: true,
-      showPhone: false,
-      showAddress: false,
-      showLastLogin: false,
-      profileCompletionPercentage: 63,
-      verificationBadges: [],
-      profileViews: 0,
-      profileViewers: [],
-      createdAt: "2025-08-24T21:39:17.510Z",
-      updatedAt: "2025-08-24T21:39:17.515Z",
-      status: "active",
-      avatar: undefined,
-      isEmailVerified: true
-    },
-    {
-      id: "68b7aea550cb1d5b73b9b7dd",
-      _id: "68b7aea550cb1d5b73b9b7dd",
-      username: "admin_qlxl",
-      email: "admin@xscan.com",
-      firstName: "admin",
-      lastName: "User",
-      name: "admin User",
-      role: "admin",
-      isActive: true,
-      twoFactorEnabled: false,
-      profileVisibility: "public",
-      showEmail: true,
-      showPhone: false,
-      showAddress: false,
-      showLastLogin: false,
-      profileCompletionPercentage: 63,
-      verificationBadges: [],
-      profileViews: 0,
-      profileViewers: [],
-      createdAt: "2025-09-03T02:57:41.756Z",
-      updatedAt: "2025-09-03T02:57:41.766Z",
-      status: "active",
-      avatar: undefined,
-      isEmailVerified: true
-    }
-  ];
-
-  // Fetch users from API or use mock data
+  // Fetch users from API
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // For now, use mock data - replace with API call when ready
-      // const response = await apiClient.users.list();
-      
-      // Transform the response to match our ExtendedUser interface
-      const transformedUsers: ExtendedUser[] = mockUsers.map((user: any) => ({
+      const mappedStatus = statusFilter === 'all' ? undefined : (statusFilter === 'active' ? 'active' : 'inactive');
+      const mappedRole = roleFilter === 'all' ? undefined : roleFilter;
+      const params: any = {
+        page: 1,
+        limit: 100,
+        searchTerm: searchTerm || undefined,
+        role: mappedRole,
+        status: mappedStatus,
+      };
+      const response = await apiClient.admin.users.list(params);
+      const items = Array.isArray(response) ? response : (response.items || response.data || []);
+      const transformedUsers: ExtendedUser[] = (items as any[]).map((user: any) => ({
         id: user._id || user.id,
         name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
         email: user.email,
         username: user.username,
         role: user.role,
         avatar: user.profilePicture || user.avatar,
-        isEmailVerified: user.isEmailVerified || true,
-        twoFactorEnabled: user.twoFactorEnabled || false,
+        isEmailVerified: typeof user.isEmailVerified === 'boolean' ? user.isEmailVerified : true,
+        twoFactorEnabled: Boolean(user.twoFactorEnabled),
         createdAt: user.createdAt,
         lastLoginAt: user.lastLoginAt,
         status: user.isActive ? 'active' : 'suspended',
         totalDonations: user.totalDonations || 0,
         totalRevenue: user.totalRevenue || 0,
-        // Additional fields
         _id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -272,9 +137,9 @@ export function UserManagement() {
         profileViewers: user.profileViewers,
         updatedAt: user.updatedAt,
         profileCompletedAt: user.profileCompletedAt,
-        lastProfileUpdate: user.lastProfileUpdate
+        lastProfileUpdate: user.lastProfileUpdate,
+        bankToken: user.bankToken,
       }));
-      
       setUsers(transformedUsers);
       setFilteredUsers(transformedUsers);
     } catch (err: any) {
@@ -290,27 +155,8 @@ export function UserManagement() {
   }, []);
 
   useEffect(() => {
-    // Filter users based on search term and filters
-    let filtered = users;
-
-    if (searchTerm) {
-      filtered = filtered.filter(user =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.username.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (roleFilter !== 'all') {
-      filtered = filtered.filter(user => user.role === roleFilter);
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(user => user.status === statusFilter);
-    }
-
-    setFilteredUsers(filtered);
-  }, [users, searchTerm, roleFilter, statusFilter]);
+    fetchUsers();
+  }, [searchTerm, roleFilter, statusFilter]);
 
   const handleUserAction = async (userId: string, action: string) => {
     try {
@@ -319,25 +165,14 @@ export function UserManagement() {
 
       switch (action) {
         case 'activate':
-          // Update local state for now - replace with API call when ready
-          setUsers(prevUsers => 
-            prevUsers.map(user => 
-              user.id === userId ? { ...user, status: 'active', isActive: true } : user
-            )
-          );
+          await apiClient.admin.users.updateStatus(userId, 'active');
           break;
         case 'deactivate':
-          // Update local state for now - replace with API call when ready
-          setUsers(prevUsers => 
-            prevUsers.map(user => 
-              user.id === userId ? { ...user, status: 'suspended', isActive: false } : user
-            )
-          );
+          await apiClient.admin.users.updateStatus(userId, 'inactive');
           break;
         case 'delete':
           if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-            // Update local state for now - replace with API call when ready
-            setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+            await apiClient.admin.users.delete(userId);
           } else {
             return;
           }
