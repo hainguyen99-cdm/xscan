@@ -20,6 +20,7 @@ const nextConfig = {
   // Configure API routes to handle larger payloads
   experimental: {
     serverComponentsExternalPackages: [],
+    forceSwcTransforms: true,
   },
   // Disable static optimization completely
   staticPageGenerationTimeout: 0,
