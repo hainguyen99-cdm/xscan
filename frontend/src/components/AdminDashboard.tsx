@@ -9,8 +9,9 @@ import { ReportingSystem } from './admin/ReportingSystem';
 import { AdminStats } from './admin/AdminStats';
 import { DepositManagement } from './admin/DepositManagement';
 import { AdminBankAccountManagement } from './admin/AdminBankAccountManagement';
+import { StreamerApplications } from './admin/StreamerApplications';
 
-type AdminSection = 'overview' | 'users' | 'transactions' | 'deposits' | 'bank-accounts' | 'fees' | 'reports';
+type AdminSection = 'overview' | 'users' | 'transactions' | 'deposits' | 'bank-accounts' | 'fees' | 'reports' | 'streamer-applications';
 
 export function AdminDashboard() {
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
@@ -31,6 +32,8 @@ export function AdminDashboard() {
         return <FeeManagement />;
       case 'reports':
         return <ReportingSystem />;
+      case 'streamer-applications':
+        return <StreamerApplications />;
       default:
         return <AdminStats />;
     }
@@ -61,12 +64,13 @@ export function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <h1 className="text-xl md:text-2xl font-bold text-gray-900 capitalize truncate">
-                {activeSection === 'overview' ? 'Dashboard' :
+                {                 activeSection === 'overview' ? 'Dashboard' :
                  activeSection === 'users' ? 'User Management' :
                  activeSection === 'transactions' ? 'Transaction Management' :
                  activeSection === 'deposits' ? 'Deposit Management' :
                  activeSection === 'bank-accounts' ? 'Bank Account Management' :
                  activeSection === 'fees' ? 'Fee Management' :
+                 activeSection === 'streamer-applications' ? 'Streamer Applications' :
                  'Reports & Analytics'}
               </h1>
               <p className="text-sm text-gray-600 mt-1 truncate">
@@ -76,6 +80,7 @@ export function AdminDashboard() {
                  activeSection === 'deposits' ? 'Monitor and manage all deposit transactions' :
                  activeSection === 'bank-accounts' ? 'Manage bank accounts for all users' :
                  activeSection === 'fees' ? 'Configure platform fees and rates' :
+                 activeSection === 'streamer-applications' ? 'Review and approve streamer applications' :
                  'Generate comprehensive reports and analytics'}
               </p>
             </div>
@@ -99,6 +104,7 @@ export function AdminDashboard() {
                      activeSection === 'deposits' ? 'Deposits' :
                      activeSection === 'bank-accounts' ? 'Bank Accounts' :
                      activeSection === 'fees' ? 'Fees' :
+                     activeSection === 'streamer-applications' ? 'Streamer Applications' :
                      'Reports'}
                   </span>
                 </li>

@@ -13,11 +13,12 @@ import {
   Bars3Icon,
   XMarkIcon,
   BanknotesIcon,
-  BuildingLibraryIcon
+  BuildingLibraryIcon,
+  UserPlusIcon
 } from '@heroicons/react/24/outline';
 import { useState, useEffect, useRef } from 'react';
 
-type AdminSection = 'overview' | 'users' | 'transactions' | 'deposits' | 'bank-accounts' | 'fees' | 'reports';
+type AdminSection = 'overview' | 'users' | 'transactions' | 'deposits' | 'bank-accounts' | 'fees' | 'reports' | 'streamer-applications';
 
 interface AdminNavigationProps {
   activeSection: AdminSection;
@@ -80,6 +81,14 @@ const navigationItems = [
     description: 'Generate reports and analytics',
     badge: '0',
     shortcut: '7'
+  },
+  {
+    id: 'streamer-applications' as AdminSection,
+    name: 'Streamer Applications',
+    icon: UserPlusIcon,
+    description: 'Review and approve streamer applications',
+    badge: '3',
+    shortcut: '8'
   }
 ];
 
@@ -120,8 +129,8 @@ export function AdminNavigation({ activeSection, onSectionChange }: AdminNavigat
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Handle number keys for quick navigation (1-7)
-      if (event.key >= '1' && event.key <= '7' && !isMobile) {
+      // Handle number keys for quick navigation (1-8)
+      if (event.key >= '1' && event.key <= '8' && !isMobile) {
         const sectionIndex = parseInt(event.key) - 1;
         if (sectionIndex < navigationItems.length) {
           const section = navigationItems[sectionIndex].id;
