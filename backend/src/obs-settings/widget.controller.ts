@@ -512,20 +512,6 @@ export class WidgetController {
             display: none;
           }
           
-          .connection-status {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ff4444;
-            animation: pulse 2s infinite;
-          }
-          
-          .connection-status.connected {
-            background: #44ff44;
-          }
           
           .sound-banner {
             position: absolute;
@@ -559,7 +545,6 @@ export class WidgetController {
       </head>
       <body>
         <div class="widget-container">
-          <div class="connection-status" id="connectionStatus"></div>
           <div class="sound-banner" id="soundBanner" role="region" aria-label="Sound permission">
             <span>Sound is blocked by the browser.</span>
             <button id="enableSoundButton" aria-label="Enable sound">Enable sound</button>
@@ -637,7 +622,6 @@ export class WidgetController {
             
             setupElements() {
               this.alertContainer = document.getElementById('alertContainer');
-              this.connectionStatus = document.getElementById('connectionStatus');
               this.alertMedia = document.getElementById('alertMedia');
               this.soundBanner = document.getElementById('soundBanner');
               this.enableSoundButton = document.getElementById('enableSoundButton');
@@ -645,10 +629,6 @@ export class WidgetController {
               // Safety check - ensure elements exist
               if (!this.alertContainer) {
                 console.error('❌ alertContainer element not found!');
-                return;
-              }
-              if (!this.connectionStatus) {
-                console.error('❌ connectionStatus element not found!');
                 return;
               }
               if (!this.soundBanner) {
@@ -696,7 +676,6 @@ export class WidgetController {
 
             init() {
               console.log('🚀 OBSAlertWidget initializing...');
-              this.updateConnectionStatus();
               this.connectWebSocket();
               
               // Set up periodic cleanup of old alerts
@@ -743,13 +722,11 @@ export class WidgetController {
                 this.socket.on('connect', () => {
                   console.log('Connected to OBS Widget WebSocket');
                   this.isConnected = true;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('disconnect', () => {
                   console.log('Disconnected from OBS Widget WebSocket');
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('joinedStreamerRoom', (data) => {
@@ -781,25 +758,14 @@ export class WidgetController {
                 this.socket.on('connect_error', (error) => {
                   console.error('WebSocket connection error:', error);
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
               } catch (error) {
                 console.error('Failed to create OBS Widget WebSocket connection:', error);
                 this.isConnected = false;
-                this.updateConnectionStatus();
               }
             }
             
-            updateConnectionStatus() {
-              if (this.isConnected) {
-                this.connectionStatus.classList.add('connected');
-                this.connectionStatus.title = 'Connected';
-              } else {
-                this.connectionStatus.classList.remove('connected');
-                this.connectionStatus.title = 'Disconnected';
-              }
-            }
             
             applySettings(newSettings) {
               console.log('🔧 Applying new settings to widget:', newSettings);
@@ -1479,7 +1445,6 @@ export class WidgetController {
               }
               
               this.isConnected = false;
-              this.updateConnectionStatus();
             }
             
             // Helper method to check if URL contains image data

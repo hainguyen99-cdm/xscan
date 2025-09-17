@@ -26,21 +26,6 @@
             padding-bottom: 20px;
             border-bottom: 2px solid #00ff00;
         }
-        .status {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .status.connected {
-            background-color: #00ff00;
-            color: #000000;
-        }
-        .status.disconnected {
-            background-color: #ff4444;
-            color: #ffffff;
-        }
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -114,7 +99,6 @@
     <div class="widget-container">
         <div class="header">
             <h1>📺 OBS Alert Widget</h1>
-            <div id="connectionStatus" class="status disconnected">Disconnected</div>
         </div>
 
         <div class="info-grid">
@@ -324,23 +308,8 @@
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', initWidget);
 
-        // Update connection status (this would normally connect to WebSocket)
-        function updateConnectionStatus(connected) {
-            const statusElement = document.getElementById('connectionStatus');
-            if (connected) {
-                statusElement.className = 'status connected';
-                statusElement.textContent = 'Connected';
-                document.getElementById('connectionInfo').textContent = 'WebSocket Connected';
-            } else {
-                statusElement.className = 'status disconnected';
-                statusElement.textContent = 'Disconnected';
-                document.getElementById('connectionInfo').textContent = 'WebSocket Disconnected';
-            }
-        }
-
         // Simulate connection status for demo
         setTimeout(() => {
-            updateConnectionStatus(true);
             log('success', 'WebSocket connection established');
         }, 2000);
     </script>

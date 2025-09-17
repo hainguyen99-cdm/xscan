@@ -384,20 +384,6 @@ export class WidgetPublicController {
             text-align: right;
           }
           
-          .connection-status {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ff4444;
-            animation: pulse 2s infinite;
-          }
-          
-          .connection-status.connected {
-            background: #44ff44;
-          }
           
           @keyframes pulse {
             0% { opacity: 1; }
@@ -408,8 +394,6 @@ export class WidgetPublicController {
       </head>
       <body>
         <div class="widget-container">
-          <div class="connection-status" id="connectionStatus"></div>
-          
           <div class="alert" id="alertContainer" style="display: none;">
             <div class="alert-header">
               <img src="" alt="Donor" class="donor-avatar" id="donorAvatar">
@@ -499,15 +483,10 @@ export class WidgetPublicController {
             
             setupElements() {
               this.alertContainer = document.getElementById('alertContainer');
-              this.connectionStatus = document.getElementById('connectionStatus');
               
               // Safety check - ensure elements exist
               if (!this.alertContainer) {
                 console.error('❌ alertContainer element not found!');
-                return;
-              }
-              if (!this.connectionStatus) {
-                console.error('❌ connectionStatus element not found!');
                 return;
               }
               
@@ -595,7 +574,6 @@ export class WidgetPublicController {
             
             init() {
               console.log('🚀 OBSAlertWidget initializing...');
-              this.updateConnectionStatus();
               this.connectWebSocket();
               
               // Set up periodic cleanup of old alerts
@@ -662,13 +640,11 @@ export class WidgetPublicController {
                 this.socket.on('connect', () => {
                   console.log('✅ Connected to OBS Widget WebSocket');
                   this.isConnected = true;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('disconnect', () => {
                   console.log('❌ Disconnected from OBS Widget WebSocket');
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('joinedStreamerRoom', (data) => {
@@ -688,13 +664,11 @@ export class WidgetPublicController {
                 this.socket.on('connect_error', (error) => {
                   console.error('❌ WebSocket connection error:', error);
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('reconnect', (attemptNumber) => {
                   console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
                   this.isConnected = true;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('reconnect_error', (error) => {
@@ -704,25 +678,14 @@ export class WidgetPublicController {
                 this.socket.on('reconnect_failed', () => {
                   console.error('❌ WebSocket reconnection failed after all attempts');
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
               } catch (error) {
                 console.error('❌ Failed to create OBS Widget WebSocket connection:', error);
                 this.isConnected = false;
-                this.updateConnectionStatus();
               }
             }
             
-            updateConnectionStatus() {
-              if (this.isConnected) {
-                this.connectionStatus.classList.add('connected');
-                this.connectionStatus.title = 'Connected';
-              } else {
-                this.connectionStatus.classList.remove('connected');
-                this.connectionStatus.title = 'Disconnected';
-              }
-            }
             
             showAlert(alertData) {
               const alertId = alertData.alertId;
@@ -1201,7 +1164,6 @@ export class WidgetPublicController {
               }
               
               this.isConnected = false;
-              this.updateConnectionStatus();
             }
           }
           
