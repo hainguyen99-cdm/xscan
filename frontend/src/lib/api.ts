@@ -15,7 +15,7 @@ const resolveBaseUrl = (): string => {
 
 export const api: AxiosInstance = axios.create({
   baseURL: resolveBaseUrl(),
-  timeout: 30000,
+  timeout: 10000, // Reduced timeout to 10 seconds
   headers: {
     'Content-Type': 'application/json',
   },
@@ -50,7 +50,10 @@ api.interceptors.response.use(
         const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password'];
         const currentPath = window.location.pathname;
         if (!publicRoutes.includes(currentPath)) {
-          window.location.href = '/login';
+          // Add a small delay to prevent rapid redirects
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 100);
         }
       }
     }
@@ -504,42 +507,22 @@ export async function validateAuthToken(): Promise<{ isValid: boolean; user: Use
     
     console.log('Token validation failed: no user data in response');
     return { isValid: false, user: null };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Token validation error:', error);
     
-    // For testing purposes, if we have a token but backend is not available,
-    // return a mock user to allow testing
+    // Only return mock user for network errors, not authentication errors
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
+      console.log('Authentication error, clearing token and returning invalid');
+      removeAuthToken();
+      return { isValid: false, user: null };
+    }
+    
+    // For network errors or other issues, if we have a token, try to maintain session
     const token = getStoredToken();
-    if (token) {
-      console.log('Backend not available, returning mock user for testing');
-      const mockUser: User = {
-        id: 'mock-streamer-backend-error',
-        email: 'streamer@test.com',
-        name: 'Test Streamer (Backend Error)',
-        username: 'teststreamer',
-        role: 'streamer',
-        profilePicture: '/api/placeholder/40/40',
-        bio: 'Mock streamer for testing (backend error)',
-        location: 'Test Location',
-        website: 'https://test.com',
-        timezone: 'UTC',
-        notifications: {
-          email: true,
-          push: true,
-          sms: false,
-        },
-        privacy: {
-          profilePublic: true,
-          showEmail: false,
-          showLocation: true,
-        },
-        isEmailVerified: true,
-        twoFactorEnabled: false,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
-      };
-      return { isValid: true, user: mockUser };
+    if (token && (error?.code === 'NETWORK_ERROR' || error?.message?.includes('fetch'))) {
+      console.log('Network error but token exists, maintaining session temporarily');
+      // Don't return mock user, just return invalid to trigger re-authentication
+      return { isValid: false, user: null };
     }
     
     return { isValid: false, user: null };

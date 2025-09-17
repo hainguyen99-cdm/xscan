@@ -40,7 +40,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('Authentication initialization completed');
     } catch (error) {
       console.error('Failed to initialize authentication:', error);
-      setAuthError(error instanceof Error ? error.message : 'Authentication failed');
+      // Don't set auth error for network issues, just log them
+      if (error instanceof Error && !error.message.includes('fetch')) {
+        setAuthError(error.message);
+      }
     } finally {
       setIsInitializing(false);
       setHasInitialized(true);
@@ -69,7 +72,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           pathname: current, 
           isPublicRoute, 
           isLoginOnlyRoute,
-          authError
+          authError,
+          isInitializing,
+          hasInitialized
         });
         
         if (!isAuthenticated && !isPublicRoute) {
@@ -82,7 +87,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           router.push('/dashboard');
         }
         // Note: Authenticated users can now access /register and other non-login public routes
-      }, 150); // Increased delay to 150ms for better state stability
+      }, 300); // Increased delay to 300ms for better state stability
 
       return () => clearTimeout(timeoutId);
     }

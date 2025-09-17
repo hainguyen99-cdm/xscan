@@ -91,7 +91,7 @@ export const useAppStore = create<AppState>()(
         updateUserRole: (role: string) => {
           const { user } = get();
           if (user) {
-            set({ user: { ...user, role } });
+            set({ user: { ...user, role: role as 'streamer' | 'admin' | 'donor' } });
           }
         },
         
@@ -119,11 +119,19 @@ export const useAppStore = create<AppState>()(
               removeAuthToken();
               set({ user: null, isAuthenticated: false });
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Authentication initialization error:', error);
-            // If validation fails, clear authentication state
-            removeAuthToken();
-            set({ user: null, isAuthenticated: false });
+            
+            // Only clear auth state for actual authentication errors, not network issues
+            if (error?.response?.status === 401 || error?.response?.status === 403) {
+              console.log('Authentication error, clearing auth state');
+              removeAuthToken();
+              set({ user: null, isAuthenticated: false });
+            } else {
+              console.log('Network or other error, maintaining current auth state');
+              // For network errors, don't clear the auth state immediately
+              // Let the user try to use the app and see if it works
+            }
           }
         },
         
