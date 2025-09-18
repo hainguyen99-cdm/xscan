@@ -412,9 +412,11 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Configuration Form */}
-      <div className="space-y-8">
+    <div className="space-y-8">
+      {/* Row 1: Media Settings (left) + Widget Information (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Media Settings */}
+        <div className="space-y-8">
         <Card className="border-0 shadow-lg bg-white">
           <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3 text-white">
@@ -592,8 +594,64 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
             </div>
           </CardContent>
         </Card>
+        </div>
 
-        <Card className="border-0 shadow-lg bg-white">
+        {/* Widget Information */}
+        <div className="space-y-8">
+          {settings && (
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center gap-3 text-white">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  Widget Information
+                </CardTitle>
+                <CardDescription className="text-green-100">
+                  Use this URL in your OBS browser source
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div>
+                  <Label className="text-sm font-semibold text-green-800 mb-2 block">Widget URL</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={settings.widgetUrl}
+                      readOnly
+                      className="font-mono text-sm bg-white/70 border-green-200 focus:border-green-300"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigator.clipboard.writeText(settings.widgetUrl)}
+                      className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold text-green-800 mb-2 block">Alert Token</Label>
+                  <Input
+                    value={settings.alertToken}
+                    readOnly
+                    className="font-mono text-sm bg-white/70 border-green-200 focus:border-green-300"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Row 2: Display Settings (left) + Live Preview (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Display Settings */}
+        <div className="space-y-8">
+          <Card className="border-0 shadow-lg bg-white">
           <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3 text-white">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -758,9 +816,154 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
             </div>
           </CardContent>
         </Card>
+        </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-4">
+        {/* Live Preview */}
+        <div className="space-y-8">
+          <Card className="border-0 shadow-lg bg-white">
+            <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-3 text-white">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Eye className="w-5 h-5" />
+                </div>
+                Live Preview
+              </CardTitle>
+              <CardDescription className="text-amber-100">
+                See how your alerts will look in real-time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200"
+                >
+                  {showPreview ? 'Hide Preview' : 'Show Preview'}
+                </Button>
+              </div>
+
+              {showPreview && previewData && (
+                <div className="relative border-2 border-dashed border-amber-200 rounded-xl p-6 min-h-[300px] bg-gradient-to-br from-amber-50 to-orange-50 shadow-inner">
+                  {/* Preview Alert */}
+                  <div
+                    className={`absolute transition-all duration-500 ${
+                      previewData.animation === 'fade' ? 'animate-fade-in' :
+                      previewData.animation === 'slide' ? 'animate-slide-in' :
+                      previewData.animation === 'bounce' ? 'animate-bounce' : ''
+                    }`}
+                    style={{
+                      left: previewData.position === 'center' ? '50%' : 
+                            (previewData.position === 'top-left' || previewData.position === 'bottom-left') ? '20px' : undefined,
+                      top: previewData.position === 'center' ? '50%' : 
+                           (previewData.position === 'top-left' || previewData.position === 'top-right') ? '20px' : undefined,
+                      right: (previewData.position === 'top-right' || previewData.position === 'bottom-right') ? '20px' : undefined,
+                      bottom: (previewData.position === 'bottom-left' || previewData.position === 'bottom-right') ? '20px' : undefined,
+                      transform: previewData.position === 'center' ? 'translate(-50%, -50%)' : undefined,
+                      backgroundColor: previewData.colors.background,
+                      color: previewData.colors.text,
+                      fontFamily: previewData.fonts.family,
+                      fontSize: `${previewData.fonts.size}px`,
+                      fontWeight: previewData.fonts.weight,
+                      maxWidth: '300px',
+                      padding: '16px',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      zIndex: 1000
+                    }}
+                  >
+                    {/* Media Preview */}
+                    {previewData.image?.url && (
+                      <div className="mb-3">
+                        {previewData.image.type === 'video' ? (
+                          <video
+                            ref={videoRef}
+                            src={previewData.image.url}
+                            className="w-full h-20 object-cover rounded"
+                            muted
+                            loop
+                          />
+                        ) : (
+                          <img
+                            src={previewData.image.url}
+                            alt="Alert media"
+                            className="w-full h-20 object-cover rounded"
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Alert Content */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{previewData.donorName}</span>
+                        <span className="text-lg font-bold" style={{ color: previewData.colors.accent }}>
+                          ${previewData.amount}
+                        </span>
+                      </div>
+                      {previewData.message && (
+                        <p className="text-sm opacity-90">{previewData.message}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preview Controls */}
+                  <div className="absolute bottom-4 left-4 space-x-2">
+                    {previewData.image?.type === 'video' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={playVideo}
+                      >
+                        <Play className="w-4 h-4 mr-1" />
+                        Play Video
+                      </Button>
+                    )}
+                    {previewData.sound?.url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={playSound}
+                      >
+                        <Volume2 className="w-4 h-4 mr-1" />
+                        Play Sound
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Preview Info */}
+              <div className="mt-6 p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                <h4 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
+                  <span className="text-lg">📊</span>
+                  Preview Information
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-sm text-amber-800">
+                  <div className="bg-white/50 p-2 rounded-lg">
+                    <span className="font-medium">Donor:</span> {previewData?.donorName}
+                  </div>
+                  <div className="bg-white/50 p-2 rounded-lg">
+                    <span className="font-medium">Amount:</span> ${previewData?.amount} {previewData?.currency}
+                  </div>
+                  <div className="bg-white/50 p-2 rounded-lg">
+                    <span className="font-medium">Animation:</span> {formData.customization.text?.animation || 'fade'}
+                  </div>
+                  <div className="bg-white/50 p-2 rounded-lg">
+                    <span className="font-medium">Position:</span> {formData.customization.position}
+                  </div>
+                  <div className="bg-white/50 p-2 rounded-lg col-span-2">
+                    <span className="font-medium">Duration:</span> {formData.customization.duration}s
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-4">
           <Button
             onClick={handleSave}
             disabled={isLoading}
@@ -789,7 +992,7 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
             <TestTube className="w-4 h-4 mr-2" />
             Test Alert
           </Button>
-        </div>
+      </div>
 
 
         {/* Messages */}
@@ -825,198 +1028,6 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Right Column: place Widget Information above Live Preview so Live Preview aligns with Display Settings */}
-      <div className="space-y-8">
-        {/* Widget Information */}
-        {settings && (
-          <Card className="border-0 shadow-lg bg-white">
-            <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
-              <CardTitle className="flex items-center gap-3 text-white">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                Widget Information
-              </CardTitle>
-              <CardDescription className="text-green-100">
-                Use this URL in your OBS browser source
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div>
-                <Label className="text-sm font-semibold text-green-800 mb-2 block">Widget URL</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={settings.widgetUrl}
-                    readOnly
-                    className="font-mono text-sm bg-white/70 border-green-200 focus:border-green-300"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigator.clipboard.writeText(settings.widgetUrl)}
-                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200"
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm font-semibold text-green-800 mb-2 block">Alert Token</Label>
-                <Input
-                  value={settings.alertToken}
-                  readOnly
-                  className="font-mono text-sm bg-white/70 border-green-200 focus:border-green-300"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Live Preview */}
-        <Card className="border-0 shadow-lg bg-white">
-          <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-3 text-white">
-              <div className="p-2 bg-white/20 rounded-lg">
-                <Eye className="w-5 h-5" />
-              </div>
-              Live Preview
-            </CardTitle>
-            <CardDescription className="text-amber-100">
-              See how your alerts will look in real-time
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowPreview(!showPreview)}
-                className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200"
-              >
-                {showPreview ? 'Hide Preview' : 'Show Preview'}
-              </Button>
-            </div>
-
-            {showPreview && previewData && (
-              <div className="relative border-2 border-dashed border-amber-200 rounded-xl p-6 min-h-[300px] bg-gradient-to-br from-amber-50 to-orange-50 shadow-inner">
-                {/* Preview Alert */}
-                <div
-                  className={`absolute transition-all duration-500 ${
-                    previewData.animation === 'fade' ? 'animate-fade-in' :
-                    previewData.animation === 'slide' ? 'animate-slide-in' :
-                    previewData.animation === 'bounce' ? 'animate-bounce' : ''
-                  }`}
-                  style={{
-                    left: previewData.position === 'center' ? '50%' : 
-                          (previewData.position === 'top-left' || previewData.position === 'bottom-left') ? '20px' : undefined,
-                    top: previewData.position === 'center' ? '50%' : 
-                         (previewData.position === 'top-left' || previewData.position === 'top-right') ? '20px' : undefined,
-                    right: (previewData.position === 'top-right' || previewData.position === 'bottom-right') ? '20px' : undefined,
-                    bottom: (previewData.position === 'bottom-left' || previewData.position === 'bottom-right') ? '20px' : undefined,
-                    transform: previewData.position === 'center' ? 'translate(-50%, -50%)' : undefined,
-                    backgroundColor: previewData.colors.background,
-                    color: previewData.colors.text,
-                    fontFamily: previewData.fonts.family,
-                    fontSize: `${previewData.fonts.size}px`,
-                    fontWeight: previewData.fonts.weight,
-                    maxWidth: '300px',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                    zIndex: 1000
-                  }}
-                >
-                  {/* Media Preview */}
-                  {previewData.image?.url && (
-                    <div className="mb-3">
-                      {previewData.image.type === 'video' ? (
-                        <video
-                          ref={videoRef}
-                          src={previewData.image.url}
-                          className="w-full h-20 object-cover rounded"
-                          muted
-                          loop
-                        />
-                      ) : (
-                        <img
-                          src={previewData.image.url}
-                          alt="Alert media"
-                          className="w-full h-20 object-cover rounded"
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Alert Content */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">{previewData.donorName}</span>
-                      <span className="text-lg font-bold" style={{ color: previewData.colors.accent }}>
-                        ${previewData.amount}
-                      </span>
-                    </div>
-                    {previewData.message && (
-                      <p className="text-sm opacity-90">{previewData.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Preview Controls */}
-                <div className="absolute bottom-4 left-4 space-x-2">
-                  {previewData.image?.type === 'video' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={playVideo}
-                    >
-                      <Play className="w-4 h-4 mr-1" />
-                      Play Video
-                    </Button>
-                  )}
-                  {previewData.sound?.url && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={playSound}
-                    >
-                      <Volume2 className="w-4 h-4 mr-1" />
-                      Play Sound
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Preview Info */}
-            <div className="mt-6 p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200">
-              <h4 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
-                <span className="text-lg">📊</span>
-                Preview Information
-              </h4>
-              <div className="grid grid-cols-2 gap-3 text-sm text-amber-800">
-                <div className="bg-white/50 p-2 rounded-lg">
-                  <span className="font-medium">Donor:</span> {previewData?.donorName}
-                </div>
-                <div className="bg-white/50 p-2 rounded-lg">
-                  <span className="font-medium">Amount:</span> ${previewData?.amount} {previewData?.currency}
-                </div>
-                <div className="bg-white/50 p-2 rounded-lg">
-                  <span className="font-medium">Animation:</span> {formData.customization.text?.animation || 'fade'}
-                </div>
-                <div className="bg-white/50 p-2 rounded-lg">
-                  <span className="font-medium">Position:</span> {formData.customization.position}
-                </div>
-                <div className="bg-white/50 p-2 rounded-lg col-span-2">
-                  <span className="font-medium">Duration:</span> {formData.customization.duration}s
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Hidden Audio/Video Elements for Preview */}
