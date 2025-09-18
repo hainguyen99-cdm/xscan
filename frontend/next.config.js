@@ -28,7 +28,7 @@ const nextConfig = {
   // Disable static optimization completely
   staticPageGenerationTimeout: 0,
   generateBuildId: () => 'build',
-  // output: 'standalone', // Disabled due to prerender issues
+  output: 'standalone',
   trailingSlash: true,
   webpack: (config) => {
     config.resolve.alias = {
