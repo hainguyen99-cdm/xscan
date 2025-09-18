@@ -9,112 +9,19 @@ import { DonorFavoriteStreamers } from './donor/DonorFavoriteStreamers';
 import { DonorQuickActions } from './donor/DonorQuickActions';
 import DonorNotificationBell from './donor/DonorNotificationBell';
 
-// Mock data for donor dashboard
-const mockDonorData = {
-  wallet: {
-    balance: 1250.75,
-    currency: 'VND',
-    totalSpent: 3420.50,
-    totalDonations: 47,
-    favoriteStreamers: 8,
-  },
-  recentDonations: [
-    {
-      id: '1',
-      streamerName: 'GamingPro123',
-      streamerId: 'streamer1',
-      amount: 25.00,
-      currency: 'VND',
-      message: 'Amazing stream today! Keep it up!',
-      isAnonymous: false,
-      status: 'completed' as const,
-      paymentMethod: 'wallet' as const,
-      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    },
-    {
-      id: '2',
-      streamerName: 'ArtStreamer',
-      streamerId: 'streamer2',
-      amount: 50.00,
-      currency: 'VND',
-      message: 'Love your artwork!',
-      isAnonymous: false,
-      status: 'completed' as const,
-      paymentMethod: 'bank_transfer' as const,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-      id: '3',
-      streamerName: 'MusicCreator',
-      streamerId: 'streamer3',
-      amount: 15.00,
-      currency: 'VND',
-      message: 'Your music is incredible!',
-      isAnonymous: true,
-      status: 'completed' as const,
-      paymentMethod: 'bank_transfer' as const,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-    },
-  ],
-  favoriteStreamers: [
-    {
-      id: 'streamer1',
-      name: 'GamingPro123',
-      avatar: '/api/placeholder/40/40',
-      category: 'Gaming',
-      isLive: true,
-      lastDonation: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(),
-      totalDonated: 250.00,
-      donationCount: 8,
-    },
-    {
-      id: 'streamer2',
-      name: 'ArtStreamer',
-      avatar: '/api/placeholder/40/40',
-      category: 'Art',
-      isLive: false,
-      lastDonation: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      totalDonated: 180.00,
-      donationCount: 5,
-    },
-    {
-      id: 'streamer3',
-      name: 'MusicCreator',
-      avatar: '/api/placeholder/40/40',
-      category: 'Music',
-      isLive: true,
-      lastDonation: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      totalDonated: 120.00,
-      donationCount: 3,
-    },
-    {
-      id: 'streamer4',
-      name: 'TechReviewer',
-      avatar: '/api/placeholder/40/40',
-      category: 'Technology',
-      isLive: false,
-      lastDonation: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-      totalDonated: 95.00,
-      donationCount: 2,
-    },
-  ],
-  monthlyStats: [
-    { month: 'Jan', amount: 320, count: 8 },
-    { month: 'Feb', amount: 450, count: 12 },
-    { month: 'Mar', amount: 280, count: 7 },
-    { month: 'Apr', amount: 520, count: 15 },
-    { month: 'May', amount: 380, count: 10 },
-    { month: 'Jun', amount: 420, count: 11 },
-  ],
+type DonorData = {
+  wallet: { balance: number; currency: string; totalSpent: number; totalDonations: number; favoriteStreamers: number };
+  recentDonations: Array<{ id: string; streamerName: string; streamerId: string; amount: number; currency: string; message: string; isAnonymous: boolean; status: 'completed'; paymentMethod: 'wallet' | 'bank_transfer'; createdAt: string }>;
+  favoriteStreamers: Array<{ id: string; name: string; avatar: string; category: string; isLive: boolean; lastDonation: string; totalDonated: number; donationCount: number }>;
+  monthlyStats: Array<{ month: string; amount: number; count: number }>;
 };
 
 export default function DonorDashboard() {
   const { user, isLoading } = useAppStore();
-  const [donorData, setDonorData] = useState(mockDonorData);
+  const [donorData, setDonorData] = useState<DonorData | null>(null);
 
   useEffect(() => {
-    // TODO: Fetch real donor data from API
-    // For now, using mock data
+    // TODO: Implement real donor data fetch when API is available
   }, []);
 
   if (!user && !isLoading) {
@@ -180,29 +87,27 @@ export default function DonorDashboard() {
               <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
                 Welcome back, {user?.name || 'Donor'}! 💝
               </h1>
-              <p className="text-xl text-indigo-100 mb-6 max-w-3xl mx-auto">
-                You've supported amazing creators with{' '}
-                <span className="font-bold text-cyan-200">
-                  ${donorData.wallet.totalSpent.toLocaleString()}
-                </span>{' '}
-                in donations. Thank you for making a difference!
-              </p>
+              {donorData && (
+                <p className="text-xl text-indigo-100 mb-6 max-w-3xl mx-auto">
+                  You've supported amazing creators with{' '}
+                  <span className="font-bold text-cyan-200">${donorData.wallet.totalSpent.toLocaleString()}</span>{' '}
+                  in donations. Thank you for making a difference!
+                </p>
+              )}
               <div className="flex flex-wrap justify-center gap-4">
-                <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/30">
-                  <span className="text-white font-semibold">
-                    💰 ${donorData.wallet.balance.toLocaleString()} Available
-                  </span>
-                </div>
-                <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/30">
-                  <span className="text-white font-semibold">
-                    🎯 {donorData.wallet.totalDonations} Total Donations
-                  </span>
-                </div>
-                <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/30">
-                  <span className="text-white font-semibold">
-                    ⭐ {donorData.wallet.favoriteStreamers} Favorite Creators
-                  </span>
-                </div>
+                {donorData && (
+                  <>
+                    <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/30">
+                      <span className="text-white font-semibold">💰 ${donorData.wallet.balance.toLocaleString()} Available</span>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/30">
+                      <span className="text-white font-semibold">🎯 {donorData.wallet.totalDonations} Total Donations</span>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/30">
+                      <span className="text-white font-semibold">⭐ {donorData.wallet.favoriteStreamers} Favorite Creators</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -220,24 +125,29 @@ export default function DonorDashboard() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Left Column - Wallet Overview */}
           <div className="xl:col-span-1">
-            <DonorWalletOverview 
-              wallet={donorData.wallet}
-              monthlyStats={donorData.monthlyStats}
-            />
+            {donorData ? (
+              <DonorWalletOverview wallet={donorData.wallet} monthlyStats={donorData.monthlyStats} />
+            ) : (
+              <div className="bg-white rounded-xl p-6 border border-gray-200 text-gray-500">No wallet data available</div>
+            )}
           </div>
 
           {/* Center Column - Donation History */}
           <div className="xl:col-span-1">
-            <DonorDonationHistory 
-              donations={donorData.recentDonations}
-            />
+            {donorData ? (
+              <DonorDonationHistory donations={donorData.recentDonations} />
+            ) : (
+              <div className="bg-white rounded-xl p-6 border border-gray-200 text-gray-500">No donation history</div>
+            )}
           </div>
 
           {/* Right Column - Favorite Streamers */}
           <div className="xl:col-span-1">
-            <DonorFavoriteStreamers 
-              streamers={donorData.favoriteStreamers}
-            />
+            {donorData ? (
+              <DonorFavoriteStreamers streamers={donorData.favoriteStreamers} />
+            ) : (
+              <div className="bg-white rounded-xl p-6 border border-gray-200 text-gray-500">No favorite streamers yet</div>
+            )}
           </div>
         </div>
       </div>

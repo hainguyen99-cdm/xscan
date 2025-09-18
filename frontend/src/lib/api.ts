@@ -465,39 +465,6 @@ export async function validateAuthToken(): Promise<{ isValid: boolean; user: Use
       return { isValid: false, user: null };
     }
     
-    // For testing purposes, if we have a mock token, return a mock user
-    if (token === 'mock-token-for-testing') {
-      console.log('Mock token detected, returning mock streamer user for testing');
-      const mockUser: User = {
-        id: 'mock-streamer-123',
-        email: 'streamer@test.com',
-        name: 'Test Streamer',
-        username: 'teststreamer',
-        role: 'streamer',
-        profilePicture: '/api/placeholder/40/40',
-        bio: 'Mock streamer for testing',
-        location: 'Test Location',
-        website: 'https://test.com',
-        timezone: 'UTC',
-        notifications: {
-          email: true,
-          push: true,
-          sms: false,
-        },
-        privacy: {
-          profilePublic: true,
-          showEmail: false,
-          showLocation: true,
-        },
-        isEmailVerified: true,
-        twoFactorEnabled: false,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
-      };
-      return { isValid: true, user: mockUser };
-    }
-    
     const response = await apiClient.auth.getProfile();
     console.log('Profile response:', response);
     
@@ -512,36 +479,11 @@ export async function validateAuthToken(): Promise<{ isValid: boolean; user: Use
   } catch (error: any) {
     console.error('Token validation error:', error);
     
-    // Only clear token for actual authentication errors
+    // On any error, treat as invalid and clear token for auth errors
     if (error?.response?.status === 401 || error?.response?.status === 403) {
       console.log('Authentication error, clearing token and returning invalid');
       removeAuthToken();
-      return { isValid: false, user: null };
     }
-    
-    // For network errors, if we have a token, assume it's valid for now
-    // This prevents the redirect loop when backend is temporarily unavailable
-    const token = getStoredToken();
-    if (token) {
-      console.log('Network error but token exists, assuming valid for now');
-      // Return a minimal user object to maintain session
-      return { 
-        isValid: true, 
-        user: {
-          id: 'temp-user',
-          email: 'user@example.com',
-          name: 'User',
-          username: 'user',
-          role: 'donor',
-          isEmailVerified: true,
-          twoFactorEnabled: false,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
-        } as User
-      };
-    }
-    
     return { isValid: false, user: null };
   }
 }
