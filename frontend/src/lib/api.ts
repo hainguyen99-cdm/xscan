@@ -388,7 +388,7 @@ export const apiClient = {
 export const obsSettingsApi = {
   // Get current user's OBS settings
   async getMySettings(): Promise<any> {
-    const response = await api.get('/api/obs-settings');
+    const response = await api.get('/api/obs-settings/my-settings');
     return response.data;
   },
 
@@ -400,19 +400,19 @@ export const obsSettingsApi = {
 
   // Update existing OBS settings
   async updateSettings(data: any): Promise<any> {
-    const response = await api.patch('/api/obs-settings', data);
+    const response = await api.patch('/api/obs-settings/my-settings', data);
     return response.data;
   },
 
   // Test OBS alert
   async testAlert(data: any): Promise<any> {
-    const response = await api.post('/api/obs-settings/test-alert', data);
+    const response = await api.post('/api/obs-settings/my-settings/test-alert', data);
     return response.data;
   },
 
   // Test OBS connection
   async testConnection(): Promise<any> {
-    const response = await api.get('/api/obs-settings/test-connection');
+    const response = await api.post('/api/obs-settings/my-widget-url/test-connection');
     return response.data;
   }
 };
