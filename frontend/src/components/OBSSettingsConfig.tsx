@@ -897,8 +897,11 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">{previewData.donorName}</span>
+                      <span className="text-lg font-bold" style={{ color: previewData.colors.accent }}>
+                        {previewData.amount}
+                      </span>
                         <span className="text-lg font-bold" style={{ color: previewData.colors.accent }}>
-                          ${previewData.amount}
+                          {previewData.amount}
                         </span>
                       </div>
                       {previewData.message && (
