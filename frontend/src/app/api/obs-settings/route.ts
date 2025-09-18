@@ -110,9 +110,9 @@ export async function GET(request: NextRequest) {
     if (response.status === 404) {
       console.log('⚠️ OBS settings not found, creating default settings...');
       
-      // First, get the user's profile to get their _id
-      console.log('👤 Getting user profile to get _id...');
-      const profileResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/profile`, {
+      // First, get the user's profile to get their id directly from backend
+      console.log('👤 Getting user profile from backend to get id...');
+      const profileResponse = await fetch(`${BACKEND_URL}/api/auth/profile`, {
         headers: {
           'Authorization': authHeader,
           'Content-Type': 'application/json',
@@ -130,10 +130,8 @@ export async function GET(request: NextRequest) {
       console.log('📦 Profile response type:', typeof profileData);
       console.log('📦 Profile response keys:', Object.keys(profileData));
       
-      // The backend auth controller returns: { user: { id: user._id, ... } }
-      // The frontend auth profile route extracts userData and returns it directly
-      // So the user ID should be in profileData.id
-      const userId = profileData.id;
+      // Backend returns: { user: { id, ... } }
+      const userId = profileData?.user?.id;
       console.log('👤 User ID for streamerId:', userId);
       console.log('🔍 Available fields in profileData:', Object.keys(profileData));
       
