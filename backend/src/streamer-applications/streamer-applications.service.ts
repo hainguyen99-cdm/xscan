@@ -79,28 +79,13 @@ export class StreamerApplicationsService {
   }
 
   async getUserApplication(userId: string): Promise<StreamerApplication | null> {
-    // First try to find by userId
-    let application = await this.applicationModel.findOne({ userId }).sort({ createdAt: -1 }).exec();
-    
-    if (!application) {
-      // If no application found by userId, try to find any application (for backward compatibility)
-      // This is a temporary fix - in production, you'd want to migrate existing data
-      application = await this.applicationModel.findOne({}).sort({ createdAt: -1 }).exec();
-      if (application) {
-        // Update the application to include userId for future queries
-        try {
-          await this.applicationModel.updateOne(
-            { _id: application._id },
-            { $set: { userId: userId } }
-          );
-        } catch (updateError) {
-          // Log error but don't fail the request
-          console.error('Failed to update application with userId:', updateError);
-        }
-      }
-    }
-    
-    return application ? application.toObject() : null;
+    // Only return the application that belongs to this userId
+    const application = await this.applicationModel
+      .findOne({ userId })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    return application ?? null;
   }
 
   async reviewApplication(id: string, action: 'approve' | 'reject', notes: string | undefined, adminId: string): Promise<StreamerApplication & { roleChangeInfo?: { previousRole: string; newRole: string; updated: boolean } }> {
