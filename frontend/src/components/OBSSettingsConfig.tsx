@@ -1031,7 +1031,6 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
             </div>
           </div>
         )}
-      </div>
 
       {/* Hidden Audio/Video Elements for Preview */}
       <audio ref={audioRef} src={formData.customization.sound?.url} />
