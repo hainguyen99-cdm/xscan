@@ -277,6 +277,36 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
     }
   };
 
+  const fallbackCopyToClipboard = (text: string) => {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    } catch {
+      // no-op
+    }
+  };
+
+  const handleCopyWidgetUrl = () => {
+    const url = settings?.widgetUrl || '';
+    if (!url) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(url).catch(() => fallbackCopyToClipboard(url));
+      } else {
+        fallbackCopyToClipboard(url);
+      }
+    } catch {
+      fallbackCopyToClipboard(url);
+    }
+  };
+
   const fontFamilies = [
     // Popular Sans-serif fonts
     'Inter', 'Arial', 'Helvetica', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Arial Black', 'Impact',
@@ -623,12 +653,12 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
                       readOnly
                       className="font-mono text-sm bg-white/70 border-green-200 focus:border-green-300"
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigator.clipboard.writeText(settings.widgetUrl)}
-                      className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200"
-                    >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyWidgetUrl}
+                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200"
+                  >
                       Copy
                     </Button>
                   </div>
