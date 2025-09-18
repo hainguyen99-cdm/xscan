@@ -895,15 +895,11 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
 
                     {/* Alert Content */}
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">{previewData.donorName}</span>
-                      <span className="text-lg font-bold" style={{ color: previewData.colors.accent }}>
-                        {previewData.amount}
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">
+                        {`${previewData.donorName} donate ${previewData.currency === 'VND' ? Math.round(Number(previewData.amount) * 1000).toLocaleString('vi-VN') : Number(previewData.amount).toLocaleString()} ${previewData.currency}`}
                       </span>
-                        <span className="text-lg font-bold" style={{ color: previewData.colors.accent }}>
-                          {previewData.amount}
-                        </span>
-                      </div>
+                    </div>
                       {previewData.message && (
                         <p className="text-sm opacity-90">{previewData.message}</p>
                       )}
