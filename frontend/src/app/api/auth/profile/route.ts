@@ -32,26 +32,6 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       const errorData = await response.json();
       console.error('❌ Failed to fetch user profile:', errorData);
-      
-      // For development/testing, return mock user data if backend is not available
-      if (response.status === 404 || response.status === 500) {
-        console.log('⚠️ Backend not available, returning mock streamer user for testing');
-        return NextResponse.json({
-          user: {
-            id: 'mock-streamer-123',
-            email: 'streamer@test.com',
-            name: 'Test Streamer',
-            username: 'teststreamer',
-            role: 'streamer', // This allows access to donation links
-            isActive: true,
-            isEmailVerified: false,
-            twoFactorEnabled: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        });
-      }
-      
       return NextResponse.json(errorData, { status: response.status });
     }
 
@@ -87,22 +67,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ user: userData });
   } catch (error) {
     console.error('💥 Unexpected error in auth profile API:', error);
-    
-    // For development/testing, return mock user data if there's an error
-    console.log('⚠️ Error occurred, returning mock user data for testing');
-    return NextResponse.json({
-      user: {
-        id: 'mock-user-error-123',
-        email: 'error@example.com',
-        name: 'Error User',
-        username: 'erroruser',
-        role: 'streamer', // Changed from 'donor' to 'streamer' for testing
-        isActive: true,
-        isEmailVerified: false,
-        twoFactorEnabled: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    });
+    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
   }
 } 
