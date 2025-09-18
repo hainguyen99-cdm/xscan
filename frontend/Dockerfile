@@ -23,7 +23,8 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    NODE_OPTIONS=--max-http-header-size=1024000 --max-old-space-size=4096
 # Use Next.js standalone output to avoid copying node_modules
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -33,6 +34,6 @@ COPY --from=builder /app/next.config.js ./next.config.js
 COPY --from=builder /app/package.json ./package.json
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:3000/api/health || exit 1
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
 
 
