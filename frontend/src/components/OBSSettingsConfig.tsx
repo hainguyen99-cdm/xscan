@@ -947,7 +947,7 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
                     <span className="font-medium">Donor:</span> {previewData?.donorName}
                   </div>
                   <div className="bg-white/50 p-2 rounded-lg">
-                    <span className="font-medium">Amount:</span> ${previewData?.amount} {previewData?.currency}
+                    <span className="font-medium">Amount:</span> {'$'}{previewData?.amount} {previewData?.currency}
                   </div>
                   <div className="bg-white/50 p-2 rounded-lg">
                     <span className="font-medium">Animation:</span> {formData.customization.text?.animation || 'fade'}
