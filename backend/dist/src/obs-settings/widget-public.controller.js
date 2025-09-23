@@ -318,6 +318,10 @@ let WidgetPublicController = class WidgetPublicController {
             font-size: ${Math.floor(styleSettings.fontSize * 1.3)}px;
             font-weight: bold;
             color: ${styleSettings.accentColor};
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+            display: inline-block;
           }
           
           .donor-message {
@@ -333,20 +337,6 @@ let WidgetPublicController = class WidgetPublicController {
             text-align: right;
           }
           
-          .connection-status {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ff4444;
-            animation: pulse 2s infinite;
-          }
-          
-          .connection-status.connected {
-            background: #44ff44;
-          }
           
           @keyframes pulse {
             0% { opacity: 1; }
@@ -357,15 +347,17 @@ let WidgetPublicController = class WidgetPublicController {
       </head>
       <body>
         <div class="widget-container">
-          <div class="connection-status" id="connectionStatus"></div>
-          
           <div class="alert" id="alertContainer" style="display: none;">
             <div class="alert-header">
               <img src="" alt="Donor" class="donor-avatar" id="donorAvatar">
               <div class="donor-info">
                 <h3 id="donorName">Donor Name</h3>
-                <div class="donor-amount" id="donorAmount">$0.00</div>
+                <div class="donor-amount" id="donorAmount">0.00</div>
               </div>
+            </div>
+            <div class="alert-media" id="alertMedia" style="margin-bottom:12px;">
+              <img id="alertImage" alt="Alert Media" style="display:none; max-width:100%; max-height:100%; object-fit:contain;" />
+              <video id="alertVideo" style="display:none; max-width:100%; max-height:100%;" autoplay playsinline muted></video>
             </div>
             <div class="donor-message" id="donorMessage">Thank you for your donation!</div>
             <div class="alert-timestamp" id="alertTimestamp"></div>
@@ -448,15 +440,10 @@ let WidgetPublicController = class WidgetPublicController {
             
             setupElements() {
               this.alertContainer = document.getElementById('alertContainer');
-              this.connectionStatus = document.getElementById('connectionStatus');
               
               // Safety check - ensure elements exist
               if (!this.alertContainer) {
                 console.error('❌ alertContainer element not found!');
-                return;
-              }
-              if (!this.connectionStatus) {
-                console.error('❌ connectionStatus element not found!');
                 return;
               }
               
@@ -544,7 +531,6 @@ let WidgetPublicController = class WidgetPublicController {
             
             init() {
               console.log('🚀 OBSAlertWidget initializing...');
-              this.updateConnectionStatus();
               this.connectWebSocket();
               
               // Set up periodic cleanup of old alerts
@@ -598,7 +584,7 @@ let WidgetPublicController = class WidgetPublicController {
                 console.log('🔌 Creating new WebSocket connection...');
                 
                 // Connect to the OBS widget WebSocket endpoint with alert token
-                this.socket = io(\`\${this.backendUrl}/obs-widget\`, {
+                this.socket = io('' + this.backendUrl + '/obs-widget', {
                   query: {
                     alertToken: this.alertToken
                   },
@@ -611,13 +597,11 @@ let WidgetPublicController = class WidgetPublicController {
                 this.socket.on('connect', () => {
                   console.log('✅ Connected to OBS Widget WebSocket');
                   this.isConnected = true;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('disconnect', () => {
                   console.log('❌ Disconnected from OBS Widget WebSocket');
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('joinedStreamerRoom', (data) => {
@@ -637,13 +621,11 @@ let WidgetPublicController = class WidgetPublicController {
                 this.socket.on('connect_error', (error) => {
                   console.error('❌ WebSocket connection error:', error);
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('reconnect', (attemptNumber) => {
                   console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
                   this.isConnected = true;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('reconnect_error', (error) => {
@@ -653,25 +635,14 @@ let WidgetPublicController = class WidgetPublicController {
                 this.socket.on('reconnect_failed', () => {
                   console.error('❌ WebSocket reconnection failed after all attempts');
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
               } catch (error) {
                 console.error('❌ Failed to create OBS Widget WebSocket connection:', error);
                 this.isConnected = false;
-                this.updateConnectionStatus();
               }
             }
             
-            updateConnectionStatus() {
-              if (this.isConnected) {
-                this.connectionStatus.classList.add('connected');
-                this.connectionStatus.title = 'Connected';
-              } else {
-                this.connectionStatus.classList.remove('connected');
-                this.connectionStatus.title = 'Disconnected';
-              }
-            }
             
             showAlert(alertData) {
               const alertId = alertData.alertId;
@@ -794,10 +765,17 @@ let WidgetPublicController = class WidgetPublicController {
               // Note: Alert is already marked as shown in showAlert() method
               console.log('✅ Alert already marked as shown in all tracking systems:', this.currentAlert.alertId);
               
+              // Apply level-specific settings if available
+              this.resetMedia();
+              this.applyAlertSettings(this.currentAlert);
+              
               // Update alert content
               document.getElementById('donorName').textContent = this.currentAlert.donorName || 'Anonymous';
-              document.getElementById('donorAmount').textContent = \`\${this.currentAlert.amount ? '$' + this.currentAlert.amount : '$0.00'}\`;
+              document.getElementById('donorAmount').textContent = '' + (this.currentAlert.amount ? this.currentAlert.amount : '0.00');
               document.getElementById('donorMessage').textContent = this.currentAlert.message || 'Thank you for your donation!';
+
+              // Auto-fit donor amount so the currency like VND is fully visible
+              this.fitDonorAmount();
               
               const timestamp = new Date(this.currentAlert.timestamp || Date.now());
               document.getElementById('alertTimestamp').textContent = timestamp.toLocaleTimeString();
@@ -814,12 +792,228 @@ let WidgetPublicController = class WidgetPublicController {
               this.lastAlertTime = Date.now();
               
               // Auto-hide after configured duration, then process next alert
-              const displayDuration = this.settings.displaySettings?.duration || 5000;
-              console.log(\`⏰ Alert will hide in \${displayDuration}ms\`);
+              const displayDuration = this.getDisplayDuration();
+              console.log('⏰ Alert will hide in ' + displayDuration + 'ms');
               
               setTimeout(() => {
                 this.hideAlert();
               }, displayDuration);
+            }
+            
+            // NEW METHOD: Apply level-specific settings to the alert
+            applyAlertSettings(alertData) {
+              if (!alertData.settings) {
+                console.log('📝 No level-specific settings found, using basic settings');
+                return;
+              }
+              
+              const settings = alertData.settings;
+              console.log('🎨 Applying level-specific settings:', {
+                hasImageSettings: !!settings.imageSettings,
+                hasSoundSettings: !!settings.soundSettings,
+                hasAnimationSettings: !!settings.animationSettings,
+                hasStyleSettings: !!settings.styleSettings,
+                hasPositionSettings: !!settings.positionSettings,
+                hasDisplaySettings: !!settings.displaySettings,
+                hasGeneralSettings: !!settings.generalSettings,
+                donationLevel: settings.donationLevel
+              });
+              
+              // Apply image settings
+              if (settings.imageSettings) {
+                // If a level media URL is provided, hide base avatar so basic media won't show
+                if (settings.imageSettings.url) {
+                  var avatarEl = document.getElementById('donorAvatar');
+                  if (avatarEl) { avatarEl.src = ''; avatarEl.style.display = 'none'; }
+                }
+                this.applyImageSettings(settings.imageSettings);
+              }
+              
+              // Apply sound settings
+              if (settings.soundSettings) {
+                this.applySoundSettings(settings.soundSettings);
+              }
+              
+              // Apply style settings
+              if (settings.styleSettings) {
+                this.applyStyleSettings(settings.styleSettings);
+              }
+              
+              // Apply position settings
+              if (settings.positionSettings) {
+                this.applyPositionSettings(settings.positionSettings);
+              }
+              
+              // Apply animation settings
+              if (settings.animationSettings) {
+                this.applyAnimationSettings(settings.animationSettings);
+              }
+              
+              // Apply display settings
+              if (settings.displaySettings) {
+                this.applyDisplaySettings(settings.displaySettings);
+              }
+              
+              // Apply general settings
+              if (settings.generalSettings) {
+                this.applyGeneralSettings(settings.generalSettings);
+              }
+            }
+            
+            // NEW METHOD: Apply image settings
+            applyImageSettings(imageSettings) {
+              // Apply media URL to donor avatar if provided
+              try {
+                if (imageSettings.url) {
+                  // Decide whether to show image or video for the alert media
+                  var imageEl = document.getElementById('alertImage');
+                  var videoEl = document.getElementById('alertVideo');
+                  var mediaWrap = document.getElementById('alertMedia');
+                  if (mediaWrap) {
+                    mediaWrap.style.display = 'block';
+                  }
+                  var mediaType = imageSettings.mediaType || 'image';
+                  var lowerUrl = (imageSettings.url || '').toLowerCase();
+                  if (lowerUrl.endsWith('.mp4') || lowerUrl.endsWith('.webm') || mediaType === 'video') {
+                    console.log('🎥 Widget applying VIDEO URL:', (imageSettings.url || '').slice(0,100) + (imageSettings.url && imageSettings.url.length>100?'...':''));
+                    if (imageEl) imageEl.style.display = 'none';
+                    if (videoEl) {
+                      videoEl.style.display = 'block';
+                      try { videoEl.pause(); } catch (e) {}
+                      videoEl.src = imageSettings.url;
+                      videoEl.currentTime = 0;
+                      var p = videoEl.play();
+                      if (p && typeof p.then === 'function') { p.catch(function(err){ console.warn('Video autoplay blocked:', err); }); }
+                    }
+                  } else {
+                    console.log('🖼️ Widget applying IMAGE URL:', (imageSettings.url || '').slice(0,100) + (imageSettings.url && imageSettings.url.length>100?'...':''));
+                    if (videoEl) { try { videoEl.pause(); } catch (e) {} videoEl.style.display = 'none'; }
+                    if (imageEl) {
+                      imageEl.src = imageSettings.url;
+                      imageEl.style.display = 'block';
+                    }
+                  }
+                } else {
+                  console.log('🖼️ Widget imageSettings has no url; skipping');
+                }
+              } catch (err) {
+                console.error('❌ Failed to apply media URL:', err);
+              }
+              if (imageSettings.width) {
+                this.alertContainer.style.maxWidth = '' + imageSettings.width + 'px';
+              }
+              if (imageSettings.height) {
+                this.alertContainer.style.maxHeight = '' + imageSettings.height + 'px';
+              }
+              if (imageSettings.borderRadius !== undefined) {
+                this.alertContainer.style.borderRadius = '' + imageSettings.borderRadius + 'px';
+              }
+              if (imageSettings.shadow !== undefined) {
+                this.alertContainer.style.boxShadow = imageSettings.shadow ? 
+                  '0 10px 30px rgba(0, 0, 0, 0.3)' : 'none';
+              }
+            }
+            
+            // NEW METHOD: Apply and play sound settings
+            applySoundSettings(soundSettings) {
+              try {
+                if (!soundSettings.url) {
+                  console.log('🔊 Widget soundSettings has no url; skipping');
+                  return;
+                }
+                console.log('🔊 Widget applying SOUND URL:', (soundSettings.url || '').slice(0,100) + (soundSettings.url && soundSettings.url.length>100?'...':''));
+                if (!this.audioEl) {
+                  this.audioEl = new Audio();
+                }
+                this.audioEl.src = soundSettings.url;
+                if (typeof soundSettings.volume === 'number') {
+                  this.audioEl.volume = soundSettings.volume > 1
+                    ? Math.max(0, Math.min(1, soundSettings.volume / 100))
+                    : Math.max(0, Math.min(1, soundSettings.volume));
+                }
+                this.audioEl.currentTime = 0;
+                const playPromise = this.audioEl.play();
+                if (playPromise && typeof playPromise.then === 'function') {
+                  playPromise.catch(err => console.warn('⚠️ Audio play blocked by browser:', err));
+                }
+              } catch (err) {
+                console.error('❌ Failed to play sound:', err);
+              }
+            }
+            
+            // NEW METHOD: Apply style settings
+            applyStyleSettings(styleSettings) {
+              if (styleSettings.backgroundColor) {
+                this.alertContainer.style.backgroundColor = styleSettings.backgroundColor;
+              }
+              if (styleSettings.textColor) {
+                this.alertContainer.style.color = styleSettings.textColor;
+              }
+              if (styleSettings.fontFamily) {
+                this.alertContainer.style.fontFamily = styleSettings.fontFamily;
+              }
+              if (styleSettings.fontSize) {
+                this.alertContainer.style.fontSize = '' + styleSettings.fontSize + 'px';
+              }
+              if (styleSettings.fontWeight) {
+                this.alertContainer.style.fontWeight = styleSettings.fontWeight;
+              }
+              if (styleSettings.fontStyle) {
+                this.alertContainer.style.fontStyle = styleSettings.fontStyle;
+              }
+              if (styleSettings.borderWidth !== undefined && styleSettings.borderStyle && styleSettings.borderColor) {
+                this.alertContainer.style.border = '' + styleSettings.borderWidth + 'px ' + styleSettings.borderStyle + ' ' + styleSettings.borderColor;
+              }
+              if (styleSettings.textShadow !== undefined) {
+                if (styleSettings.textShadow) {
+                  this.alertContainer.style.textShadow = '' + (styleSettings.textShadowOffsetX || 1) + 'px ' + (styleSettings.textShadowOffsetY || 1) + 'px ' + (styleSettings.textShadowBlur || 3) + 'px ' + (styleSettings.textShadowColor || '#000000');
+                } else {
+                  this.alertContainer.style.textShadow = 'none';
+                }
+              }
+            }
+            
+            // NEW METHOD: Apply position settings
+            applyPositionSettings(positionSettings) {
+              if (positionSettings.x !== undefined) {
+                this.alertContainer.style.left = '' + positionSettings.x + 'px';
+              }
+              if (positionSettings.y !== undefined) {
+                this.alertContainer.style.top = '' + positionSettings.y + 'px';
+              }
+              if (positionSettings.zIndex !== undefined) {
+                this.alertContainer.style.zIndex = positionSettings.zIndex;
+              }
+            }
+            
+            // NEW METHOD: Apply animation settings
+            applyAnimationSettings(animationSettings) {
+              if (animationSettings.duration !== undefined) {
+                this.alertContainer.style.transitionDuration = '' + animationSettings.duration + 'ms';
+              }
+              if (animationSettings.easing) {
+                this.alertContainer.style.transitionTimingFunction = animationSettings.easing;
+              }
+            }
+            
+            // NEW METHOD: Apply display settings
+            applyDisplaySettings(displaySettings) {
+              // Display duration is handled in processNextAlert
+              // Other display settings can be applied here if needed
+            }
+            
+            // NEW METHOD: Apply general settings
+            applyGeneralSettings(generalSettings) {
+              // General settings like cooldown, maxAlerts, etc. are handled elsewhere
+              // This method is here for future expansion
+            }
+            
+            // NEW METHOD: Get display duration (level-specific or basic)
+            getDisplayDuration() {
+              if (this.currentAlert && this.currentAlert.settings && this.currentAlert.settings.displaySettings) {
+                return this.currentAlert.settings.displaySettings.duration || 5000;
+              }
+              return this.settings.displaySettings?.duration || 5000;
             }
             
             hideAlert() {
@@ -1150,7 +1344,6 @@ let WidgetPublicController = class WidgetPublicController {
               }
               
               this.isConnected = false;
-              this.updateConnectionStatus();
             }
           }
           

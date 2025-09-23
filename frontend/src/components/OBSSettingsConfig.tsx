@@ -8,6 +8,7 @@ import { Label } from './ui/label';
 import ResultModal from './ui/result-modal';
 import { OBSSettings, OBSSettingsForm } from '../types';
 import { Upload, Play, Volume2, Image as ImageIcon, Music, Settings, Eye, Save, TestTube } from 'lucide-react';
+import { getStoredToken } from '@/lib/api';
 
 interface OBSSettingsConfigProps {
   settings?: OBSSettings;
@@ -79,9 +80,9 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
           fontSize: settings.styleSettings?.fontSize || 16,
           color: settings.styleSettings?.textColor || '#ffffff',
           backgroundColor: settings.styleSettings?.backgroundColor || '#1a1a1a',
-          animation: settings.animationSettings?.animationType || 'fade'
+          animation: (settings.animationSettings?.animationType === 'zoom' ? 'fade' : settings.animationSettings?.animationType) || 'fade'
         },
-        position: settings.positionSettings?.anchor || 'top-right',
+        position: (settings.positionSettings?.anchor === 'top-center' || settings.positionSettings?.anchor === 'middle-left' || settings.positionSettings?.anchor === 'middle-center' || settings.positionSettings?.anchor === 'middle-right' || settings.positionSettings?.anchor === 'bottom-center') ? 'center' : (settings.positionSettings?.anchor || 'top-right'),
         duration: Math.round((settings.displaySettings?.duration || 5000) / 1000) // Convert ms to seconds
       };
 
@@ -304,6 +305,48 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
       }
     } catch {
       fallbackCopyToClipboard(url);
+    }
+  };
+
+  const handleSettingsBehaviorChange = async (newBehavior: 'auto' | 'basic' | 'donation-levels') => {
+    if (!settings) return;
+    
+    setIsLoading(true);
+    try {
+      const token = getStoredToken();
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      const response = await fetch('/api/obs-settings/settings-behavior/', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ settingsBehavior: newBehavior }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update settings behavior');
+      }
+
+      const result = await response.json();
+      console.log('Settings behavior updated:', result);
+      
+      // Update the local settings state
+      if (settings) {
+        settings.settingsBehavior = newBehavior;
+      }
+      
+      setSaveMessage({ type: 'success', text: 'Settings behavior updated successfully!' });
+      setShowToast(true);
+    } catch (error) {
+      console.error('Error updating settings behavior:', error);
+      setSaveMessage({ type: 'error', text: 'Failed to update settings behavior' });
+      setShowToast(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -674,6 +717,92 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
               </CardContent>
             </Card>
           )}
+
+          {/* Settings Behavior Configuration */}
+          <Card className="border-0 shadow-lg bg-white">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-3 text-white">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                  </svg>
+                </div>
+                Settings Behavior
+              </CardTitle>
+              <CardDescription className="text-purple-100">
+                Choose how donation alerts should use your settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-slate-700">Donation Alert Behavior</Label>
+                <div className="space-y-3">
+                  <label className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="settingsBehavior"
+                      value="auto"
+                      checked={settings?.settingsBehavior === 'auto'}
+                      onChange={(e) => {
+                        if (settings) {
+                          handleSettingsBehaviorChange(e.target.value as 'auto' | 'basic' | 'donation-levels');
+                        }
+                      }}
+                      className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Auto (Recommended)</div>
+                      <div className="text-sm text-gray-500">
+                        Use donation levels when they match the donation amount, otherwise use basic settings
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="settingsBehavior"
+                      value="basic"
+                      checked={settings?.settingsBehavior === 'basic'}
+                      onChange={(e) => {
+                        if (settings) {
+                          handleSettingsBehaviorChange(e.target.value as 'auto' | 'basic' | 'donation-levels');
+                        }
+                      }}
+                      className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Always Use Basic Settings</div>
+                      <div className="text-sm text-gray-500">
+                        Always use your basic settings, ignoring donation levels completely
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="settingsBehavior"
+                      value="donation-levels"
+                      checked={settings?.settingsBehavior === 'donation-levels'}
+                      onChange={(e) => {
+                        if (settings) {
+                          handleSettingsBehaviorChange(e.target.value as 'auto' | 'basic' | 'donation-levels');
+                        }
+                      }}
+                      className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Always Use Donation Levels</div>
+                      <div className="text-sm text-gray-500">
+                        Always use donation levels if available, fallback to basic settings if none configured
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

@@ -12,6 +12,8 @@ export declare class BankSyncService {
     private readonly REQUEST_TIMEOUT_MS;
     private readonly MAX_RETRIES;
     private readonly RETRY_DELAY_MS;
+    private readonly DONATION_DISPLAY_MS;
+    private readonly alertQueues;
     constructor(bankTxModel: Model<BankTransactionDocument>, usersService: UsersService, obsWidgetGateway: OBSWidgetGateway, configService: ConfigService);
     pollAllStreamers(): Promise<void>;
     private syncStreamerTransactions;
@@ -20,4 +22,6 @@ export declare class BankSyncService {
     private parseAmount;
     private extractDonorName;
     private extractTransferMessage;
+    private enqueueDonation;
+    private processQueue;
 }

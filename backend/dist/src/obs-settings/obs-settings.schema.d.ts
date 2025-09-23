@@ -95,12 +95,32 @@ export declare class OBSSettings {
         priority: 'low' | 'medium' | 'high' | 'urgent';
     };
     isActive: boolean;
+    settingsBehavior: 'auto' | 'basic' | 'donation-levels';
     lastUsedAt?: Date;
     totalAlerts: number;
     presets: Array<{
         presetId: string;
         presetName: string;
         description?: string;
+        configuration: {
+            imageSettings?: any;
+            soundSettings?: any;
+            animationSettings?: any;
+            styleSettings?: any;
+            positionSettings?: any;
+            displaySettings?: any;
+            generalSettings?: any;
+        };
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    donationLevels: Array<{
+        levelId: string;
+        levelName: string;
+        minAmount: number;
+        maxAmount: number;
+        currency: string;
+        isEnabled: boolean;
         configuration: {
             imageSettings?: any;
             soundSettings?: any;

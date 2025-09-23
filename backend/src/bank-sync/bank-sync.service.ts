@@ -29,6 +29,9 @@ export class BankSyncService {
 	private readonly REQUEST_TIMEOUT_MS = this.configService.bankRequestTimeoutMs;
 	private readonly MAX_RETRIES = this.configService.bankMaxRetries;
 	private readonly RETRY_DELAY_MS = this.configService.bankRetryDelayMs;
+	private readonly DONATION_DISPLAY_MS = 3000; // display duration per donation to space alerts
+
+	private readonly alertQueues = new Map<string, { queue: DonationAlert[]; processing: boolean; inQueueRefs: Set<string> }>();
 
 	constructor(
 		@InjectModel(BankTransaction.name) private readonly bankTxModel: Model<BankTransactionDocument>,
@@ -80,7 +83,14 @@ export class BankSyncService {
 				});
 				const donorName = 'Anonymous';
 				const message = this.extractTransferMessage(item.MoTa || '');
-				this.obsWidgetGateway.sendDonationAlert(streamerId, donorName, amountNum, 'VND', message);
+				this.enqueueDonation(streamerId, {
+					streamerId,
+					donorName,
+					amount: amountNum,
+					currency: 'VND',
+					message,
+					reference: item.SoThamChieu,
+				});
 			}
 		} catch (error) {
 			this.logger.warn(`Failed to sync streamer ${streamerId}: ${error?.message || error}`);
@@ -158,6 +168,48 @@ export class BankSyncService {
 		}
 		return description;
 	}
+
+	private enqueueDonation(streamerId: string, alert: DonationAlert): void {
+		let state = this.alertQueues.get(streamerId);
+		if (!state) {
+			state = { queue: [], processing: false, inQueueRefs: new Set<string>() };
+			this.alertQueues.set(streamerId, state);
+		}
+		if (state.inQueueRefs.has(alert.reference)) return;
+		state.queue.push(alert);
+		state.inQueueRefs.add(alert.reference);
+		if (!state.processing) {
+			void this.processQueue(streamerId);
+		}
+	}
+
+	private async processQueue(streamerId: string): Promise<void> {
+		const state = this.alertQueues.get(streamerId);
+		if (!state) return;
+		if (state.processing) return;
+		state.processing = true;
+		try {
+			while (state.queue.length > 0) {
+				const next = state.queue.shift() as DonationAlert;
+				state.inQueueRefs.delete(next.reference);
+				this.obsWidgetGateway.sendDonationAlert(next.streamerId, next.donorName, next.amount, next.currency, next.message);
+				await this.delay(this.DONATION_DISPLAY_MS);
+			}
+		} catch (err) {
+			this.logger.warn(`Queue processing error for ${streamerId}: ${err?.message || err}`);
+		} finally {
+			state.processing = false;
+		}
+	}
+}
+
+interface DonationAlert {
+	readonly streamerId: string;
+	readonly donorName: string;
+	readonly amount: number;
+	readonly currency: string;
+	readonly message: string;
+	readonly reference: string;
 }
 
 

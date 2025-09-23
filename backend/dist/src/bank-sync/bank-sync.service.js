@@ -33,6 +33,8 @@ let BankSyncService = BankSyncService_1 = class BankSyncService {
         this.REQUEST_TIMEOUT_MS = this.configService.bankRequestTimeoutMs;
         this.MAX_RETRIES = this.configService.bankMaxRetries;
         this.RETRY_DELAY_MS = this.configService.bankRetryDelayMs;
+        this.DONATION_DISPLAY_MS = 3000;
+        this.alertQueues = new Map();
     }
     async pollAllStreamers() {
         try {
@@ -81,7 +83,14 @@ let BankSyncService = BankSyncService_1 = class BankSyncService {
                 });
                 const donorName = 'Anonymous';
                 const message = this.extractTransferMessage(item.MoTa || '');
-                this.obsWidgetGateway.sendDonationAlert(streamerId, donorName, amountNum, 'VND', message);
+                this.enqueueDonation(streamerId, {
+                    streamerId,
+                    donorName,
+                    amount: amountNum,
+                    currency: 'VND',
+                    message,
+                    reference: item.SoThamChieu,
+                });
             }
         }
         catch (error) {
@@ -150,6 +159,42 @@ let BankSyncService = BankSyncService_1 = class BankSyncService {
             }
         }
         return description;
+    }
+    enqueueDonation(streamerId, alert) {
+        let state = this.alertQueues.get(streamerId);
+        if (!state) {
+            state = { queue: [], processing: false, inQueueRefs: new Set() };
+            this.alertQueues.set(streamerId, state);
+        }
+        if (state.inQueueRefs.has(alert.reference))
+            return;
+        state.queue.push(alert);
+        state.inQueueRefs.add(alert.reference);
+        if (!state.processing) {
+            void this.processQueue(streamerId);
+        }
+    }
+    async processQueue(streamerId) {
+        const state = this.alertQueues.get(streamerId);
+        if (!state)
+            return;
+        if (state.processing)
+            return;
+        state.processing = true;
+        try {
+            while (state.queue.length > 0) {
+                const next = state.queue.shift();
+                state.inQueueRefs.delete(next.reference);
+                this.obsWidgetGateway.sendDonationAlert(next.streamerId, next.donorName, next.amount, next.currency, next.message);
+                await this.delay(this.DONATION_DISPLAY_MS);
+            }
+        }
+        catch (err) {
+            this.logger.warn(`Queue processing error for ${streamerId}: ${err?.message || err}`);
+        }
+        finally {
+            state.processing = false;
+        }
     }
 };
 exports.BankSyncService = BankSyncService;

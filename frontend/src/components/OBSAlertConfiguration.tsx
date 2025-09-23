@@ -42,10 +42,84 @@ export function OBSAlertConfiguration({ streamerId }: OBSAlertConfigurationProps
 
   // Mock OBS settings for demonstration - in real app, fetch from API
   const mockSettings: OBSSettings = {
-    id: 'obs-settings-1',
+    _id: 'obs-settings-1',
     streamerId: 'streamer-123',
     alertToken: 'alert-token-abc123',
     widgetUrl: 'http://localhost:3000/widget/alert/streamer-123',
+    imageSettings: {
+      enabled: true,
+      mediaType: 'image',
+      width: 300,
+      height: 200,
+      borderRadius: 8,
+      shadow: true,
+      shadowColor: '#000000',
+      shadowBlur: 10,
+      shadowOffsetX: 2,
+      shadowOffsetY: 2,
+    },
+    soundSettings: {
+      enabled: true,
+      volume: 80,
+      fadeIn: 0,
+      fadeOut: 0,
+      loop: false,
+    },
+    animationSettings: {
+      enabled: true,
+      animationType: 'fade',
+      duration: 500,
+      easing: 'ease-out',
+      direction: 'right',
+      bounceIntensity: 20,
+      zoomScale: 1.2,
+    },
+    styleSettings: {
+      backgroundColor: '#1a1a1a',
+      textColor: '#ffffff',
+      accentColor: '#00ff00',
+      borderColor: '#333333',
+      borderWidth: 2,
+      borderStyle: 'solid',
+      fontFamily: 'Inter',
+      fontSize: 16,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textShadow: true,
+      textShadowColor: '#000000',
+      textShadowBlur: 3,
+      textShadowOffsetX: 1,
+      textShadowOffsetY: 1,
+    },
+    positionSettings: {
+      x: 100,
+      y: 100,
+      anchor: 'top-left',
+      zIndex: 1000,
+      responsive: true,
+      mobileScale: 0.8,
+    },
+    displaySettings: {
+      duration: 5000,
+      fadeInDuration: 300,
+      fadeOutDuration: 300,
+      autoHide: true,
+      showProgress: false,
+      progressColor: '#00ff00',
+      progressHeight: 3,
+    },
+    generalSettings: {
+      enabled: true,
+      maxAlerts: 3,
+      alertSpacing: 20,
+      cooldown: 1000,
+      priority: 'medium',
+    },
+    donationLevels: [],
+    isActive: true,
+    totalAlerts: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     customization: {
       image: {
         url: 'https://via.placeholder.com/300x200/3b82f6/ffffff?text=Thank+You!',
@@ -66,10 +140,7 @@ export function OBSAlertConfiguration({ streamerId }: OBSAlertConfigurationProps
       },
       position: 'top-right',
       duration: 8000 // Use milliseconds (8 seconds)
-    },
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    }
   };
 
   useEffect(() => {
@@ -127,15 +198,15 @@ export function OBSAlertConfiguration({ streamerId }: OBSAlertConfigurationProps
         customization: {
           ...settings.customization,
           image: settings.customization.image ? {
-            url: settings.customization.image.url || mockSettings.customization.image?.url || '',
+            url: settings.customization.image.url || mockSettings.customization?.image?.url || '',
             type: settings.customization.image.type,
             duration: settings.customization.image.duration
-          } : mockSettings.customization.image,
+          } : mockSettings.customization?.image,
           sound: settings.customization.sound ? {
-            url: settings.customization.sound.url || mockSettings.customization.sound?.url || '',
+            url: settings.customization.sound.url || mockSettings.customization?.sound?.url || '',
             volume: settings.customization.sound.volume,
             duration: settings.customization.sound.duration
-          } : mockSettings.customization.sound
+          } : mockSettings.customization?.sound
         },
         updatedAt: new Date().toISOString()
       };
@@ -231,7 +302,7 @@ export function OBSAlertConfiguration({ streamerId }: OBSAlertConfigurationProps
                 <div>
                   <p className="text-sm text-gray-600">Theme</p>
                   <p className="text-xs text-gray-500 capitalize">
-                    {mockSettings.customization.text?.animation || 'none'}
+                    {mockSettings.customization?.text?.animation || 'none'}
                   </p>
                 </div>
               </div>

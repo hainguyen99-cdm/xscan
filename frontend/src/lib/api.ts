@@ -5,14 +5,14 @@ import { ApiResponse, PaginatedResponse, User, Wallet, Transaction, BankAccount,
 const TOKEN_KEY = 'auth-token'; // Changed to match middleware cookie name
 
 // Create axios instance with default configuration
-// Use configured API URL or fallback to localhost
+// Use configured API URL or fallback based on environment
 const resolveBaseUrl = (): string => {
   // In browser, use the configured API URL or current origin
   if (typeof window !== 'undefined') {
     return process.env.NEXT_PUBLIC_API_URL || window.location.origin;
   }
-  // On server side, use the configured API URL or localhost
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  // On server side, use the configured API URL or fallback
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 };
 
 export const api: AxiosInstance = axios.create({

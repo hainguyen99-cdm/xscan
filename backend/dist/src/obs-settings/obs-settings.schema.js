@@ -181,6 +181,15 @@ __decorate([
     __metadata("design:type", Boolean)
 ], OBSSettings.prototype, "isActive", void 0);
 __decorate([
+    (0, mongoose_1.Prop)({
+        type: String,
+        enum: ['auto', 'basic', 'donation-levels'],
+        default: 'auto',
+        description: 'Controls which settings to use: auto (use donation levels if available and matching, otherwise basic), basic (always use basic settings), donation-levels (always use donation levels if available)'
+    }),
+    __metadata("design:type", String)
+], OBSSettings.prototype, "settingsBehavior", void 0);
+__decorate([
     (0, mongoose_1.Prop)({ type: Date }),
     __metadata("design:type", Date)
 ], OBSSettings.prototype, "lastUsedAt", void 0);
@@ -210,6 +219,31 @@ __decorate([
     }),
     __metadata("design:type", Array)
 ], OBSSettings.prototype, "presets", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({
+        type: [{
+                levelId: { type: String, required: true },
+                levelName: { type: String, required: true },
+                minAmount: { type: Number, required: true },
+                maxAmount: { type: Number, required: true },
+                currency: { type: String, default: 'VND' },
+                isEnabled: { type: Boolean, default: true },
+                configuration: {
+                    imageSettings: { type: Object },
+                    soundSettings: { type: Object },
+                    animationSettings: { type: Object },
+                    styleSettings: { type: Object },
+                    positionSettings: { type: Object },
+                    displaySettings: { type: Object },
+                    generalSettings: { type: Object },
+                },
+                createdAt: { type: Date, default: Date.now },
+                updatedAt: { type: Date, default: Date.now },
+            }],
+        default: [],
+    }),
+    __metadata("design:type", Array)
+], OBSSettings.prototype, "donationLevels", void 0);
 exports.OBSSettings = OBSSettings = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], OBSSettings);

@@ -1064,22 +1064,39 @@ export class OBSSettingsService {
     
     // Prepare test alert data - use saved settings if useCurrentSettings is true
     let alertData;
+    let alertSettings = null;
+    let matchingLevel = null;
+    let behavior = 'unknown';
     
     if (testAlertDto.useCurrentSettings) {
-      // Use saved OBS settings for the test alert, but respect custom alert data
+      // Parse amount for settings behavior determination
+      const testAmount = parseFloat(testAlertDto.amount || '25.00');
+      const testCurrency = 'VND'; // Default currency for test alerts
+      
+      // Get the appropriate settings based on streamer's configuration
+      const settingsResult = this.getSettingsForDonation(settings, testAmount, testCurrency);
+      alertSettings = settingsResult.settings;
+      matchingLevel = settingsResult.level;
+      behavior = settingsResult.behavior;
+      
+      console.log(`🧪 Test alert using settings behavior: ${behavior} for amount ${testAmount} ${testCurrency}`);
+      
+      // Use determined settings for the test alert
       alertData = {
         donorName: testAlertDto.donorName || 'Test Donor',
         amount: testAlertDto.amount || '25.00',
         message: testAlertDto.message || 'This is a test alert using your saved OBS settings!',
         timestamp: new Date(),
-        // Include saved settings for the alert
-        imageSettings: settings.imageSettings,
-        soundSettings: settings.soundSettings,
-        animationSettings: settings.animationSettings,
-        styleSettings: settings.styleSettings,
-        positionSettings: settings.positionSettings,
-        displaySettings: settings.displaySettings,
-        generalSettings: settings.generalSettings,
+        // Include the determined settings
+        ...alertSettings,
+        donationLevel: matchingLevel ? {
+          levelId: matchingLevel.levelId,
+          levelName: matchingLevel.levelName,
+          minAmount: matchingLevel.minAmount,
+          maxAmount: matchingLevel.maxAmount,
+          currency: matchingLevel.currency
+        } : undefined,
+        settingsBehavior: behavior
       };
     } else {
       // Use provided test data or defaults
@@ -1104,15 +1121,7 @@ export class OBSSettingsService {
       alertData.donorName, 
       alertData.amount, 
       alertData.message,
-      testAlertDto.useCurrentSettings ? {
-        imageSettings: settings.imageSettings,
-        soundSettings: settings.soundSettings,
-        animationSettings: settings.animationSettings,
-        styleSettings: settings.styleSettings,
-        positionSettings: settings.positionSettings,
-        displaySettings: settings.displaySettings,
-        generalSettings: settings.generalSettings,
-      } : undefined
+      testAlertDto.useCurrentSettings ? alertSettings : undefined
     );
 
     // Log the test alert for analytics
@@ -1276,12 +1285,19 @@ export class OBSSettingsService {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const widgetUrl = this.generateWidgetUrl(streamerId, settings.alertToken);
 
+    // Normalize amount (strip currency symbols, spaces, and thousands separators)
+    const normalizeAmount = (value: string): number => {
+      const cleaned = (value || '').toString().replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(cleaned);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
     // Send donation alert via WebSocket to all connected OBS widgets
     this.obsWidgetGateway.sendDonationAlert(
       streamerId,
       alertData.donorName,
-      parseFloat(alertData.amount),
-      alertData.currency,
+      normalizeAmount(alertData.amount),
+      alertData.currency?.toUpperCase?.() || 'VND',
       alertData.message
     );
 
@@ -1411,5 +1427,237 @@ export class OBSSettingsService {
       isConnected,
       lastConnected: isConnected ? new Date().toISOString() : undefined
     };
+  }
+
+  /**
+   * Determine which donation level to use based on donation amount
+   */
+  determineDonationLevel(settings: OBSSettings, amount: number, currency: string): any | null {
+    if (!settings.donationLevels || settings.donationLevels.length === 0) {
+      return null; // No donation levels configured, use basic settings
+    }
+
+    // Find the appropriate donation level based on amount
+    const matchingLevel = settings.donationLevels.find(level => {
+      if (!level.isEnabled) return false;
+      
+      // Convert amount to the same currency for comparison
+      const levelMinAmount = level.minAmount;
+      const levelMaxAmount = level.maxAmount;
+      
+      return amount >= levelMinAmount && amount <= levelMaxAmount;
+    });
+
+    if (matchingLevel) {
+      console.log(`🎯 Found matching donation level: ${matchingLevel.levelName} for amount ${amount} ${currency}`);
+      return matchingLevel;
+    }
+
+    console.log(`⚠️ No matching donation level found for amount ${amount} ${currency}, using basic settings`);
+    return null; // No matching level found, use basic settings
+  }
+
+  /**
+   * Get the appropriate settings based on the streamer's configuration and donation amount
+   */
+  getSettingsForDonation(settings: OBSSettings, amount: number, currency: string): {
+    settings: any;
+    level: any | null;
+    behavior: string;
+  } {
+    const behavior = settings.settingsBehavior || 'auto';
+    
+    console.log(`🔧 Settings behavior: ${behavior} for amount ${amount} ${currency}`);
+
+    switch (behavior) {
+      case 'basic':
+        console.log(`📋 Using basic settings (forced by streamer configuration)`);
+        return {
+          settings: settings.toObject(),
+          level: null,
+          behavior: 'basic'
+        };
+
+      case 'donation-levels':
+        if (!settings.donationLevels || settings.donationLevels.length === 0) {
+          console.log(`⚠️ No donation levels configured, falling back to basic settings`);
+          return {
+            settings: settings.toObject(),
+            level: null,
+            behavior: 'basic-fallback'
+          };
+        }
+        
+        // Find the best matching level (or first available if none match)
+        const matchingLevel = this.determineDonationLevel(settings, amount, currency);
+        if (matchingLevel) {
+          const mergedSettings = this.getMergedSettingsForLevel(settings, matchingLevel, { exclusiveMedia: true });
+          console.log(`🎯 Using donation level settings: ${matchingLevel.levelName}`);
+          return {
+            settings: mergedSettings,
+            level: matchingLevel,
+            behavior: 'donation-levels'
+          };
+        } else {
+          // Use the first available donation level if no specific match
+          const firstLevel = settings.donationLevels.find(level => level.isEnabled);
+          if (firstLevel) {
+            const mergedSettings = this.getMergedSettingsForLevel(settings, firstLevel, { exclusiveMedia: true });
+            console.log(`🎯 Using first available donation level: ${firstLevel.levelName}`);
+            return {
+              settings: mergedSettings,
+              level: firstLevel,
+              behavior: 'donation-levels-fallback'
+            };
+          } else {
+            console.log(`⚠️ No enabled donation levels found, falling back to basic settings`);
+            return {
+              settings: settings.toObject(),
+              level: null,
+              behavior: 'basic-fallback'
+            };
+          }
+        }
+
+      case 'auto':
+      default:
+        // Original behavior: use donation levels if available and matching, otherwise basic
+        const autoLevel = this.determineDonationLevel(settings, amount, currency);
+        if (autoLevel) {
+          const mergedSettings = this.getMergedSettingsForLevel(settings, autoLevel);
+          console.log(`🎯 Auto: Using donation level settings: ${autoLevel.levelName}`);
+          return {
+            settings: mergedSettings,
+            level: autoLevel,
+            behavior: 'auto-donation-levels'
+          };
+        } else {
+          console.log(`📋 Auto: Using basic settings (no matching donation level)`);
+          return {
+            settings: settings.toObject(),
+            level: null,
+            behavior: 'auto-basic'
+          };
+        }
+    }
+  }
+
+  /**
+   * Get merged settings for a donation level (level settings override basic settings)
+   */
+  getMergedSettingsForLevel(settings: OBSSettings, level: any, options: { exclusiveMedia?: boolean } = {}): any {
+    if (!level) {
+      return settings; // Return basic settings if no level provided
+    }
+
+    // Support both schema-backed "configuration" and frontend-friendly "customization" shapes
+    const configuration = level.configuration || {};
+    const customization = level.customization || {};
+
+    // Translate customization to configuration overrides when provided
+    const translatedOverrides: any = {
+      imageSettings: {
+        ...(configuration.imageSettings || {}),
+        ...(customization.image?.url ? { url: customization.image.url } : {}),
+        ...(customization.image?.type ? { mediaType: customization.image.type } : {}),
+        ...(typeof customization.image?.duration === 'number' ? { duration: customization.image.duration } : {}),
+      },
+      soundSettings: {
+        ...(configuration.soundSettings || {}),
+        ...(customization.sound?.url ? { url: customization.sound.url } : {}),
+        ...(typeof customization.sound?.volume === 'number' ? { volume: customization.sound.volume } : {}),
+        ...(typeof customization.sound?.duration === 'number' ? { duration: customization.sound.duration } : {}),
+      },
+      animationSettings: {
+        ...(configuration.animationSettings || {}),
+        ...(customization.text?.animation ? { animation: customization.text.animation } : {}),
+      },
+      styleSettings: {
+        ...(configuration.styleSettings || {}),
+        ...(customization.text?.font ? { fontFamily: customization.text.font } : {}),
+        ...(typeof customization.text?.fontSize === 'number' ? { fontSize: customization.text.fontSize } : {}),
+        ...(customization.text?.color ? { color: customization.text.color } : {}),
+        ...(customization.text?.backgroundColor ? { backgroundColor: customization.text.backgroundColor } : {}),
+      },
+      positionSettings: {
+        ...(configuration.positionSettings || {}),
+        ...(customization.position ? { position: customization.position } : {}),
+      },
+      displaySettings: {
+        ...(configuration.displaySettings || {}),
+        ...(typeof customization.duration === 'number' ? { duration: customization.duration } : {}),
+      },
+      generalSettings: {
+        ...(configuration.generalSettings || {}),
+      },
+    };
+
+    // Merge translated overrides into base settings
+    const useExclusiveMedia = options.exclusiveMedia === true;
+
+    const mergedSettings = {
+      ...settings.toObject(),
+      imageSettings: useExclusiveMedia
+        ? {
+            // In exclusive mode, do NOT inherit base media; use only level-defined media
+            ...(translatedOverrides.imageSettings || {}),
+          }
+        : {
+            ...settings.imageSettings,
+            ...translatedOverrides.imageSettings,
+          },
+      soundSettings: useExclusiveMedia
+        ? {
+            ...(translatedOverrides.soundSettings || {}),
+          }
+        : {
+            ...settings.soundSettings,
+            ...translatedOverrides.soundSettings,
+          },
+      animationSettings: {
+        ...settings.animationSettings,
+        ...translatedOverrides.animationSettings,
+      },
+      styleSettings: {
+        ...settings.styleSettings,
+        ...translatedOverrides.styleSettings,
+      },
+      positionSettings: {
+        ...settings.positionSettings,
+        ...translatedOverrides.positionSettings,
+      },
+      displaySettings: {
+        ...settings.displaySettings,
+        ...translatedOverrides.displaySettings,
+      },
+      generalSettings: {
+        ...settings.generalSettings,
+        ...translatedOverrides.generalSettings,
+      }
+    };
+
+    // Debug: ensure level media overrides are present
+    try {
+      console.log('🎥 Level merge debug', {
+        levelName: level.levelName,
+        imgUrl: (mergedSettings as any).imageSettings?.url,
+        imgType: (mergedSettings as any).imageSettings?.mediaType,
+        soundUrl: (mergedSettings as any).soundSettings?.url,
+        soundVol: (mergedSettings as any).soundSettings?.volume,
+      });
+    } catch {}
+
+    console.log(`🔄 Merged settings for level ${level.levelName}:`, {
+      levelName: level.levelName,
+      hasImageSettings: !!level.configuration.imageSettings,
+      hasSoundSettings: !!level.configuration.soundSettings,
+      hasAnimationSettings: !!level.configuration.animationSettings,
+      hasStyleSettings: !!level.configuration.styleSettings,
+      hasPositionSettings: !!level.configuration.positionSettings,
+      hasDisplaySettings: !!level.configuration.displaySettings,
+      hasGeneralSettings: !!level.configuration.generalSettings
+    });
+
+    return mergedSettings;
   }
 } 

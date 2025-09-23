@@ -407,20 +407,6 @@ let WidgetController = class WidgetController {
             display: none;
           }
           
-          .connection-status {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ff4444;
-            animation: pulse 2s infinite;
-          }
-          
-          .connection-status.connected {
-            background: #44ff44;
-          }
           
           .sound-banner {
             position: absolute;
@@ -454,7 +440,6 @@ let WidgetController = class WidgetController {
       </head>
       <body>
         <div class="widget-container">
-          <div class="connection-status" id="connectionStatus"></div>
           <div class="sound-banner" id="soundBanner" role="region" aria-label="Sound permission">
             <span>Sound is blocked by the browser.</span>
             <button id="enableSoundButton" aria-label="Enable sound">Enable sound</button>
@@ -466,7 +451,7 @@ let WidgetController = class WidgetController {
               <h3 id="donationLine" class="donation-line">
                 <span id="donorName" class="donor-name">Donor Name</span>
                 <span id="donationVerb" class="donation-verb">đã donate</span>
-                <span class="donor-amount" id="donorAmount">$0.00</span>
+                <span class="donor-amount" id="donorAmount" style="white-space:nowrap; overflow:visible; text-overflow:clip; display:inline-block;">0.00</span>
               </h3>
             </div>
             <div class="donor-message" id="donorMessage">Thank you for your donation!</div>
@@ -532,7 +517,6 @@ let WidgetController = class WidgetController {
             
             setupElements() {
               this.alertContainer = document.getElementById('alertContainer');
-              this.connectionStatus = document.getElementById('connectionStatus');
               this.alertMedia = document.getElementById('alertMedia');
               this.soundBanner = document.getElementById('soundBanner');
               this.enableSoundButton = document.getElementById('enableSoundButton');
@@ -540,10 +524,6 @@ let WidgetController = class WidgetController {
               // Safety check - ensure elements exist
               if (!this.alertContainer) {
                 console.error('❌ alertContainer element not found!');
-                return;
-              }
-              if (!this.connectionStatus) {
-                console.error('❌ connectionStatus element not found!');
                 return;
               }
               if (!this.soundBanner) {
@@ -591,7 +571,6 @@ let WidgetController = class WidgetController {
 
             init() {
               console.log('🚀 OBSAlertWidget initializing...');
-              this.updateConnectionStatus();
               this.connectWebSocket();
               
               // Set up periodic cleanup of old alerts
@@ -638,13 +617,11 @@ let WidgetController = class WidgetController {
                 this.socket.on('connect', () => {
                   console.log('Connected to OBS Widget WebSocket');
                   this.isConnected = true;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('disconnect', () => {
                   console.log('Disconnected from OBS Widget WebSocket');
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
                 this.socket.on('joinedStreamerRoom', (data) => {
@@ -676,25 +653,14 @@ let WidgetController = class WidgetController {
                 this.socket.on('connect_error', (error) => {
                   console.error('WebSocket connection error:', error);
                   this.isConnected = false;
-                  this.updateConnectionStatus();
                 });
                 
               } catch (error) {
                 console.error('Failed to create OBS Widget WebSocket connection:', error);
                 this.isConnected = false;
-                this.updateConnectionStatus();
               }
             }
             
-            updateConnectionStatus() {
-              if (this.isConnected) {
-                this.connectionStatus.classList.add('connected');
-                this.connectionStatus.title = 'Connected';
-              } else {
-                this.connectionStatus.classList.remove('connected');
-                this.connectionStatus.title = 'Disconnected';
-              }
-            }
             
             applySettings(newSettings) {
               console.log('🔧 Applying new settings to widget:', newSettings);
@@ -763,59 +729,39 @@ let WidgetController = class WidgetController {
               // Apply position settings
               if (newSettings.positionSettings) {
                 const pos = newSettings.positionSettings;
-                alertContainer.style.left = pos.x + 'px';
-                alertContainer.style.top = pos.y + 'px';
-                alertContainer.style.zIndex = pos.zIndex;
-                
-                // Apply anchor positioning
-                if (pos.anchor) {
-                  alertContainer.style.left = '';
-                  alertContainer.style.top = '';
-                  alertContainer.style.right = '';
-                  alertContainer.style.bottom = '';
-                  alertContainer.style.transform = '';
-                  
-                  switch (pos.anchor) {
-                    case 'top-center':
-                      alertContainer.style.left = '50%';
-                      alertContainer.style.transform = 'translateX(-50%)';
-                      break;
-                    case 'top-right':
-                      alertContainer.style.left = 'auto';
-                      alertContainer.style.right = pos.x + 'px';
-                      break;
-                    case 'middle-left':
-                      alertContainer.style.top = '50%';
-                      alertContainer.style.transform = 'translateY(-50%)';
-                      break;
-                    case 'middle-center':
-                      alertContainer.style.left = '50%';
-                      alertContainer.style.top = '50%';
-                      alertContainer.style.transform = 'translate(-50%, -50%)';
-                      break;
-                    case 'middle-right':
-                      alertContainer.style.left = 'auto';
-                      alertContainer.style.right = pos.x + 'px';
-                      alertContainer.style.top = '50%';
-                      alertContainer.style.transform = 'translateY(-50%)';
-                      break;
-                    case 'bottom-left':
-                      alertContainer.style.top = 'auto';
-                      alertContainer.style.bottom = pos.y + 'px';
-                      break;
-                    case 'bottom-center':
-                      alertContainer.style.left = '50%';
-                      alertContainer.style.top = 'auto';
-                      alertContainer.style.bottom = pos.y + 'px';
-                      alertContainer.style.transform = 'translateX(-50%)';
-                      break;
-                    case 'bottom-right':
-                      alertContainer.style.left = 'auto';
-                      alertContainer.style.right = pos.x + 'px';
-                      alertContainer.style.top = 'auto';
-                      alertContainer.style.bottom = pos.y + 'px';
-                      break;
-                  }
+                // Reset sides and transform to avoid conflicts
+                alertContainer.style.left = '';
+                alertContainer.style.right = '';
+                alertContainer.style.top = '';
+                alertContainer.style.bottom = '';
+                alertContainer.style.transform = '';
+
+                const anchor = (pos.anchor || 'top-left');
+                const x = typeof pos.x === 'number' ? pos.x : 0;
+                const y = typeof pos.y === 'number' ? pos.y : 0;
+
+                // Horizontal
+                if (anchor.endsWith('left')) {
+                  alertContainer.style.left = x + 'px';
+                } else if (anchor.endsWith('center')) {
+                  alertContainer.style.left = 'calc(50% + ' + x + 'px)';
+                  alertContainer.style.transform += ' translateX(-50%)';
+                } else if (anchor.endsWith('right')) {
+                  alertContainer.style.right = x + 'px';
+                }
+
+                // Vertical
+                if (anchor.startsWith('top')) {
+                  alertContainer.style.top = y + 'px';
+                } else if (anchor.startsWith('middle')) {
+                  alertContainer.style.top = 'calc(50% + ' + y + 'px)';
+                  alertContainer.style.transform += ' translateY(-50%)';
+                } else if (anchor.startsWith('bottom')) {
+                  alertContainer.style.bottom = y + 'px';
+                }
+
+                if (pos.zIndex !== undefined) {
+                  alertContainer.style.zIndex = pos.zIndex;
                 }
               }
               
@@ -888,8 +834,25 @@ let WidgetController = class WidgetController {
               // Update alert content
               document.getElementById('donorName').textContent = alertData.donorName || 'Anonymous';
               document.getElementById('donationVerb').textContent = alertData.donationMessage || 'đã donate';
-              document.getElementById('donorAmount').textContent = (alertData.amount ? '$' + alertData.amount : '$0.00');
+              document.getElementById('donorAmount').textContent = (alertData.amount ? alertData.amount : '0.00');
               
+              // Auto-fit donor amount so currency text is fully visible
+              (function fitAmount(){
+                try {
+                  const el = document.getElementById('donorAmount');
+                  const card = document.querySelector('.alert-card') || el?.parentElement;
+                  if (!el || !card) return;
+                  let size = parseFloat(window.getComputedStyle(el).fontSize) || 18;
+                  const maxWidth = (card.clientWidth || 320) - 24;
+                  el.style.whiteSpace = 'nowrap';
+                  for (let i=0;i<20;i++) {
+                    if (el.scrollWidth <= maxWidth || size <= 10) break;
+                    size -= 1;
+                    el.style.fontSize = size + 'px';
+                  }
+                } catch (e) { console.warn('fitAmount failed', e); }
+              })();
+
               // Handle alert message - use message from alert data or fallback
               const alertMessage = alertData.message || alertData.donationMessage || 'Thank you for your donation!';
               document.getElementById('donorMessage').textContent = alertMessage;
@@ -908,52 +871,62 @@ let WidgetController = class WidgetController {
               {
                 let imageSource = null;
                 let imageSourceType = 'none';
-                
-                // Enhanced priority order for image sources
-                if (alertData.imageUrl) {
+
+                // Highest priority: level-specific media from alert settings
+                if (alertData.settings && alertData.settings.imageSettings && alertData.settings.imageSettings.url) {
+                  imageSource = alertData.settings.imageSettings.url;
+                  imageSourceType = 'alert.settings.imageSettings.url';
+                  console.log('🔍 Using level image from alert settings:', (imageSource || '').substring(0, 100) + ((imageSource||'').length>100?'...':''));
+                }
+
+                if (!imageSource && alertData.imageUrl) {
                   imageSource = alertData.imageUrl;
                   imageSourceType = 'imageUrl';
                   console.log('🔍 Using imageUrl field:', imageSource);
-                } else if (alertData.donorAvatar) {
+                }
+                if (!imageSource && alertData.donorAvatar) {
                   imageSource = alertData.donorAvatar;
                   imageSourceType = 'donorAvatar';
                   console.log('🔍 Using donorAvatar field:', imageSource);
-                } else if (alertData.url && this.isImageUrl(alertData.url)) {
+                }
+                if (!imageSource && alertData.url) {
                   imageSource = alertData.url;
                   imageSourceType = 'url';
                   console.log('🔍 Using url field (image):', imageSource.substring(0, 50) + '...');
-                } else if (alertData.image) {
+                }
+                if (!imageSource && alertData.image) {
                   imageSource = alertData.image;
                   imageSourceType = 'image';
                   console.log('🔍 Using image field:', imageSource);
-                } else if (alertData.avatar) {
+                }
+                if (!imageSource && alertData.avatar) {
                   imageSource = alertData.avatar;
                   imageSourceType = 'avatar';
                   console.log('🔍 Using avatar field:', imageSource);
-                } else if (alertData.profileImage) {
+                }
+                if (!imageSource && alertData.profileImage) {
                   imageSource = alertData.profileImage;
                   imageSourceType = 'profileImage';
                   console.log('🔍 Using profileImage field:', imageSource);
                 }
-                
+
                 // Fallback: use configured image from settings if available
                 if (!imageSource && this.settings?.imageSettings?.url) {
                   imageSource = this.settings.imageSettings.url;
                   imageSourceType = 'settings.imageSettings.url';
                   console.log('🔍 Using configured image from settings:', imageSource);
                 }
-                
-                // Apply to full-size alert media only
-                if (this.alertMedia) {
-                  if (imageSource && this.isValidImageSource(imageSource)) {
-                    this.alertMedia.src = imageSource;
-                    this.alertMedia.style.display = 'block';
-                    console.log('✅ Image set successfully from', imageSourceType, 'field');
-                  } else {
-                    this.alertMedia.src = this.getDefaultAvatar();
-                    this.alertMedia.style.display = 'block';
-                    console.log('🔍 No valid image source found, using default avatar');
-                  }
+
+                if (!imageSource) {
+                  console.log('⚠️ No suitable image source found, skipping image display');
+                }
+
+                if (imageSource && this.isValidImageSource(imageSource)) {
+                  this.alertMedia.src = imageSource;
+                  this.alertMedia.style.display = 'block';
+                  console.log('✅ Image set successfully from', imageSourceType, 'field');
+                } else {
+                  this.alertMedia.style.display = 'none';
                 }
               }
               
@@ -1374,7 +1347,6 @@ let WidgetController = class WidgetController {
               }
               
               this.isConnected = false;
-              this.updateConnectionStatus();
             }
             
             // Helper method to check if URL contains image data

@@ -45,7 +45,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/speakeasy": "^2.0.10",
     "@types/ua-parser-js": "^0.7.39",
-    "axios": "^1.11.0",
+    "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "cache-manager": "^7.1.1",
     "class-transformer": "^0.5.1",

@@ -17,6 +17,13 @@ export interface OBSWidgetAlert {
         positionSettings?: any;
         displaySettings?: any;
         generalSettings?: any;
+        donationLevel?: {
+            levelId: string;
+            levelName: string;
+            minAmount: number;
+            maxAmount: number;
+            currency: string;
+        };
     };
 }
 export declare class OBSWidgetGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
@@ -32,7 +39,7 @@ export declare class OBSWidgetGateway implements OnGatewayInit, OnGatewayConnect
     private joinStreamerRoom;
     private removeClientFromStreamerRoom;
     handlePing(client: Socket): void;
-    sendDonationAlert(streamerId: string, donorName: string, amount: number, currency: string, message?: string): void;
+    sendDonationAlert(streamerId: string, donorName: string, amount: number, currency: string, message?: string): Promise<void>;
     sendTestAlert(streamerId: string, donorName: string, amount: string, message: string, settings?: any): void;
     getStreamerClientCount(streamerId: string): number;
     getConnectedStreamers(): string[];

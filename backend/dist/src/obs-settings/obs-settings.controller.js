@@ -451,7 +451,12 @@ let OBSSettingsController = class OBSSettingsController {
         });
         const alertId = `donation_alert_${Date.now()}_${(0, crypto_1.randomBytes)(8).toString('hex')}`;
         const { widgetUrl } = await this.obsSettingsService.getWidgetUrl(streamerId);
-        this.obsWidgetGateway.sendDonationAlert(streamerId, alertData.donorName, parseFloat(alertData.amount), alertData.currency, alertData.message);
+        const normalizeAmount = (value) => {
+            const cleaned = (value || '').toString().replace(/[^0-9.]/g, '');
+            const parsed = parseFloat(cleaned);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+        this.obsWidgetGateway.sendDonationAlert(streamerId, alertData.donorName, normalizeAmount(alertData.amount), alertData.currency?.toUpperCase?.() || 'VND', alertData.message);
         console.log(`Sent donation alert via WebSocket to streamer: ${streamerId}`);
         const connectedWidgets = this.obsWidgetGateway.getStreamerClientCount(streamerId);
         console.log(`Connected OBS widgets for streamer ${streamerId}: ${connectedWidgets}`);
@@ -562,6 +567,61 @@ let OBSSettingsController = class OBSSettingsController {
         }
         const signature = this.obsSettingsService.createRequestSignature(body.timestamp, body.nonce, settings.securitySettings.requestSignatureSecret);
         return { signature };
+    }
+    async getDonationLevels(req) {
+        console.log('🔄 Backend: Getting donation levels for user:', req.user.sub);
+        const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+        console.log('📋 Backend: Found settings:', settings._id);
+        console.log('📝 Backend: Donation levels in settings:', settings.donationLevels?.length || 0, 'levels');
+        console.log('📝 Backend: Donation levels data:', JSON.stringify(settings.donationLevels, null, 2));
+        return { donationLevels: settings.donationLevels || [] };
+    }
+    async updateDonationLevels(body, req) {
+        console.log('🔄 Backend: Updating donation levels for user:', req.user.sub);
+        console.log('📝 Backend: Request body:', JSON.stringify(body, null, 2));
+        const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+        console.log('📋 Backend: Found settings:', settings._id);
+        settings.donationLevels = body.donationLevels;
+        console.log('💾 Backend: Saving settings with donation levels:', settings.donationLevels?.length || 0, 'levels');
+        const savedSettings = await settings.save();
+        console.log('✅ Backend: Settings saved successfully:', savedSettings._id);
+        return { success: true, message: 'Donation levels updated successfully' };
+    }
+    async testDonationLevel(body, req) {
+        const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+        const level = settings.donationLevels?.find(l => l.levelId === body.levelId);
+        if (!level) {
+            throw new common_1.NotFoundException('Donation level not found');
+        }
+        const levelSpecificSettings = this.obsSettingsService.getMergedSettingsForLevel(settings, level);
+        const alertId = `test_level_${Date.now()}_${(0, crypto_1.randomBytes)(8).toString('hex')}`;
+        this.obsWidgetGateway.sendTestAlert(req.user.sub, body.donorName, body.amount, body.message, levelSpecificSettings);
+        console.log(`🧪 Test alert sent for donation level: ${level.levelName} with level-specific settings`);
+        return {
+            success: true,
+            alertId,
+            message: `Test alert sent for ${level.levelName} level`
+        };
+    }
+    async updateSettingsBehavior(body, req) {
+        console.log('🔄 Backend: Updating settings behavior for user:', req.user.sub);
+        console.log('📝 Backend: New behavior:', body.settingsBehavior);
+        const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+        console.log('📋 Backend: Found settings:', settings._id);
+        settings.settingsBehavior = body.settingsBehavior;
+        console.log('💾 Backend: Saving settings with behavior:', settings.settingsBehavior);
+        const savedSettings = await settings.save();
+        console.log('✅ Backend: Settings behavior updated successfully:', savedSettings._id);
+        return {
+            success: true,
+            message: `Settings behavior updated to: ${body.settingsBehavior}`
+        };
+    }
+    async getSettingsBehavior(req) {
+        const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+        return {
+            settingsBehavior: settings.settingsBehavior || 'auto'
+        };
     }
 };
 exports.OBSSettingsController = OBSSettingsController;
@@ -1518,6 +1578,59 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], OBSSettingsController.prototype, "createRequestSignature", null);
+__decorate([
+    (0, common_1.Get)('donation-levels'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Get donation levels for current user' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Donation levels retrieved successfully' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "getDonationLevels", null);
+__decorate([
+    (0, common_1.Put)('donation-levels'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Update donation levels for current user' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Donation levels updated successfully' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "updateDonationLevels", null);
+__decorate([
+    (0, common_1.Post)('test-donation-level'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Test a specific donation level' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Donation level test triggered successfully' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "testDonationLevel", null);
+__decorate([
+    (0, common_1.Put)('settings-behavior'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Update settings behavior for donation alerts' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Settings behavior updated successfully' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "updateSettingsBehavior", null);
+__decorate([
+    (0, common_1.Get)('settings-behavior'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiOperation)({ summary: 'Get current settings behavior' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Current settings behavior retrieved successfully' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "getSettingsBehavior", null);
 exports.OBSSettingsController = OBSSettingsController = __decorate([
     (0, swagger_1.ApiTags)('OBS Settings'),
     (0, common_1.Controller)('obs-settings'),

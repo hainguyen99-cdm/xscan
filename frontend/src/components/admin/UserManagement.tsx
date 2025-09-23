@@ -22,12 +22,12 @@ interface ExtendedUser extends User {
   totalRevenue?: number;
   _id?: string;
   firstName?: string;
+  avatar?: string;
   lastName?: string;
-  username?: string;
   profilePicture?: string;
   coverPhoto?: string;
   isActive?: boolean;
-  twoFactorEnabled?: boolean;
+  twoFactorEnabled: boolean;
   profileVisibility?: string;
   showEmail?: boolean;
   showPhone?: boolean;
@@ -37,7 +37,7 @@ interface ExtendedUser extends User {
   verificationBadges?: string[];
   profileViews?: number;
   profileViewers?: string[];
-  createdAt?: string;
+  createdAt: string;
   updatedAt?: string;
   lastLoginAt?: string;
   profileCompletedAt?: string | null;

@@ -123,4 +123,33 @@ export declare class OBSSettingsController {
     }, req: any): Promise<{
         signature: string;
     }>;
+    getDonationLevels(req: any): Promise<{
+        donationLevels: any[];
+    }>;
+    updateDonationLevels(body: {
+        donationLevels: any[];
+    }, req: any): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    testDonationLevel(body: {
+        levelId: string;
+        donorName: string;
+        amount: string;
+        currency: string;
+        message: string;
+    }, req: any): Promise<{
+        success: boolean;
+        alertId: string;
+        message: string;
+    }>;
+    updateSettingsBehavior(body: {
+        settingsBehavior: 'auto' | 'basic' | 'donation-levels';
+    }, req: any): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    getSettingsBehavior(req: any): Promise<{
+        settingsBehavior: string;
+    }>;
 }

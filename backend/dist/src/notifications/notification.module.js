@@ -14,7 +14,6 @@ const notification_controller_1 = require("./notification.controller");
 const notification_schema_1 = require("./schemas/notification.schema");
 const notification_preferences_schema_1 = require("./schemas/notification-preferences.schema");
 const email_module_1 = require("../email/email.module");
-const database_module_1 = require("../database/database.module");
 const redis_module_1 = require("../redis/redis.module");
 const config_module_1 = require("../config/config.module");
 let NotificationModule = class NotificationModule {
@@ -28,7 +27,6 @@ exports.NotificationModule = NotificationModule = __decorate([
                 { name: notification_preferences_schema_1.NotificationPreferences.name, schema: notification_preferences_schema_1.NotificationPreferencesSchema },
             ]),
             email_module_1.EmailModule,
-            database_module_1.DatabaseModule,
             redis_module_1.RedisModule,
             config_module_1.ConfigModule,
         ],

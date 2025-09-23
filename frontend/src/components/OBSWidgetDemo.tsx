@@ -41,11 +41,11 @@ const OBSWidgetDemo: React.FC<OBSWidgetDemoProps> = ({
       const timer = setTimeout(() => {
         setShowAlert(false);
         onClose();
-      }, (settings.customization.duration || 8) * 1000);
+      }, (settings.customization?.duration || 8) * 1000);
 
       return () => clearTimeout(timer);
     }
-  }, [showAlert, settings.customization.duration, onClose]);
+  }, [showAlert, settings.customization?.duration, onClose]);
 
   if (!isVisible) return null;
 
@@ -66,19 +66,19 @@ const OBSWidgetDemo: React.FC<OBSWidgetDemoProps> = ({
             {showAlert && (
               <div
                 className={`absolute transition-all duration-500 ${
-                  settings.customization.text?.animation === 'fade' ? 'animate-fade-in' :
-                  settings.customization.text?.animation === 'slide' ? 'animate-slide-in' :
-                  settings.customization.text?.animation === 'bounce' ? 'animate-bounce' : ''
+                  settings.customization?.text?.animation === 'fade' ? 'animate-fade-in' :
+                  settings.customization?.text?.animation === 'slide' ? 'animate-slide-in' :
+                  settings.customization?.text?.animation === 'bounce' ? 'animate-bounce' : ''
                 }`}
                 style={{
-                  left: (settings.customization.position === 'top-left' || settings.customization.position === 'bottom-left') ? '20px' : undefined,
-                  top: (settings.customization.position === 'top-left' || settings.customization.position === 'top-right') ? '20px' : undefined,
-                  right: settings.customization.position === 'top-right' || settings.customization.position === 'bottom-right' ? '20px' : undefined,
-                  bottom: settings.customization.position === 'bottom-left' || settings.customization.position === 'bottom-right' ? '20px' : undefined,
-                  backgroundColor: settings.customization.text?.backgroundColor || '#1a1a1a',
-                  color: settings.customization.text?.color || '#ffffff',
-                  fontFamily: settings.customization.text?.font || 'Inter',
-                  fontSize: `${settings.customization.text?.fontSize || 16}px`,
+                  left: (settings.customization?.position === 'top-left' || settings.customization?.position === 'bottom-left') ? '20px' : undefined,
+                  top: (settings.customization?.position === 'top-left' || settings.customization?.position === 'top-right') ? '20px' : undefined,
+                  right: settings.customization?.position === 'top-right' || settings.customization?.position === 'bottom-right' ? '20px' : undefined,
+                  bottom: settings.customization?.position === 'bottom-left' || settings.customization?.position === 'bottom-right' ? '20px' : undefined,
+                  backgroundColor: settings.customization?.text?.backgroundColor || '#1a1a1a',
+                  color: settings.customization?.text?.color || '#ffffff',
+                  fontFamily: settings.customization?.text?.font || 'Inter',
+                  fontSize: `${settings.customization?.text?.fontSize || 16}px`,
                   fontWeight: 'normal',
                   maxWidth: '250px',
                   padding: '12px',
@@ -88,7 +88,7 @@ const OBSWidgetDemo: React.FC<OBSWidgetDemoProps> = ({
                 }}
               >
                 {/* Media Display */}
-                {settings.customization.image?.url && (
+                {settings.customization?.image?.url && (
                   <div className="mb-2">
                     {settings.customization.image.type === 'video' ? (
                       <video
@@ -156,8 +156,8 @@ const OBSWidgetDemo: React.FC<OBSWidgetDemoProps> = ({
             <div className="text-xs text-blue-800 space-y-1">
               <p><strong>URL:</strong> {settings.widgetUrl}</p>
               <p><strong>Token:</strong> {settings.alertToken}</p>
-              <p><strong>Duration:</strong> {settings.customization.duration}s</p>
-              <p><strong>Position:</strong> {settings.customization.position}</p>
+              <p><strong>Duration:</strong> {settings.customization?.duration || 8}s</p>
+              <p><strong>Position:</strong> {settings.customization?.position || 'top-right'}</p>
             </div>
           </div>
         </CardContent>

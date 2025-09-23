@@ -247,6 +247,15 @@ export class OBSSettings {
   @Prop({ default: false })
   isActive: boolean;
 
+  // Settings behavior control
+  @Prop({ 
+    type: String, 
+    enum: ['auto', 'basic', 'donation-levels'], 
+    default: 'auto',
+    description: 'Controls which settings to use: auto (use donation levels if available and matching, otherwise basic), basic (always use basic settings), donation-levels (always use donation levels if available)'
+  })
+  settingsBehavior: 'auto' | 'basic' | 'donation-levels';
+
   @Prop({ type: Date })
   lastUsedAt?: Date;
 
@@ -277,6 +286,49 @@ export class OBSSettings {
     presetId: string;
     presetName: string;
     description?: string;
+    configuration: {
+      imageSettings?: any;
+      soundSettings?: any;
+      animationSettings?: any;
+      styleSettings?: any;
+      positionSettings?: any;
+      displaySettings?: any;
+      generalSettings?: any;
+    };
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+
+  // Donation level configurations
+  @Prop({
+    type: [{
+      levelId: { type: String, required: true },
+      levelName: { type: String, required: true },
+      minAmount: { type: Number, required: true },
+      maxAmount: { type: Number, required: true },
+      currency: { type: String, default: 'VND' },
+      isEnabled: { type: Boolean, default: true },
+      configuration: {
+        imageSettings: { type: Object },
+        soundSettings: { type: Object },
+        animationSettings: { type: Object },
+        styleSettings: { type: Object },
+        positionSettings: { type: Object },
+        displaySettings: { type: Object },
+        generalSettings: { type: Object },
+      },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date, default: Date.now },
+    }],
+    default: [],
+  })
+  donationLevels: Array<{
+    levelId: string;
+    levelName: string;
+    minAmount: number;
+    maxAmount: number;
+    currency: string;
+    isEnabled: boolean;
     configuration: {
       imageSettings?: any;
       soundSettings?: any;

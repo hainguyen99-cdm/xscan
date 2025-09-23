@@ -192,4 +192,13 @@ export declare class OBSSettingsService {
         isConnected: boolean;
         lastConnected?: string;
     }>;
+    determineDonationLevel(settings: OBSSettings, amount: number, currency: string): any | null;
+    getSettingsForDonation(settings: OBSSettings, amount: number, currency: string): {
+        settings: any;
+        level: any | null;
+        behavior: string;
+    };
+    getMergedSettingsForLevel(settings: OBSSettings, level: any, options?: {
+        exclusiveMedia?: boolean;
+    }): any;
 }

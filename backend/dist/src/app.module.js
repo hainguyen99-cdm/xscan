@@ -37,6 +37,7 @@ const security_headers_middleware_1 = require("./common/middleware/security-head
 const gdpr_compliance_middleware_1 = require("./common/middleware/gdpr-compliance.middleware");
 const widget_module_1 = require("./widget/widget.module");
 const bank_sync_module_1 = require("./bank-sync/bank-sync.module");
+const wallets_module_1 = require("./wallets/wallets.module");
 let TestWidgetController = class TestWidgetController {
     testRoute() {
         return { message: 'Test widget controller is working!', timestamp: new Date().toISOString() };
@@ -122,6 +123,7 @@ exports.AppModule = AppModule = __decorate([
             streamer_applications_module_1.StreamerApplicationsModule,
             widget_module_1.WidgetModule,
             bank_sync_module_1.BankSyncModule,
+            wallets_module_1.WalletsModule,
         ],
         controllers: [TestWidgetController],
         providers: [

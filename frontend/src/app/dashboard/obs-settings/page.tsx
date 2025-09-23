@@ -22,9 +22,10 @@ export const dynamic = 'force-dynamic';
 import React, { useState, useEffect } from 'react';
 import OBSSettingsConfig from '@/components/OBSSettingsConfig';
 import OBSWidgetDemo from '@/components/OBSWidgetDemo';
+import DonationLevelConfig from '@/components/DonationLevelConfig';
 import TestAlertWithData from '@/components/TestAlertWithData';
 import ResultModal from '@/components/ui/result-modal';
-import { OBSSettings, OBSSettingsForm } from '@/types';
+import { OBSSettings, OBSSettingsForm, DonationLevel } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Eye, TestTube, Shield, ArrowLeft } from 'lucide-react';
 import { getStoredToken } from '@/lib/api';
@@ -109,8 +110,10 @@ const convertBackendToFrontendSettings = (backendSettings: any): OBSSettings => 
       priority: 'medium',
     },
     isActive: backendSettings.isActive || true,
+    settingsBehavior: backendSettings.settingsBehavior || 'auto',
     lastUsedAt: backendSettings.lastUsedAt,
     totalAlerts: backendSettings.totalAlerts || 0,
+    donationLevels: backendSettings.donationLevels || [],
     createdAt: backendSettings.createdAt,
     updatedAt: backendSettings.updatedAt,
     // Legacy compatibility mapping
@@ -150,6 +153,8 @@ export default function OBSSettingsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCheckingRole, setIsCheckingRole] = useState(true);
+  const [activeTab, setActiveTab] = useState<'basic' | 'levels'>('basic');
+  const [donationLevels, setDonationLevels] = useState<DonationLevel[]>([]);
   
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -284,6 +289,121 @@ export default function OBSSettingsPage() {
     }
   };
 
+  // Donation level handlers
+  const handleSaveDonationLevels = async (levels: DonationLevel[]) => {
+    setIsLoading(true);
+    try {
+      const token = getStoredToken();
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      console.log('💾 Saving donation levels...');
+      console.log('📝 Levels to save:', JSON.stringify(levels, null, 2));
+
+      const response = await fetch('/api/obs-settings/donation-levels', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ donationLevels: levels }),
+      });
+
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save donation levels');
+      }
+
+      const result = await response.json();
+      console.log('✅ Donation levels saved:', result);
+      
+      setDonationLevels(levels);
+      
+      // Update current settings with new donation levels
+      if (currentSettings) {
+        setCurrentSettings({
+          ...currentSettings,
+          donationLevels: levels
+        });
+      }
+      
+      // Refresh settings to get updated data from backend
+      await fetchOBSSettings(token);
+      
+    } catch (error) {
+      console.error('❌ Failed to save donation levels:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save donation levels';
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestDonationLevel = async (level: DonationLevel) => {
+    try {
+      const token = getStoredToken();
+      if (!token) {
+        setModalState({
+          isOpen: true,
+          type: 'error',
+          title: 'Authentication Required',
+          message: 'Please log in again to test alerts.',
+          details: 'Your authentication token is missing or expired.'
+        });
+        return;
+      }
+
+      console.log('🧪 Testing donation level:', level);
+
+      const response = await fetch('/api/obs-settings/test-donation-level', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          levelId: level.levelId,
+          donorName: 'Test Donor',
+          amount: level.minAmount.toString(),
+          currency: level.currency,
+          message: `Test alert for ${level.levelName} level!`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to test donation level');
+      }
+
+      const result = await response.json();
+      console.log('✅ Donation level test result:', result);
+      
+      setModalState({
+        isOpen: true,
+        type: 'success',
+        title: 'Donation Level Test Successful!',
+        message: `Test alert sent for ${level.levelName} level`,
+        details: 'Check your OBS widget to see the test alert with the level-specific configuration.',
+        alertId: result.alertId,
+        widgetUrl: currentSettings?.widgetUrl
+      });
+      
+    } catch (error) {
+      console.error('💥 Failed to test donation level:', error);
+      setModalState({
+        isOpen: true,
+        type: 'error',
+        title: 'Donation Level Test Failed',
+        message: 'Failed to test donation level',
+        details: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    }
+  };
+
   useEffect(() => {
     // Initialize auth if not already done
     if (!isAuthenticated || !user) {
@@ -314,6 +434,7 @@ export default function OBSSettingsPage() {
           console.log('🔄 Converted settings:', convertedSettings);
           
           setCurrentSettings(convertedSettings);
+          setDonationLevels(convertedSettings.donationLevels || []);
           setAccessDenied(false);
           setErrorMessage(null);
       } else {
@@ -726,11 +847,50 @@ export default function OBSSettingsPage() {
         {/* OBS Settings Configuration */}
         {currentSettings ? (
           <div className="mb-8">
-            <OBSSettingsConfig
-              settings={currentSettings}
-              onSave={handleSave}
-              onTest={handleTest}
-            />
+            {/* Tab Navigation */}
+            <div className="mb-6">
+              <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-8">
+                  <button
+                    onClick={() => setActiveTab('basic')}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      activeTab === 'basic'
+                        ? 'border-indigo-500 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Basic Settings
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('levels')}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      activeTab === 'levels'
+                        ? 'border-indigo-500 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Donation Levels
+                  </button>
+                </nav>
+              </div>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === 'basic' && (
+              <OBSSettingsConfig
+                settings={currentSettings}
+                onSave={handleSave}
+                onTest={handleTest}
+              />
+            )}
+
+            {activeTab === 'levels' && (
+              <DonationLevelConfig
+                settings={currentSettings}
+                onSave={handleSaveDonationLevels}
+                onTest={handleTestDonationLevel}
+              />
+            )}
           </div>
         ) : (
           <div className="text-center py-8">

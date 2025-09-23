@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Patch,
   Param,
@@ -1218,12 +1219,19 @@ export class OBSSettingsController {
     // Create widget URL using the service method for consistency
     const { widgetUrl } = await this.obsSettingsService.getWidgetUrl(streamerId);
 
+    // Normalize amount (strip currency symbols, spaces, and thousands separators)
+    const normalizeAmount = (value: string): number => {
+      const cleaned = (value || '').toString().replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(cleaned);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
     // Send donation alert via WebSocket to all connected OBS widgets
     this.obsWidgetGateway.sendDonationAlert(
       streamerId,
       alertData.donorName,
-      parseFloat(alertData.amount),
-      alertData.currency,
+      normalizeAmount(alertData.amount),
+      alertData.currency?.toUpperCase?.() || 'VND',
       alertData.message
     );
 
@@ -1459,5 +1467,122 @@ export class OBSSettingsController {
     );
 
     return { signature };
+  }
+
+  // Donation Level Management
+  @Get('donation-levels')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get donation levels for current user' })
+  @ApiResponse({ status: 200, description: 'Donation levels retrieved successfully' })
+  async getDonationLevels(@Request() req): Promise<{ donationLevels: any[] }> {
+    console.log('🔄 Backend: Getting donation levels for user:', req.user.sub);
+    const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+    console.log('📋 Backend: Found settings:', settings._id);
+    console.log('📝 Backend: Donation levels in settings:', settings.donationLevels?.length || 0, 'levels');
+    console.log('📝 Backend: Donation levels data:', JSON.stringify(settings.donationLevels, null, 2));
+    return { donationLevels: settings.donationLevels || [] };
+  }
+
+  @Put('donation-levels')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update donation levels for current user' })
+  @ApiResponse({ status: 200, description: 'Donation levels updated successfully' })
+  async updateDonationLevels(
+    @Body() body: { donationLevels: any[] },
+    @Request() req,
+  ): Promise<{ success: boolean; message: string }> {
+    console.log('🔄 Backend: Updating donation levels for user:', req.user.sub);
+    console.log('📝 Backend: Request body:', JSON.stringify(body, null, 2));
+    
+    const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+    console.log('📋 Backend: Found settings:', settings._id);
+    
+    // Update donation levels
+    settings.donationLevels = body.donationLevels;
+    console.log('💾 Backend: Saving settings with donation levels:', settings.donationLevels?.length || 0, 'levels');
+    
+    const savedSettings = await (settings as any).save();
+    console.log('✅ Backend: Settings saved successfully:', savedSettings._id);
+    
+    return { success: true, message: 'Donation levels updated successfully' };
+  }
+
+  @Post('test-donation-level')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Test a specific donation level' })
+  @ApiResponse({ status: 200, description: 'Donation level test triggered successfully' })
+  async testDonationLevel(
+    @Body() body: { levelId: string; donorName: string; amount: string; currency: string; message: string },
+    @Request() req,
+  ): Promise<{ success: boolean; alertId: string; message: string }> {
+    const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+    
+    // Find the specific donation level
+    const level = settings.donationLevels?.find(l => l.levelId === body.levelId);
+    if (!level) {
+      throw new NotFoundException('Donation level not found');
+    }
+
+    // Get merged settings for the donation level
+    const levelSpecificSettings = this.obsSettingsService.getMergedSettingsForLevel(settings, level);
+
+    // Trigger test alert with level-specific configuration
+    const alertId = `test_level_${Date.now()}_${randomBytes(8).toString('hex')}`;
+    
+    // Send test alert via WebSocket with level-specific settings
+    this.obsWidgetGateway.sendTestAlert(
+      req.user.sub,
+      body.donorName,
+      body.amount,
+      body.message,
+      levelSpecificSettings
+    );
+
+    console.log(`🧪 Test alert sent for donation level: ${level.levelName} with level-specific settings`);
+
+    return {
+      success: true,
+      alertId,
+      message: `Test alert sent for ${level.levelName} level`
+    };
+  }
+
+  @Put('settings-behavior')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update settings behavior for donation alerts' })
+  @ApiResponse({ status: 200, description: 'Settings behavior updated successfully' })
+  async updateSettingsBehavior(
+    @Body() body: { settingsBehavior: 'auto' | 'basic' | 'donation-levels' },
+    @Request() req,
+  ): Promise<{ success: boolean; message: string }> {
+    console.log('🔄 Backend: Updating settings behavior for user:', req.user.sub);
+    console.log('📝 Backend: New behavior:', body.settingsBehavior);
+    
+    const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+    console.log('📋 Backend: Found settings:', settings._id);
+    
+    // Update settings behavior
+    settings.settingsBehavior = body.settingsBehavior;
+    console.log('💾 Backend: Saving settings with behavior:', settings.settingsBehavior);
+    
+    const savedSettings = await (settings as any).save();
+    console.log('✅ Backend: Settings behavior updated successfully:', savedSettings._id);
+    
+    return { 
+      success: true, 
+      message: `Settings behavior updated to: ${body.settingsBehavior}` 
+    };
+  }
+
+  @Get('settings-behavior')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get current settings behavior' })
+  @ApiResponse({ status: 200, description: 'Current settings behavior retrieved successfully' })
+  async getSettingsBehavior(@Request() req): Promise<{ settingsBehavior: string }> {
+    const settings = await this.obsSettingsService.findByStreamerId(req.user.sub);
+    
+    return { 
+      settingsBehavior: settings.settingsBehavior || 'auto' 
+    };
   }
 } 

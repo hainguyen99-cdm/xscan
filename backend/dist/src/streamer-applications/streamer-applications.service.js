@@ -68,19 +68,12 @@ let StreamerApplicationsService = class StreamerApplicationsService {
         return this.listApplications(params);
     }
     async getUserApplication(userId) {
-        let application = await this.applicationModel.findOne({ userId }).sort({ createdAt: -1 }).exec();
-        if (!application) {
-            application = await this.applicationModel.findOne({}).sort({ createdAt: -1 }).exec();
-            if (application) {
-                try {
-                    await this.applicationModel.updateOne({ _id: application._id }, { $set: { userId: userId } });
-                }
-                catch (updateError) {
-                    console.error('Failed to update application with userId:', updateError);
-                }
-            }
-        }
-        return application ? application.toObject() : null;
+        const application = await this.applicationModel
+            .findOne({ userId })
+            .sort({ createdAt: -1 })
+            .lean()
+            .exec();
+        return application ?? null;
     }
     async reviewApplication(id, action, notes, adminId) {
         const application = await this.applicationModel.findById(id).exec();
