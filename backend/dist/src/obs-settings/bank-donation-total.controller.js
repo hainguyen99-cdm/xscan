@@ -345,66 +345,28 @@ let BankDonationTotalController = class BankDonationTotalController {
         // Initialize WebSocket connection
         function initializeWebSocket() {
             try {
-                // Force HTTP protocol for WebSocket connection
+                // Detect server protocol by testing HTTP first
                 const host = window.location.host;
-                const wsUrl = \`http://\${host}/obs-widget\`;
+                const testHttpUrl = \`http://\${host}/api/widget-public/bank-total/\${streamerId}?format=json\`;
                 
                 console.log('Current page protocol:', window.location.protocol);
-                console.log('Connecting to WebSocket:', wsUrl);
+                console.log('Testing server protocol with:', testHttpUrl);
                 
-                socket = io(wsUrl, {
-                    transports: ['polling'],
-                    upgrade: false,
-                    rememberUpgrade: false,
-                    forceNew: true,
-                    timeout: 5000,
-                    reconnection: true,
-                    reconnectionAttempts: 5,
-                    reconnectionDelay: 1000
-                });
-                
-                socket.on('connect', () => {
-                    console.log('WebSocket connected');
-                    // Stop HTTP polling since WebSocket is working
-                    stopHttpPolling();
-                    // Join the bank total room for this streamer
-                    socket.emit('joinBankTotalRoom', { streamerId: streamerId });
-                });
-                
-                socket.on('joinedBankTotalRoom', (data) => {
-                    console.log('Joined bank total room:', data);
-                });
-                
-                socket.on('bankDonationTotalUpdate', (data) => {
-                    console.log('Received bank donation total update:', data);
-                    if (data.totalAmount !== currentAmount) {
-                        animateToNewAmount(data.totalAmount);
-                    }
-                });
-                
-                socket.on('disconnect', () => {
-                    console.log('WebSocket disconnected');
-                });
-                
-                socket.on('error', (error) => {
-                    console.error('WebSocket error:', error);
-                    // If WebSocket fails, fallback to HTTP polling
-                    startHttpPolling();
-                });
-                
-                socket.on('connect_error', (error) => {
-                    console.error('WebSocket connection error:', error);
-                    // If connection fails, fallback to HTTP polling
-                    startHttpPolling();
-                });
-                
-                // Timeout fallback
-                setTimeout(() => {
-                    if (!socket || !socket.connected) {
-                        console.log('WebSocket connection timeout, falling back to HTTP polling');
-                        startHttpPolling();
-                    }
-                }, 10000);
+                // Test if server supports HTTP
+                fetch(testHttpUrl, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            console.log('Server supports HTTP, using HTTP for WebSocket');
+                            connectWebSocket(\`http://\${host}/obs-widget\`);
+                        } else {
+                            throw new Error('HTTP not supported');
+                        }
+                    })
+                    .catch(error => {
+                        console.log('HTTP not supported, trying HTTPS for WebSocket');
+                        // If HTTP fails, try HTTPS
+                        connectWebSocket(\`https://\${host}/obs-widget\`);
+                    });
                 
             } catch (error) {
                 console.error('Failed to initialize WebSocket:', error);
@@ -413,8 +375,88 @@ let BankDonationTotalController = class BankDonationTotalController {
             }
         }
         
+        function connectWebSocket(wsUrl) {
+            console.log('Connecting to WebSocket:', wsUrl);
+            
+            socket = io(wsUrl, {
+                transports: ['polling'],
+                upgrade: false,
+                rememberUpgrade: false,
+                forceNew: true,
+                timeout: 5000,
+                reconnection: true,
+                reconnectionAttempts: 5,
+                reconnectionDelay: 1000
+            });
+            
+            socket.on('connect', () => {
+                console.log('WebSocket connected');
+                // Stop HTTP polling since WebSocket is working
+                stopHttpPolling();
+                // Join the bank total room for this streamer
+                socket.emit('joinBankTotalRoom', { streamerId: streamerId });
+            });
+            
+            socket.on('joinedBankTotalRoom', (data) => {
+                console.log('Joined bank total room:', data);
+            });
+            
+            socket.on('bankDonationTotalUpdate', (data) => {
+                console.log('Received bank donation total update:', data);
+                if (data.totalAmount !== currentAmount) {
+                    animateToNewAmount(data.totalAmount);
+                }
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('WebSocket disconnected');
+            });
+            
+            socket.on('error', (error) => {
+                console.error('WebSocket error:', error);
+                // If WebSocket fails, fallback to HTTP polling
+                startHttpPolling();
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('WebSocket connection error:', error);
+                // If connection fails, fallback to HTTP polling
+                startHttpPolling();
+            });
+            
+            // Timeout fallback
+            setTimeout(() => {
+                if (!socket || !socket.connected) {
+                    console.log('WebSocket connection timeout, falling back to HTTP polling');
+                    startHttpPolling();
+                }
+            }, 10000);
+        }
+        
         // Fallback HTTP polling (if WebSocket fails)
         let httpPollingInterval = null;
+        let serverProtocol = 'http'; // Default to HTTP
+        
+        function detectServerProtocol() {
+            const host = window.location.host;
+            const testHttpUrl = \`http://\${host}/api/widget-public/bank-total/\${streamerId}?format=json\`;
+            
+            return fetch(testHttpUrl, { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        serverProtocol = 'http';
+                        console.log('Server protocol detected: HTTP');
+                        return 'http';
+                    } else {
+                        throw new Error('HTTP not supported');
+                    }
+                })
+                .catch(error => {
+                    serverProtocol = 'https';
+                    console.log('Server protocol detected: HTTPS');
+                    return 'https';
+                });
+        }
         
         function startHttpPolling() {
             if (httpPollingInterval) {
@@ -423,39 +465,43 @@ let BankDonationTotalController = class BankDonationTotalController {
             }
             
             console.log('Starting HTTP polling fallback');
-            httpPollingInterval = setInterval(async () => {
-                try {
-                    const host = window.location.host;
-                    const pathname = window.location.pathname;
-                    const search = window.location.search;
-                    
-                    // Force HTTP protocol
-                    let refreshUrl = 'http://' + host + pathname;
-                    
-                    if (search) {
-                        const params = new URLSearchParams(search);
-                        params.delete('format');
-                        const queryString = params.toString();
-                        if (queryString) {
-                            refreshUrl += '?' + queryString;
+            
+            // Detect server protocol first
+            detectServerProtocol().then(protocol => {
+                httpPollingInterval = setInterval(async () => {
+                    try {
+                        const host = window.location.host;
+                        const pathname = window.location.pathname;
+                        const search = window.location.search;
+                        
+                        // Use detected server protocol
+                        let refreshUrl = \`\${protocol}://\${host}\${pathname}\`;
+                        
+                        if (search) {
+                            const params = new URLSearchParams(search);
+                            params.delete('format');
+                            const queryString = params.toString();
+                            if (queryString) {
+                                refreshUrl += '?' + queryString;
+                            }
                         }
+                        
+                        refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
+                        
+                        console.log('HTTP polling from:', refreshUrl);
+                        
+                        const response = await fetch(refreshUrl);
+                        const data = await response.json();
+                        
+                        if (data.success && data.data.totalAmount !== currentAmount) {
+                            console.log('Amount changed via HTTP polling:', data.data.totalAmount);
+                            animateToNewAmount(data.data.totalAmount);
+                        }
+                    } catch (error) {
+                        console.error('HTTP polling failed:', error);
                     }
-                    
-                    refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
-                    
-                    console.log('HTTP polling from:', refreshUrl);
-                    
-                    const response = await fetch(refreshUrl);
-                    const data = await response.json();
-                    
-                    if (data.success && data.data.totalAmount !== currentAmount) {
-                        console.log('Amount changed via HTTP polling:', data.data.totalAmount);
-                        animateToNewAmount(data.data.totalAmount);
-                    }
-                } catch (error) {
-                    console.error('HTTP polling failed:', error);
-                }
-            }, 30000);
+                }, 30000);
+            });
         }
         
         function stopHttpPolling() {
