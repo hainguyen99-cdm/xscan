@@ -352,6 +352,20 @@ let BankDonationTotalController = class BankDonationTotalController {
         let httpPollingInterval = null;
         
         function startHttpPolling() {
+            // IMMEDIATE HTTPS CHECK - if we're on HTTPS, don't start polling at all
+            if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
+                console.log('HTTPS detected in startHttpPolling - aborting to prevent SSL errors');
+                console.log('Widget will show static data. For real-time updates, use HTTP URL directly.');
+                
+                // Add visual indicator
+                const amountElement = document.getElementById('totalAmount');
+                if (amountElement) {
+                    amountElement.style.opacity = '0.7';
+                    amountElement.title = 'Static data - server only supports HTTP';
+                }
+                return;
+            }
+            
             if (httpPollingInterval) {
                 console.log('HTTP polling already active');
                 return;
@@ -360,6 +374,13 @@ let BankDonationTotalController = class BankDonationTotalController {
             console.log('Starting HTTP polling');
             
             httpPollingInterval = setInterval(() => {
+                // Double-check for HTTPS before each polling attempt
+                if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
+                    console.log('HTTPS detected during polling - stopping to avoid SSL errors');
+                    stopHttpPolling();
+                    return;
+                }
+                
                 try {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
