@@ -352,54 +352,14 @@ let BankDonationTotalController = class BankDonationTotalController {
         let httpPollingInterval = null;
         
         function startHttpPolling() {
-            // IMMEDIATE HTTPS CHECK - if we're on HTTPS, don't start polling at all
-            if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
-                console.log('HTTPS detected in startHttpPolling - aborting to prevent SSL errors');
-                console.log('Widget will show static data. For real-time updates, use HTTP URL directly.');
-                
-                // Add visual indicator
-                const amountElement = document.getElementById('totalAmount');
-                if (amountElement) {
-                    amountElement.style.opacity = '0.7';
-                    amountElement.title = 'Static data - server only supports HTTP';
-                }
-                return;
-            }
-            
             if (httpPollingInterval) {
                 console.log('HTTP polling already active');
                 return;
             }
             
-            console.log('Starting HTTP polling fallback');
-            
-            // Check if we're on HTTPS - if so, disable polling to avoid mixed content errors
-            if (window.location.protocol === 'https:') {
-                console.log('HTTPS page detected - polling disabled to avoid mixed content errors');
-                console.log('Widget will show static data. For real-time updates, access via HTTP.');
-                return;
-            }
-            
-            // Also check if the current page is being accessed via HTTPS (even if we think it's HTTP)
-            // This happens when browsers upgrade HTTP to HTTPS automatically
-            if (window.location.href.startsWith('https://')) {
-                console.log('Browser upgraded to HTTPS - polling disabled to avoid mixed content errors');
-                console.log('Widget will show static data. For real-time updates, access via HTTP.');
-                return;
-            }
-            
-            // Additional check: if we're getting SSL errors, disable polling
-            console.log('Current URL:', window.location.href);
-            console.log('Current protocol:', window.location.protocol);
+            console.log('Starting HTTP polling');
             
             httpPollingInterval = setInterval(() => {
-                // Double-check for HTTPS before each polling attempt
-                if (window.location.protocol === 'https:' || window.location.href.startsWith('https://')) {
-                    console.log('HTTPS detected during polling - stopping to avoid SSL errors');
-                    stopHttpPolling();
-                    return;
-                }
-                
                 try {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
@@ -447,16 +407,12 @@ let BankDonationTotalController = class BankDonationTotalController {
                             }
                         };
                         
-                    xhr.onerror = function() {
-                        console.error('HTTP polling network error - likely SSL/HTTPS issue');
-                        console.log('Stopping polling to avoid SSL errors');
-                        stopHttpPolling();
-                    };
+                        xhr.onerror = function() {
+                            console.error('HTTP polling network error');
+                        };
                         
                         xhr.ontimeout = function() {
-                            console.error('HTTP polling timeout - likely SSL/HTTPS issue');
-                            console.log('Stopping polling to avoid SSL errors');
-                            stopHttpPolling();
+                            console.error('HTTP polling timeout');
                         };
                         
                         xhr.send();
@@ -509,39 +465,7 @@ let BankDonationTotalController = class BankDonationTotalController {
             
             isInitialized = true;
             
-            // Check if browser has upgraded HTTP to HTTPS or if we're on HTTPS
-            const currentUrl = window.location.href;
-            const currentProtocol = window.location.protocol;
-            
-            console.log('Current URL:', currentUrl);
-            console.log('Current protocol:', currentProtocol);
-            
-            // If we're on HTTPS or the URL contains HTTPS, disable all polling
-            if (currentProtocol === 'https:' || currentUrl.includes('https://')) {
-                console.log('HTTPS detected - disabling all HTTP requests to avoid SSL errors');
-                console.log('Widget will show static data. For real-time updates:');
-                console.log('1. Access the widget directly via HTTP: http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e');
-                console.log('2. Or use the widget in OBS Browser Source with HTTP URL');
-                console.log('3. Server only supports HTTP - HTTPS causes SSL protocol errors');
-                
-                // Add a visual indicator that this is static data
-                const amountElement = document.getElementById('totalAmount');
-                if (amountElement) {
-                    amountElement.style.opacity = '0.7';
-                    amountElement.title = 'Static data - server only supports HTTP';
-                }
-                
-                // Add a warning message to the page
-                const warningDiv = document.createElement('div');
-                warningDiv.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(255,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999; max-width: 300px;';
-                warningDiv.innerHTML = '⚠️ Static data only<br>Use HTTP URL for real-time updates';
-                document.body.appendChild(warningDiv);
-                
-                return;
-            }
-            
-            // Only start polling if we're definitely on HTTP
-            console.log('HTTP page confirmed - starting real-time polling');
+            console.log('Starting real-time polling');
             startHttpPolling();
             
         });
