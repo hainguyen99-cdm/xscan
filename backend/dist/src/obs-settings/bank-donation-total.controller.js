@@ -345,13 +345,16 @@ let BankDonationTotalController = class BankDonationTotalController {
         // Initialize WebSocket connection
         function initializeWebSocket() {
             try {
-                // Connect to WebSocket server
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                // Force HTTP protocol for WebSocket connection
                 const host = window.location.host;
-                const wsUrl = \`\${protocol}//\${host}/obs-widget\`;
+                const wsUrl = \`http://\${host}/obs-widget\`;
                 
                 console.log('Connecting to WebSocket:', wsUrl);
-                socket = io(wsUrl);
+                socket = io(wsUrl, {
+                    transports: ['polling', 'websocket'],
+                    upgrade: true,
+                    rememberUpgrade: false
+                });
                 
                 socket.on('connect', () => {
                     console.log('WebSocket connected');
