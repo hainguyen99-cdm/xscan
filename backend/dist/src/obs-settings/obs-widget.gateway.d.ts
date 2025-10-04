@@ -26,6 +26,19 @@ export interface OBSWidgetAlert {
         };
     };
 }
+export interface BankDonationTotalUpdate {
+    type: 'bankDonationTotalUpdate';
+    streamerId: string;
+    totalAmount: number;
+    currency: string;
+    transactionCount: number;
+    lastDonationDate?: Date;
+    averageDonation?: number;
+    todayDonations?: number;
+    thisWeekDonations?: number;
+    thisMonthDonations?: number;
+    timestamp: Date;
+}
 export declare class OBSWidgetGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     private readonly obsSettingsService;
     server: Server;
@@ -39,6 +52,19 @@ export declare class OBSWidgetGateway implements OnGatewayInit, OnGatewayConnect
     private joinStreamerRoom;
     private removeClientFromStreamerRoom;
     handlePing(client: Socket): void;
+    handleJoinBankTotalRoom(client: Socket, data: {
+        streamerId: string;
+    }): void;
+    sendBankDonationTotalUpdate(streamerId: string, totalData: {
+        totalAmount: number;
+        currency: string;
+        transactionCount: number;
+        lastDonationDate?: Date;
+        averageDonation?: number;
+        todayDonations?: number;
+        thisWeekDonations?: number;
+        thisMonthDonations?: number;
+    }): Promise<void>;
     sendDonationAlert(streamerId: string, donorName: string, amount: number, currency: string, message?: string): Promise<void>;
     sendTestAlert(streamerId: string, donorName: string, amount: string, message: string, settings?: any): void;
     getStreamerClientCount(streamerId: string): number;

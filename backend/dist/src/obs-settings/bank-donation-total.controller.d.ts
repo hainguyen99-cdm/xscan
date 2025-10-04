@@ -1,8 +1,16 @@
 import { Response } from 'express';
 import { BankDonationTotalService } from './bank-donation-total.service';
+import { OBSWidgetGateway } from './obs-widget.gateway';
 export declare class BankDonationTotalController {
     private readonly bankDonationTotalService;
-    constructor(bankDonationTotalService: BankDonationTotalService);
+    private readonly obsWidgetGateway;
+    constructor(bankDonationTotalService: BankDonationTotalService, obsWidgetGateway: OBSWidgetGateway);
+    triggerBankDonationTotalUpdate(streamerId: string): Promise<{
+        success: boolean;
+        message: string;
+        streamerId: string;
+        timestamp: string;
+    }>;
     getBankDonationTotalWidget(streamerId: string, format: string, theme: string, showStats: string, res: Response): Promise<Response<any, Record<string, any>>>;
     private generateWidgetHtml;
     private generateErrorHtml;

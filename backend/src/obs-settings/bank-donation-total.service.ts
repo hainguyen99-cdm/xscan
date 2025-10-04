@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { BankTransaction, BankTransactionDocument } from '../bank-sync/schemas/bank-transaction.schema';
+import { OBSWidgetGateway } from './obs-widget.gateway';
 
 @Injectable()
 export class BankDonationTotalService {
@@ -10,6 +11,8 @@ export class BankDonationTotalService {
   constructor(
     @InjectModel(BankTransaction.name)
     private bankTransactionModel: Model<BankTransactionDocument>,
+    @Inject(forwardRef(() => OBSWidgetGateway))
+    private obsWidgetGateway: OBSWidgetGateway,
   ) {}
 
   /**
@@ -214,5 +217,29 @@ export class BankDonationTotalService {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
+  }
+
+  /**
+   * Broadcast bank donation total update via WebSocket
+   */
+  async broadcastBankDonationTotalUpdate(streamerId: string): Promise<void> {
+    try {
+      const stats = await this.getBankDonationStats(streamerId);
+      
+      await this.obsWidgetGateway.sendBankDonationTotalUpdate(streamerId, {
+        totalAmount: stats.totalAmount,
+        currency: stats.currency,
+        transactionCount: stats.transactionCount,
+        lastDonationDate: stats.lastDonationDate,
+        averageDonation: stats.averageDonation,
+        todayDonations: stats.todayDonations,
+        thisWeekDonations: stats.thisWeekDonations,
+        thisMonthDonations: stats.thisMonthDonations,
+      });
+      
+      this.logger.log(`Broadcasted bank donation total update for streamer ${streamerId}: ${stats.totalAmount} ${stats.currency}`);
+    } catch (error) {
+      this.logger.error(`Failed to broadcast bank donation total update for streamer ${streamerId}:`, error);
+    }
   }
 }

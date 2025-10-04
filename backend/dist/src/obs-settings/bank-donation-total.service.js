@@ -18,9 +18,11 @@ const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const bank_transaction_schema_1 = require("../bank-sync/schemas/bank-transaction.schema");
+const obs_widget_gateway_1 = require("./obs-widget.gateway");
 let BankDonationTotalService = BankDonationTotalService_1 = class BankDonationTotalService {
-    constructor(bankTransactionModel) {
+    constructor(bankTransactionModel, obsWidgetGateway) {
         this.bankTransactionModel = bankTransactionModel;
+        this.obsWidgetGateway = obsWidgetGateway;
         this.logger = new common_1.Logger(BankDonationTotalService_1.name);
     }
     async getTotalBankDonations(streamerId) {
@@ -188,11 +190,32 @@ let BankDonationTotalService = BankDonationTotalService_1 = class BankDonationTo
             maximumFractionDigits: 2,
         }).format(amount);
     }
+    async broadcastBankDonationTotalUpdate(streamerId) {
+        try {
+            const stats = await this.getBankDonationStats(streamerId);
+            await this.obsWidgetGateway.sendBankDonationTotalUpdate(streamerId, {
+                totalAmount: stats.totalAmount,
+                currency: stats.currency,
+                transactionCount: stats.transactionCount,
+                lastDonationDate: stats.lastDonationDate,
+                averageDonation: stats.averageDonation,
+                todayDonations: stats.todayDonations,
+                thisWeekDonations: stats.thisWeekDonations,
+                thisMonthDonations: stats.thisMonthDonations,
+            });
+            this.logger.log(`Broadcasted bank donation total update for streamer ${streamerId}: ${stats.totalAmount} ${stats.currency}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to broadcast bank donation total update for streamer ${streamerId}:`, error);
+        }
+    }
 };
 exports.BankDonationTotalService = BankDonationTotalService;
 exports.BankDonationTotalService = BankDonationTotalService = BankDonationTotalService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(bank_transaction_schema_1.BankTransaction.name)),
-    __metadata("design:paramtypes", [mongoose_2.Model])
+    __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => obs_widget_gateway_1.OBSWidgetGateway))),
+    __metadata("design:paramtypes", [mongoose_2.Model,
+        obs_widget_gateway_1.OBSWidgetGateway])
 ], BankDonationTotalService);
 //# sourceMappingURL=bank-donation-total.service.js.map

@@ -96,6 +96,34 @@ let OBSWidgetGateway = OBSWidgetGateway_1 = class OBSWidgetGateway {
     handlePing(client) {
         client.emit('pong', { timestamp: new Date().toISOString() });
     }
+    handleJoinBankTotalRoom(client, data) {
+        const { streamerId } = data;
+        if (!streamerId) {
+            client.emit('error', { message: 'Streamer ID is required' });
+            return;
+        }
+        const roomName = `streamer-${streamerId}`;
+        client.join(roomName);
+        this.logger.log(`Client ${client.id} joined bank total room: ${roomName}`);
+        client.emit('joinedBankTotalRoom', { streamerId, roomName });
+    }
+    async sendBankDonationTotalUpdate(streamerId, totalData) {
+        const update = {
+            type: 'bankDonationTotalUpdate',
+            streamerId,
+            totalAmount: totalData.totalAmount,
+            currency: totalData.currency,
+            transactionCount: totalData.transactionCount,
+            lastDonationDate: totalData.lastDonationDate,
+            averageDonation: totalData.averageDonation,
+            todayDonations: totalData.todayDonations,
+            thisWeekDonations: totalData.thisWeekDonations,
+            thisMonthDonations: totalData.thisMonthDonations,
+            timestamp: new Date(),
+        };
+        this.logger.log(`Broadcasting bank donation total update for streamer ${streamerId}: ${totalData.totalAmount} ${totalData.currency}`);
+        this.server.to(`streamer-${streamerId}`).emit('bankDonationTotalUpdate', update);
+    }
     async sendDonationAlert(streamerId, donorName, amount, currency, message) {
         const roomName = `streamer:${streamerId}`;
         let settings;
@@ -197,6 +225,12 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket]),
     __metadata("design:returntype", void 0)
 ], OBSWidgetGateway.prototype, "handlePing", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('joinBankTotalRoom'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:returntype", void 0)
+], OBSWidgetGateway.prototype, "handleJoinBankTotalRoom", null);
 exports.OBSWidgetGateway = OBSWidgetGateway = OBSWidgetGateway_1 = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {

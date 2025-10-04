@@ -16,14 +16,36 @@ exports.BankDonationTotalController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const bank_donation_total_service_1 = require("./bank-donation-total.service");
+const obs_widget_gateway_1 = require("./obs-widget.gateway");
 let BankDonationTotalController = class BankDonationTotalController {
-    constructor(bankDonationTotalService) {
+    constructor(bankDonationTotalService, obsWidgetGateway) {
         this.bankDonationTotalService = bankDonationTotalService;
+        this.obsWidgetGateway = obsWidgetGateway;
         this.logger = {
             error: (message, error) => {
                 console.error(message, error);
             },
         };
+    }
+    async triggerBankDonationTotalUpdate(streamerId) {
+        try {
+            await this.bankDonationTotalService.broadcastBankDonationTotalUpdate(streamerId);
+            return {
+                success: true,
+                message: 'Bank donation total update triggered',
+                streamerId,
+                timestamp: new Date().toISOString(),
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to trigger bank donation total update for streamer ${streamerId}:`, error);
+            throw new common_1.HttpException({
+                success: false,
+                error: 'Failed to trigger update',
+                message: error.message,
+                streamerId,
+            }, common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
     async getBankDonationTotalWidget(streamerId, format = 'html', theme = 'dark', showStats = 'false', res) {
         try {
@@ -258,9 +280,12 @@ let BankDonationTotalController = class BankDonationTotalController {
         </div>
     </div>
     
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         let currentAmount = ${stats.totalAmount};
         let isAnimating = false;
+        let socket = null;
+        const streamerId = '${streamerId}';
         
         // Running number animation function
         function animateToNewAmount(newAmount, duration = 2000) {
@@ -317,45 +342,94 @@ let BankDonationTotalController = class BankDonationTotalController {
             }).format(amount);
         }
         
-        // Auto-refresh every 30 seconds with animation
-        setInterval(async () => {
+        // Initialize WebSocket connection
+        function initializeWebSocket() {
             try {
-                // Construct the refresh URL explicitly using HTTP
-                const host = window.location.host; // 14.225.211.248:3001
-                const pathname = window.location.pathname; // /api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e
-                const search = window.location.search; // existing query params
+                // Connect to WebSocket server
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.host;
+                const wsUrl = \`\${protocol}//\${host}/obs-widget\`;
                 
-                // Build URL explicitly with HTTP protocol
-                let refreshUrl = 'http://' + host + pathname;
+                console.log('Connecting to WebSocket:', wsUrl);
+                socket = io(wsUrl);
                 
-                // Add existing query parameters (excluding format)
-                if (search) {
-                    const params = new URLSearchParams(search);
-                    params.delete('format'); // Remove existing format parameter
-                    const queryString = params.toString();
-                    if (queryString) {
-                        refreshUrl += '?' + queryString;
+                socket.on('connect', () => {
+                    console.log('WebSocket connected');
+                    // Join the bank total room for this streamer
+                    socket.emit('joinBankTotalRoom', { streamerId: streamerId });
+                });
+                
+                socket.on('joinedBankTotalRoom', (data) => {
+                    console.log('Joined bank total room:', data);
+                });
+                
+                socket.on('bankDonationTotalUpdate', (data) => {
+                    console.log('Received bank donation total update:', data);
+                    if (data.totalAmount !== currentAmount) {
+                        animateToNewAmount(data.totalAmount);
                     }
-                }
+                });
                 
-                // Add format=json parameter
-                refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
+                socket.on('disconnect', () => {
+                    console.log('WebSocket disconnected');
+                });
                 
-                console.log('Current URL:', window.location.href);
-                console.log('Refreshing data from:', refreshUrl);
+                socket.on('error', (error) => {
+                    console.error('WebSocket error:', error);
+                });
                 
-                const response = await fetch(refreshUrl);
-                const data = await response.json();
-                
-                if (data.success && data.data.totalAmount !== currentAmount) {
-                    animateToNewAmount(data.data.totalAmount);
-                }
             } catch (error) {
-                console.error('Failed to refresh data:', error);
-                // Fallback to page reload
-                location.reload();
+                console.error('Failed to initialize WebSocket:', error);
+                // Fallback to HTTP polling if WebSocket fails
+                startHttpPolling();
             }
-        }, 30000);
+        }
+        
+        // Fallback HTTP polling (if WebSocket fails)
+        function startHttpPolling() {
+            console.log('Starting HTTP polling fallback');
+            setInterval(async () => {
+                try {
+                    const host = window.location.host;
+                    const pathname = window.location.pathname;
+                    const search = window.location.search;
+                    
+                    let refreshUrl = 'http://' + host + pathname;
+                    
+                    if (search) {
+                        const params = new URLSearchParams(search);
+                        params.delete('format');
+                        const queryString = params.toString();
+                        if (queryString) {
+                            refreshUrl += '?' + queryString;
+                        }
+                    }
+                    
+                    refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
+                    
+                    const response = await fetch(refreshUrl);
+                    const data = await response.json();
+                    
+                    if (data.success && data.data.totalAmount !== currentAmount) {
+                        animateToNewAmount(data.data.totalAmount);
+                    }
+                } catch (error) {
+                    console.error('HTTP polling failed:', error);
+                }
+            }, 30000);
+        }
+        
+        // Initialize WebSocket when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeWebSocket();
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (socket) {
+                socket.disconnect();
+            }
+        });
     </script>
 </body>
 </html>`;
@@ -451,6 +525,16 @@ let BankDonationTotalController = class BankDonationTotalController {
 };
 exports.BankDonationTotalController = BankDonationTotalController;
 __decorate([
+    (0, common_1.Get)(':streamerId/trigger-update'),
+    (0, swagger_1.ApiOperation)({ summary: 'Trigger WebSocket update for bank donation total widget' }),
+    (0, swagger_1.ApiParam)({ name: 'streamerId', description: 'Streamer ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Update triggered successfully' }),
+    __param(0, (0, common_1.Param)('streamerId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], BankDonationTotalController.prototype, "triggerBankDonationTotalUpdate", null);
+__decorate([
     (0, common_1.Get)(':streamerId'),
     (0, swagger_1.ApiOperation)({ summary: 'Get bank donation total widget for OBS' }),
     (0, swagger_1.ApiParam)({ name: 'streamerId', description: 'Streamer ID' }),
@@ -470,6 +554,7 @@ __decorate([
 exports.BankDonationTotalController = BankDonationTotalController = __decorate([
     (0, swagger_1.ApiTags)('Bank Donation Total Widget'),
     (0, common_1.Controller)('widget-public/bank-total'),
-    __metadata("design:paramtypes", [bank_donation_total_service_1.BankDonationTotalService])
+    __metadata("design:paramtypes", [bank_donation_total_service_1.BankDonationTotalService,
+        obs_widget_gateway_1.OBSWidgetGateway])
 ], BankDonationTotalController);
 //# sourceMappingURL=bank-donation-total.controller.js.map

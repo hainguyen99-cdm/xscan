@@ -38,6 +38,20 @@ export interface OBSWidgetAlert {
   };
 }
 
+export interface BankDonationTotalUpdate {
+  type: 'bankDonationTotalUpdate';
+  streamerId: string;
+  totalAmount: number;
+  currency: string;
+  transactionCount: number;
+  lastDonationDate?: Date;
+  averageDonation?: number;
+  todayDonations?: number;
+  thisWeekDonations?: number;
+  thisMonthDonations?: number;
+  timestamp: Date;
+}
+
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -165,6 +179,54 @@ export class OBSWidgetGateway
   @SubscribeMessage('ping')
   handlePing(client: Socket) {
     client.emit('pong', { timestamp: new Date().toISOString() });
+  }
+
+  @SubscribeMessage('joinBankTotalRoom')
+  handleJoinBankTotalRoom(client: Socket, data: { streamerId: string }) {
+    const { streamerId } = data;
+    if (!streamerId) {
+      client.emit('error', { message: 'Streamer ID is required' });
+      return;
+    }
+
+    const roomName = `streamer-${streamerId}`;
+    client.join(roomName);
+    this.logger.log(`Client ${client.id} joined bank total room: ${roomName}`);
+    
+    client.emit('joinedBankTotalRoom', { streamerId, roomName });
+  }
+
+  /**
+   * Send bank donation total update to all widgets in a streamer's room
+   */
+  async sendBankDonationTotalUpdate(streamerId: string, totalData: {
+    totalAmount: number;
+    currency: string;
+    transactionCount: number;
+    lastDonationDate?: Date;
+    averageDonation?: number;
+    todayDonations?: number;
+    thisWeekDonations?: number;
+    thisMonthDonations?: number;
+  }) {
+    const update: BankDonationTotalUpdate = {
+      type: 'bankDonationTotalUpdate',
+      streamerId,
+      totalAmount: totalData.totalAmount,
+      currency: totalData.currency,
+      transactionCount: totalData.transactionCount,
+      lastDonationDate: totalData.lastDonationDate,
+      averageDonation: totalData.averageDonation,
+      todayDonations: totalData.todayDonations,
+      thisWeekDonations: totalData.thisWeekDonations,
+      thisMonthDonations: totalData.thisMonthDonations,
+      timestamp: new Date(),
+    };
+
+    this.logger.log(`Broadcasting bank donation total update for streamer ${streamerId}: ${totalData.totalAmount} ${totalData.currency}`);
+    
+    // Send to all clients in the streamer's room
+    this.server.to(`streamer-${streamerId}`).emit('bankDonationTotalUpdate', update);
   }
 
   /**
