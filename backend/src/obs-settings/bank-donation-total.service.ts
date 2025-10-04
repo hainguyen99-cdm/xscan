@@ -22,6 +22,16 @@ export class BankDonationTotalService {
     lastDonationDate?: Date;
   }> {
     try {
+      // Validate ObjectId format
+      if (!Types.ObjectId.isValid(streamerId)) {
+        this.logger.warn(`Invalid streamerId format: ${streamerId}`);
+        return {
+          totalAmount: 0,
+          currency: 'VND',
+          transactionCount: 0,
+        };
+      }
+      
       const streamerObjectId = new Types.ObjectId(streamerId);
       
       const result = await this.bankTransactionModel.aggregate([
@@ -76,6 +86,20 @@ export class BankDonationTotalService {
     thisMonthDonations: number;
   }> {
     try {
+      // Validate ObjectId format
+      if (!Types.ObjectId.isValid(streamerId)) {
+        this.logger.warn(`Invalid streamerId format: ${streamerId}`);
+        return {
+          totalAmount: 0,
+          currency: 'VND',
+          transactionCount: 0,
+          averageDonation: 0,
+          todayDonations: 0,
+          thisWeekDonations: 0,
+          thisMonthDonations: 0,
+        };
+      }
+      
       const streamerObjectId = new Types.ObjectId(streamerId);
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());

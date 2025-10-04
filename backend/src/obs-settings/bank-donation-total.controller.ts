@@ -55,18 +55,25 @@ export class BankDonationTotalController {
     } catch (error) {
       this.logger.error(`Failed to generate bank donation total widget for streamer ${streamerId}:`, error);
       
+      // Check if it's a BSON validation error
+      const isBSONError = error.message && error.message.includes('BSONError');
+      const errorMessage = isBSONError 
+        ? 'Invalid streamer ID format. Please check the streamer ID and try again.'
+        : error.message || 'Failed to generate widget';
+      
       if (format === 'json') {
-        return res.status(500).json({
+        return res.status(400).json({
           success: false,
-          error: 'Failed to generate widget',
-          message: error.message,
+          error: isBSONError ? 'Invalid Streamer ID' : 'Failed to generate widget',
+          message: errorMessage,
+          streamerId,
         });
       }
 
       // Return error HTML
-      const errorHtml = this.generateErrorHtml(streamerId, error.message);
+      const errorHtml = this.generateErrorHtml(streamerId, errorMessage);
       res.setHeader('Content-Type', 'text/html');
-      return res.status(500).send(errorHtml);
+      return res.status(400).send(errorHtml);
     }
   }
 
