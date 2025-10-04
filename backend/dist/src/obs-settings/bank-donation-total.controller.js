@@ -366,8 +366,8 @@ let BankDonationTotalController = class BankDonationTotalController {
                     const pathname = window.location.pathname;
                     const search = window.location.search;
                     
-                    // Use relative URL to inherit current protocol
-                    let refreshUrl = pathname;
+                    // Force HTTP protocol explicitly - server only supports HTTP
+                    let refreshUrl = \`http://\${host}\${pathname}\`;
                     
                     if (search) {
                         const params = new URLSearchParams(search);
