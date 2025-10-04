@@ -349,15 +349,24 @@ let BankDonationTotalController = class BankDonationTotalController {
                 const host = window.location.host;
                 const wsUrl = \`http://\${host}/obs-widget\`;
                 
+                console.log('Current page protocol:', window.location.protocol);
                 console.log('Connecting to WebSocket:', wsUrl);
+                
                 socket = io(wsUrl, {
-                    transports: ['polling', 'websocket'],
-                    upgrade: true,
-                    rememberUpgrade: false
+                    transports: ['polling'],
+                    upgrade: false,
+                    rememberUpgrade: false,
+                    forceNew: true,
+                    timeout: 5000,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000
                 });
                 
                 socket.on('connect', () => {
                     console.log('WebSocket connected');
+                    // Stop HTTP polling since WebSocket is working
+                    stopHttpPolling();
                     // Join the bank total room for this streamer
                     socket.emit('joinBankTotalRoom', { streamerId: streamerId });
                 });
@@ -379,7 +388,23 @@ let BankDonationTotalController = class BankDonationTotalController {
                 
                 socket.on('error', (error) => {
                     console.error('WebSocket error:', error);
+                    // If WebSocket fails, fallback to HTTP polling
+                    startHttpPolling();
                 });
+                
+                socket.on('connect_error', (error) => {
+                    console.error('WebSocket connection error:', error);
+                    // If connection fails, fallback to HTTP polling
+                    startHttpPolling();
+                });
+                
+                // Timeout fallback
+                setTimeout(() => {
+                    if (!socket || !socket.connected) {
+                        console.log('WebSocket connection timeout, falling back to HTTP polling');
+                        startHttpPolling();
+                    }
+                }, 10000);
                 
             } catch (error) {
                 console.error('Failed to initialize WebSocket:', error);
@@ -389,14 +414,22 @@ let BankDonationTotalController = class BankDonationTotalController {
         }
         
         // Fallback HTTP polling (if WebSocket fails)
+        let httpPollingInterval = null;
+        
         function startHttpPolling() {
+            if (httpPollingInterval) {
+                console.log('HTTP polling already active');
+                return;
+            }
+            
             console.log('Starting HTTP polling fallback');
-            setInterval(async () => {
+            httpPollingInterval = setInterval(async () => {
                 try {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
                     const search = window.location.search;
                     
+                    // Force HTTP protocol
                     let refreshUrl = 'http://' + host + pathname;
                     
                     if (search) {
@@ -410,16 +443,27 @@ let BankDonationTotalController = class BankDonationTotalController {
                     
                     refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
                     
+                    console.log('HTTP polling from:', refreshUrl);
+                    
                     const response = await fetch(refreshUrl);
                     const data = await response.json();
                     
                     if (data.success && data.data.totalAmount !== currentAmount) {
+                        console.log('Amount changed via HTTP polling:', data.data.totalAmount);
                         animateToNewAmount(data.data.totalAmount);
                     }
                 } catch (error) {
                     console.error('HTTP polling failed:', error);
                 }
             }, 30000);
+        }
+        
+        function stopHttpPolling() {
+            if (httpPollingInterval) {
+                clearInterval(httpPollingInterval);
+                httpPollingInterval = null;
+                console.log('HTTP polling stopped');
+            }
         }
         
         // Initialize WebSocket when page loads
