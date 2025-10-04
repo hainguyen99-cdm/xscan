@@ -364,10 +364,9 @@ let BankDonationTotalController = class BankDonationTotalController {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
                     const search = window.location.search;
-                    const protocol = window.location.protocol;
                     
-                    // Use current protocol to avoid browser upgrades
-                    let refreshUrl = \`\${protocol}//\${host}\${pathname}\`;
+                    // Force HTTP protocol - server only supports HTTP
+                    let refreshUrl = \`http://\${host}\${pathname}\`;
                     
                     if (search) {
                         const params = new URLSearchParams(search);
@@ -380,68 +379,30 @@ let BankDonationTotalController = class BankDonationTotalController {
                     
                     refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
                     
-                    console.log('Polling from:', refreshUrl);
+                    console.log('HTTP polling from:', refreshUrl);
                     
-                    // Use XMLHttpRequest to have more control over protocol
-                    const xhr = new XMLHttpRequest();
+                    // Use JSONP approach to bypass browser HTTPS upgrades
+                    console.log('Using JSONP method to bypass browser protocol upgrades');
                     
-                    // Try to force HTTP by using a different approach
-                    try {
-                        xhr.open('GET', refreshUrl, true);
-                        xhr.timeout = 10000; // 10 second timeout
-                        
-                        xhr.onreadystatechange = function() {
-                            if (xhr.readyState === 4) {
-                                if (xhr.status === 200) {
-                                    try {
-                                        const data = JSON.parse(xhr.responseText);
-                                        if (data.success && data.data.totalAmount !== currentAmount) {
-                                            console.log('Amount changed via HTTP polling:', data.data.totalAmount);
-                                            animateToNewAmount(data.data.totalAmount);
-                                        }
-                                    } catch (parseError) {
-                                        console.error('Failed to parse response:', parseError);
-                                    }
-                                } else {
-                                    console.error('HTTP polling failed with status:', xhr.status);
-                                }
-                            }
-                        };
-                        
-                        xhr.onerror = function() {
-                            console.error('HTTP polling network error');
-                        };
-                        
-                        xhr.ontimeout = function() {
-                            console.error('HTTP polling timeout');
-                        };
-                        
-                        xhr.send();
-                    } catch (xhrError) {
-                        console.error('XMLHttpRequest failed:', xhrError);
-                        // If XMLHttpRequest also fails, try using a script tag approach
-                        console.log('Trying alternative method with script tag');
-                        
-                        const script = document.createElement('script');
-                        script.src = refreshUrl + '&callback=handlePollingResponse';
-                        
-                        window.handlePollingResponse = function(data) {
-                            if (data.success && data.data.totalAmount !== currentAmount) {
-                                console.log('Amount changed via HTTP polling (script method):', data.data.totalAmount);
-                                animateToNewAmount(data.data.totalAmount);
-                            }
-                            document.head.removeChild(script);
-                            delete window.handlePollingResponse;
-                        };
-                        
-                        script.onerror = function() {
-                            console.error('Script method also failed');
-                            document.head.removeChild(script);
-                            delete window.handlePollingResponse;
-                        };
-                        
-                        document.head.appendChild(script);
-                    }
+                    const script = document.createElement('script');
+                    script.src = refreshUrl + '&callback=handlePollingResponse';
+                    
+                    window.handlePollingResponse = function(data) {
+                        if (data.success && data.data.totalAmount !== currentAmount) {
+                            console.log('Amount changed via HTTP polling (JSONP):', data.data.totalAmount);
+                            animateToNewAmount(data.data.totalAmount);
+                        }
+                        document.head.removeChild(script);
+                        delete window.handlePollingResponse;
+                    };
+                    
+                    script.onerror = function() {
+                        console.error('JSONP method failed - likely HTTPS upgrade issue');
+                        document.head.removeChild(script);
+                        delete window.handlePollingResponse;
+                    };
+                    
+                    document.head.appendChild(script);
                     
                 } catch (error) {
                     console.error('HTTP polling failed:', error);
