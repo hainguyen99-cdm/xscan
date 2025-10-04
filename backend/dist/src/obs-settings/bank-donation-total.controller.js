@@ -285,6 +285,7 @@ let BankDonationTotalController = class BankDonationTotalController {
         let currentAmount = ${stats.totalAmount};
         let isAnimating = false;
         let socket = null;
+        let isInitialized = false;
         const streamerId = '${streamerId}';
         
         // Running number animation function
@@ -344,6 +345,13 @@ let BankDonationTotalController = class BankDonationTotalController {
         
         // Initialize WebSocket connection
         function initializeWebSocket() {
+            // Double-check protocol to prevent HTTPS WebSocket attempts
+            if (window.location.protocol === 'https:') {
+                console.log('HTTPS detected in initializeWebSocket, falling back to HTTP polling');
+                startHttpPolling();
+                return;
+            }
+            
             try {
                 const host = window.location.host;
                 
@@ -361,6 +369,13 @@ let BankDonationTotalController = class BankDonationTotalController {
         }
         
         function connectWebSocket(wsUrl) {
+            // Final check to prevent HTTPS WebSocket attempts
+            if (window.location.protocol === 'https:') {
+                console.log('HTTPS detected in connectWebSocket, falling back to HTTP polling');
+                startHttpPolling();
+                return;
+            }
+            
             console.log('Connecting to WebSocket:', wsUrl);
             
             socket = io(wsUrl, {
@@ -472,14 +487,22 @@ let BankDonationTotalController = class BankDonationTotalController {
             }
         }
         
-        // Initialize WebSocket when page loads
+        // Initialize connection when page loads
         document.addEventListener('DOMContentLoaded', () => {
+            if (isInitialized) {
+                console.log('Already initialized, skipping');
+                return;
+            }
+            
+            isInitialized = true;
+            
             // Check if we're on HTTPS and server only supports HTTP
             if (window.location.protocol === 'https:') {
                 console.log('HTTPS page detected, skipping WebSocket due to mixed content policy');
                 console.log('Using HTTP polling only for real-time updates');
                 startHttpPolling();
             } else {
+                console.log('HTTP page detected, attempting WebSocket connection');
                 initializeWebSocket();
             }
         });
