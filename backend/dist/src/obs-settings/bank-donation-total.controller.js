@@ -286,7 +286,6 @@ let BankDonationTotalController = class BankDonationTotalController {
         </div>
     </div>
     
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         let currentAmount = ${stats.totalAmount};
         let isAnimating = false;
@@ -367,56 +366,65 @@ let BankDonationTotalController = class BankDonationTotalController {
                 return;
             }
             
-            try {
-                const host = window.location.host;
-                
-                console.log('Connecting to WebSocket for real-time bank donation updates');
-                
-                // Force HTTP protocol for WebSocket - server only supports HTTP
-                socket = io(\`http://\${host}/obs-widget\`, {
-                    transports: ['polling'],
-                    upgrade: false,
-                    rememberUpgrade: false,
-                    forceNew: true,
-                    timeout: 5000,
-                    reconnection: true,
-                    reconnectionAttempts: 5,
-                    reconnectionDelay: 1000
-                });
-                
-                socket.on('connect', () => {
-                    console.log('WebSocket connected for bank donation updates');
-                    // Join the bank total room for this streamer
-                    socket.emit('joinBankTotalRoom', { streamerId: streamerId });
-                });
-                
-                socket.on('joinedBankTotalRoom', (data) => {
-                    console.log('Joined bank total room:', data);
-                });
-                
-                socket.on('bankDonationTotalUpdate', (data) => {
-                    console.log('Received bank donation total update:', data);
-                    if (data.totalAmount !== currentAmount) {
-                        console.log('Updating total amount from', currentAmount, 'to', data.totalAmount);
-                        animateToNewAmount(data.totalAmount);
-                    }
-                });
-                
-                socket.on('disconnect', () => {
-                    console.log('WebSocket disconnected');
-                });
-                
-                socket.on('error', (error) => {
-                    console.error('WebSocket error:', error);
-                });
-                
-                socket.on('connect_error', (error) => {
-                    console.error('WebSocket connection error:', error);
-                });
-                
-            } catch (error) {
-                console.error('Failed to initialize WebSocket:', error);
-            }
+            // Only load Socket.IO if we're on HTTP
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+            script.onload = function() {
+                try {
+                    const host = window.location.host;
+                    
+                    console.log('Connecting to WebSocket for real-time bank donation updates');
+                    
+                    // Force HTTP protocol for WebSocket - server only supports HTTP
+                    socket = io(\`http://\${host}/obs-widget\`, {
+                        transports: ['polling'],
+                        upgrade: false,
+                        rememberUpgrade: false,
+                        forceNew: true,
+                        timeout: 5000,
+                        reconnection: true,
+                        reconnectionAttempts: 5,
+                        reconnectionDelay: 1000
+                    });
+                    
+                    socket.on('connect', () => {
+                        console.log('WebSocket connected for bank donation updates');
+                        // Join the bank total room for this streamer
+                        socket.emit('joinBankTotalRoom', { streamerId: streamerId });
+                    });
+                    
+                    socket.on('joinedBankTotalRoom', (data) => {
+                        console.log('Joined bank total room:', data);
+                    });
+                    
+                    socket.on('bankDonationTotalUpdate', (data) => {
+                        console.log('Received bank donation total update:', data);
+                        if (data.totalAmount !== currentAmount) {
+                            console.log('Updating total amount from', currentAmount, 'to', data.totalAmount);
+                            animateToNewAmount(data.totalAmount);
+                        }
+                    });
+                    
+                    socket.on('disconnect', () => {
+                        console.log('WebSocket disconnected');
+                    });
+                    
+                    socket.on('error', (error) => {
+                        console.error('WebSocket error:', error);
+                    });
+                    
+                    socket.on('connect_error', (error) => {
+                        console.error('WebSocket connection error:', error);
+                    });
+                    
+                } catch (error) {
+                    console.error('Failed to initialize WebSocket:', error);
+                }
+            };
+            script.onerror = function() {
+                console.error('Failed to load Socket.IO library');
+            };
+            document.head.appendChild(script);
         }
         
         // Initialize connection when page loads
