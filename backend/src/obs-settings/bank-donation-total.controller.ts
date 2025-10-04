@@ -463,7 +463,23 @@ export class BankDonationTotalController {
             
             isInitialized = true;
             
-            console.log('Initializing WebSocket for real-time bank donation updates');
+            // IMMEDIATE HTTPS CHECK - if we're on HTTPS, don't initialize WebSocket at all
+            if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
+                console.log('HTTPS detected - WebSocket disabled since server only supports HTTP');
+                console.log('Widget will show static data. For real-time updates:');
+                console.log('1. Access the widget via HTTP: http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e');
+                console.log('2. Use HTTP URL in OBS Browser Source');
+                
+                // Add visual indicator that this is static data
+                const amountElement = document.getElementById('totalAmount');
+                if (amountElement) {
+                    amountElement.style.opacity = '0.7';
+                    amountElement.title = 'Static data - server only supports HTTP';
+                }
+                return;
+            }
+            
+            console.log('HTTP page detected - initializing WebSocket for real-time bank donation updates');
             initializeWebSocket();
             
         });
