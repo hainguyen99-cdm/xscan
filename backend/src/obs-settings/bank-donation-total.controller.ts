@@ -531,27 +531,9 @@ export class BankDonationTotalController {
                 return;
             }
             
-            // Test if we can make HTTP requests by trying a simple fetch first
-            const testUrl = \`http://\${window.location.host}/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e?format=json\`;
-            console.log('Testing HTTP connectivity with:', testUrl);
-            
-            fetch(testUrl)
-                .then(response => {
-                    console.log('HTTP test successful - polling enabled');
-                    startHttpPolling();
-                })
-                .catch(error => {
-                    console.log('HTTP test failed - likely HTTPS upgrade detected');
-                    console.log('Error:', error.message);
-                    console.log('Widget will show static data. For real-time updates, use HTTP URL directly.');
-                    
-                    // Add visual indicator
-                    const amountElement = document.getElementById('totalAmount');
-                    if (amountElement) {
-                        amountElement.style.opacity = '0.7';
-                        amountElement.title = 'Static data - server only supports HTTP';
-                    }
-                });
+            // If we reach here, we're on HTTP - start polling immediately
+            console.log('HTTP page detected - starting real-time polling');
+            startHttpPolling();
             
         });
         
