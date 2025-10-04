@@ -718,6 +718,160 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
             </Card>
           )}
 
+          {/* Bank Donation Total Widget */}
+          <Card className="border-0 shadow-lg bg-white">
+            <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
+              <CardTitle className="flex items-center gap-3 text-white">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                </div>
+                Bank Donation Total Widget
+              </CardTitle>
+              <CardDescription className="text-green-100">
+                Display total bank donations in your stream
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <Label className="text-sm font-semibold text-green-800 mb-2 block">Bank Total Widget URL</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={settings?.streamerId ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/widget-public/bank-total/${settings.streamerId}` : ''}
+                    readOnly
+                    className="font-mono text-sm bg-white/70 border-green-200 focus:border-green-300"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = settings?.streamerId ? `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'}/api/widget-public/bank-total/${settings.streamerId}` : '';
+                      if (url) {
+                        navigator.clipboard.writeText(url).catch(() => {
+                          // Fallback for older browsers
+                          const textarea = document.createElement('textarea');
+                          textarea.value = url;
+                          document.body.appendChild(textarea);
+                          textarea.select();
+                          document.execCommand('copy');
+                          document.body.removeChild(textarea);
+                        });
+                      }
+                    }}
+                    className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-green-600 mt-2">
+                  Use this URL in OBS as a Browser Source to display your total bank donations
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-semibold text-green-800 mb-2 block">Theme</Label>
+                  <select
+                    className="w-full p-2 border border-green-200 rounded-lg bg-white focus:border-green-300 focus:ring-2 focus:ring-green-100 text-sm"
+                    onChange={(e) => {
+                      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                      const streamerId = settings?.streamerId;
+                      if (streamerId) {
+                        const url = `${baseUrl}/api/widget-public/bank-total/${streamerId}?theme=${e.target.value}`;
+                        navigator.clipboard.writeText(url).catch(() => {
+                          const textarea = document.createElement('textarea');
+                          textarea.value = url;
+                          document.body.appendChild(textarea);
+                          textarea.select();
+                          document.execCommand('copy');
+                          document.body.removeChild(textarea);
+                        });
+                      }
+                    }}
+                  >
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="transparent">Transparent</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold text-green-800 mb-2 block">Show Stats</Label>
+                  <select
+                    className="w-full p-2 border border-green-200 rounded-lg bg-white focus:border-green-300 focus:ring-2 focus:ring-green-100 text-sm"
+                    onChange={(e) => {
+                      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                      const streamerId = settings?.streamerId;
+                      if (streamerId) {
+                        const url = `${baseUrl}/api/widget-public/bank-total/${streamerId}?showStats=${e.target.value}`;
+                        navigator.clipboard.writeText(url).catch(() => {
+                          const textarea = document.createElement('textarea');
+                          textarea.value = url;
+                          document.body.appendChild(textarea);
+                          textarea.select();
+                          document.execCommand('copy');
+                          document.body.removeChild(textarea);
+                        });
+                      }
+                    }}
+                  >
+                    <option value="false">Basic Total</option>
+                    <option value="true">Detailed Stats</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                    const streamerId = settings?.streamerId;
+                    if (streamerId) {
+                      const url = `${baseUrl}/api/widget-public/bank-total/${streamerId}`;
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  className="flex-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview Widget
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                    const streamerId = settings?.streamerId;
+                    if (streamerId) {
+                      const url = `${baseUrl}/api/widget-public/bank-total/${streamerId}?showStats=true`;
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  className="flex-1 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                >
+                  <TestTube className="w-4 h-4 mr-2" />
+                  Preview with Stats
+                </Button>
+              </div>
+              
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+                  <span className="text-lg">💡</span>
+                  Setup Instructions
+                </h4>
+                <ul className="text-sm text-green-800 space-y-1">
+                  <li>• Copy the widget URL above</li>
+                  <li>• Add as Browser Source in OBS Studio</li>
+                  <li>• Set width to 400px, height to 200px</li>
+                  <li>• Check "Shutdown source when not visible"</li>
+                  <li>• Choose theme and stats options as needed</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Settings Behavior Configuration */}
           <Card className="border-0 shadow-lg bg-white">
             <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">

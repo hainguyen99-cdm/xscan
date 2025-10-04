@@ -772,6 +772,23 @@ export default function OBSSettingsPage() {
               <Shield className="w-4 h-4" />
               Test Connection
             </Button>
+            <Button
+              onClick={() => {
+                const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+                const streamerId = currentSettings?.streamerId;
+                if (streamerId) {
+                  const url = `${baseUrl}/api/widget-public/bank-total/${streamerId}`;
+                  window.open(url, '_blank');
+                }
+              }}
+              variant="outline"
+              className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              </svg>
+              Bank Total Widget
+            </Button>
           </div>
         </div>
 
@@ -791,11 +808,12 @@ export default function OBSSettingsPage() {
                     1
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Get Your Widget URL</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">Get Your Widget URLs</h3>
                     <ul className="text-sm text-gray-600 space-y-1">
-                      <li>• Widget URL is displayed in the configuration panel below</li>
-                      <li>• This URL is unique to your account and secure</li>
-                      <li>• Copy it to use in OBS Studio</li>
+                      <li>• Alert Widget URL is displayed in the configuration panel below</li>
+                      <li>• Bank Donation Total Widget URL is also available</li>
+                      <li>• These URLs are unique to your account and secure</li>
+                      <li>• Copy them to use in OBS Studio</li>
                     </ul>
                   </div>
                 </div>
@@ -829,6 +847,10 @@ export default function OBSSettingsPage() {
                   <li className="flex items-start gap-2">
                     <span className="text-indigo-500 mt-1">•</span>
                     <span><strong>Test the alert:</strong> Use the "Test Alert" button after setting up OBS</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-indigo-500 mt-1">•</span>
+                    <span><strong>Bank Total Widget:</strong> Use the "Bank Total Widget" button to preview your donation totals</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-indigo-500 mt-1">•</span>

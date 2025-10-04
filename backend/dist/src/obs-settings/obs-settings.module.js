@@ -12,8 +12,11 @@ const mongoose_1 = require("@nestjs/mongoose");
 const obs_settings_controller_1 = require("./obs-settings.controller");
 const widget_controller_1 = require("./widget.controller");
 const widget_public_controller_1 = require("./widget-public.controller");
+const bank_donation_total_controller_1 = require("./bank-donation-total.controller");
 const obs_settings_service_1 = require("./obs-settings.service");
+const bank_donation_total_service_1 = require("./bank-donation-total.service");
 const obs_settings_schema_1 = require("./obs-settings.schema");
+const bank_transaction_schema_1 = require("../bank-sync/schemas/bank-transaction.schema");
 const obs_widget_gateway_1 = require("./obs-widget.gateway");
 const obs_security_service_1 = require("./obs-security.service");
 const common_module_1 = require("../common/common.module");
@@ -27,6 +30,7 @@ exports.OBSSettingsModule = OBSSettingsModule = __decorate([
         imports: [
             mongoose_1.MongooseModule.forFeature([
                 { name: obs_settings_schema_1.OBSSettings.name, schema: obs_settings_schema_1.OBSSettingsSchema },
+                { name: bank_transaction_schema_1.BankTransaction.name, schema: bank_transaction_schema_1.BankTransactionSchema },
             ]),
             common_module_1.CommonModule,
             users_module_1.UsersModule,
@@ -36,14 +40,17 @@ exports.OBSSettingsModule = OBSSettingsModule = __decorate([
             obs_settings_controller_1.OBSSettingsController,
             widget_controller_1.WidgetController,
             widget_public_controller_1.WidgetPublicController,
+            bank_donation_total_controller_1.BankDonationTotalController,
         ],
         providers: [
             obs_settings_service_1.OBSSettingsService,
+            bank_donation_total_service_1.BankDonationTotalService,
             obs_widget_gateway_1.OBSWidgetGateway,
             obs_security_service_1.OBSSecurityService,
         ],
         exports: [
             obs_settings_service_1.OBSSettingsService,
+            bank_donation_total_service_1.BankDonationTotalService,
             obs_widget_gateway_1.OBSWidgetGateway,
             obs_security_service_1.OBSSecurityService,
         ],
