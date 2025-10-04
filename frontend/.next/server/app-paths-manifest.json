@@ -2,6 +2,6 @@
   "/login/page": "app/login/page.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js",
-  "/api/auth/profile/route": "app/api/auth/profile/route.js",
-  "/api/obs-settings/route": "app/api/obs-settings/route.js"
+  "/page": "app/page.js",
+  "/profile/page": "app/profile/page.js"
 }
