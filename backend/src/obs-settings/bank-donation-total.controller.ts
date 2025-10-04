@@ -408,89 +408,132 @@ export class BankDonationTotalController {
             const script = document.createElement('script');
             script.src = 'http://cdn.socket.io/4.7.2/socket.io.min.js';
             script.onload = function() {
-                // NUCLEAR OPTION: COMPLETELY OVERRIDE SOCKET.IO TO FORCE HTTP
-                if (window.io) {
-                    console.log('🔧 NUCLEAR OPTION: Completely overriding Socket.IO to force HTTP');
-                    
-                    // Store original Socket.IO
-                    const originalIO = window.io;
-                    
-                    // Create a custom Socket.IO client that ONLY uses HTTP
-                    window.io = function(url, options) {
-                        console.log('🚀 Custom Socket.IO client called with URL:', url);
+                    // NUCLEAR OPTION: COMPLETELY OVERRIDE SOCKET.IO TO FORCE HTTP
+                    if (window.io) {
+                        console.log('🔧 NUCLEAR OPTION: Completely overriding Socket.IO to force HTTP');
                         
-                        // FORCE HTTP PROTOCOL - NO EXCEPTIONS
-                        if (typeof url === 'string') {
-                            if (url.includes('https://')) {
-                                url = url.replace('https://', 'http://');
-                                console.log('🔧 FORCED HTTPS → HTTP:', url);
-                            }
-                            if (!url.startsWith('http://')) {
-                                url = 'http://' + url.replace(/^https?:\\/\\//, '');
-                                console.log('🔧 ENFORCED HTTP PROTOCOL:', url);
-                            }
-                        }
+                        // Store original Socket.IO
+                        const originalIO = window.io;
                         
-                        // FORCE HTTP OPTIONS
-                        const httpOptions = {
-                            ...options,
-                            secure: false,
-                            rejectUnauthorized: false,
-                            transports: ['polling'],
-                            upgrade: false,
-                            rememberUpgrade: false,
-                            forceNew: true,
-                            timeout: 5000,
-                            reconnection: true,
-                            reconnectionAttempts: 5,
-                            reconnectionDelay: 1000,
-                            autoConnect: true,
-                            multiplex: false,
-                            allowEIO3: true,
-                            forceBase64: false,
-                            withCredentials: false
+                        // Create a custom Socket.IO client that ONLY uses HTTP
+                        window.io = function(url, options) {
+                            console.log('🚀 Custom Socket.IO client called with URL:', url);
+                            
+                            // FORCE HTTP PROTOCOL - NO EXCEPTIONS
+                            if (typeof url === 'string') {
+                                if (url.includes('https://')) {
+                                    url = url.replace('https://', 'http://');
+                                    console.log('🔧 FORCED HTTPS → HTTP:', url);
+                                }
+                                if (!url.startsWith('http://')) {
+                                    url = 'http://' + url.replace(/^https?:\\/\\//, '');
+                                    console.log('🔧 ENFORCED HTTP PROTOCOL:', url);
+                                }
+                            }
+                            
+                            // FORCE HTTP OPTIONS
+                            const httpOptions = {
+                                ...options,
+                                secure: false,
+                                rejectUnauthorized: false,
+                                transports: ['polling'],
+                                upgrade: false,
+                                rememberUpgrade: false,
+                                forceNew: true,
+                                timeout: 5000,
+                                reconnection: true,
+                                reconnectionAttempts: 5,
+                                reconnectionDelay: 1000,
+                                autoConnect: true,
+                                multiplex: false,
+                                allowEIO3: true,
+                                forceBase64: false,
+                                withCredentials: false
+                            };
+                            
+                            console.log('🔧 Custom Socket.IO options:', httpOptions);
+                            
+                            // Create the socket with forced HTTP
+                            const socket = originalIO(url, httpOptions);
+                            
+                            // AGGRESSIVE: Override all internal URL generation methods
+                            if (socket && socket.io) {
+                                // Override Manager methods
+                                if (socket.io.manager) {
+                                    const manager = socket.io.manager;
+                                    
+                                    // Override manager's URL method
+                                    if (manager.url) {
+                                        const originalUrl = manager.url;
+                                        manager.url = function() {
+                                            const url = originalUrl.call(this);
+                                            if (typeof url === 'string' && url.includes('https://')) {
+                                                const httpUrl = url.replace('https://', 'http://');
+                                                console.log('🔧 Manager URL forced to HTTP:', httpUrl);
+                                                return httpUrl;
+                                            }
+                                            return url;
+                                        };
+                                    }
+                                    
+                                    // Override manager's URI method
+                                    if (manager.uri) {
+                                        const originalUri = manager.uri;
+                                        manager.uri = function() {
+                                            const uri = originalUri.call(this);
+                                            if (typeof uri === 'string' && uri.includes('https://')) {
+                                                const httpUri = uri.replace('https://', 'http://');
+                                                console.log('🔧 Manager URI forced to HTTP:', httpUri);
+                                                return httpUri;
+                                            }
+                                            return uri;
+                                        };
+                                    }
+                                }
+                                
+                                // Override Engine methods
+                                if (socket.io.engine) {
+                                    const engine = socket.io.engine;
+                                    
+                                    // Override engine's URL method
+                                    if (engine.url) {
+                                        const originalUrl = engine.url;
+                                        engine.url = function() {
+                                            const url = originalUrl.call(this);
+                                            if (typeof url === 'string' && url.includes('https://')) {
+                                                const httpUrl = url.replace('https://', 'http://');
+                                                console.log('🔧 Engine URL forced to HTTP:', httpUrl);
+                                                return httpUrl;
+                                            }
+                                            return url;
+                                        };
+                                    }
+                                    
+                                    // Override engine's URI method
+                                    if (engine.uri) {
+                                        const originalUri = engine.uri;
+                                        engine.uri = function() {
+                                            const uri = originalUri.call(this);
+                                            if (typeof uri === 'string' && uri.includes('https://')) {
+                                                const httpUri = uri.replace('https://', 'http://');
+                                                console.log('🔧 Engine URI forced to HTTP:', httpUri);
+                                                return httpUri;
+                                            }
+                                            return uri;
+                                        };
+                                    }
+                                }
+                            }
+                            
+                            return socket;
                         };
                         
-                        console.log('🔧 Custom Socket.IO options:', httpOptions);
+                        // Copy all static properties from original Socket.IO
+                        Object.setPrototypeOf(window.io, originalIO);
+                        Object.assign(window.io, originalIO);
                         
-                        // Create the socket with forced HTTP
-                        const socket = originalIO(url, httpOptions);
-                        
-                        // Override socket's internal methods to prevent HTTPS
-                        if (socket && socket.io) {
-                            const originalEngine = socket.io.engine;
-                            if (originalEngine) {
-                                // Override engine's URI
-                                Object.defineProperty(originalEngine, 'uri', {
-                                    get: function() {
-                                        const uri = this._uri || originalEngine.uri;
-                                        if (typeof uri === 'string' && uri.includes('https://')) {
-                                            const httpUri = uri.replace('https://', 'http://');
-                                            console.log('🔧 Engine URI forced to HTTP:', httpUri);
-                                            return httpUri;
-                                        }
-                                        return uri;
-                                    },
-                                    set: function(value) {
-                                        if (typeof value === 'string' && value.includes('https://')) {
-                                            value = value.replace('https://', 'http://');
-                                            console.log('🔧 Engine URI set to HTTP:', value);
-                                        }
-                                        this._uri = value;
-                                    }
-                                });
-                            }
-                        }
-                        
-                        return socket;
-                    };
-                    
-                    // Copy all static properties from original Socket.IO
-                    Object.setPrototypeOf(window.io, originalIO);
-                    Object.assign(window.io, originalIO);
-                    
-                    console.log('✅ Custom Socket.IO client ready - HTTP ONLY');
-                }
+                        console.log('✅ Custom Socket.IO client ready - HTTP ONLY');
+                    }
                 // OVERRIDE SOCKET.IO CLIENT INTERNALS IMMEDIATELY AFTER LOAD
                 if (window.io && window.io.Manager) {
                     // Override the Manager's url method
@@ -683,8 +726,79 @@ export class BankDonationTotalController {
                         
                         console.log('🔧 Custom client options:', httpOptions);
                         
-                        // Use the original Socket.IO with forced HTTP
-                        return originalIO(url, httpOptions);
+                        // Create socket with forced HTTP
+                        const socket = originalIO(url, httpOptions);
+                        
+                        // AGGRESSIVE: Override socket's internal methods to force HTTP
+                        if (socket && socket.io) {
+                            // Override the Manager's URL generation
+                            if (socket.io.manager) {
+                                const manager = socket.io.manager;
+                                
+                                // Override manager's URL method
+                                if (manager.url) {
+                                    const originalUrl = manager.url;
+                                    manager.url = function() {
+                                        const url = originalUrl.call(this);
+                                        if (typeof url === 'string' && url.includes('https://')) {
+                                            const httpUrl = url.replace('https://', 'http://');
+                                            console.log('🔧 Manager URL forced to HTTP:', httpUrl);
+                                            return httpUrl;
+                                        }
+                                        return url;
+                                    };
+                                }
+                                
+                                // Override manager's URI method
+                                if (manager.uri) {
+                                    const originalUri = manager.uri;
+                                    manager.uri = function() {
+                                        const uri = originalUri.call(this);
+                                        if (typeof uri === 'string' && uri.includes('https://')) {
+                                            const httpUri = uri.replace('https://', 'http://');
+                                            console.log('🔧 Manager URI forced to HTTP:', httpUri);
+                                            return httpUri;
+                                        }
+                                        return uri;
+                                    };
+                                }
+                            }
+                            
+                            // Override the Engine's URL generation
+                            if (socket.io.engine) {
+                                const engine = socket.io.engine;
+                                
+                                // Override engine's URL method
+                                if (engine.url) {
+                                    const originalUrl = engine.url;
+                                    engine.url = function() {
+                                        const url = originalUrl.call(this);
+                                        if (typeof url === 'string' && url.includes('https://')) {
+                                            const httpUrl = url.replace('https://', 'http://');
+                                            console.log('🔧 Engine URL forced to HTTP:', httpUrl);
+                                            return httpUrl;
+                                        }
+                                        return url;
+                                    };
+                                }
+                                
+                                // Override engine's URI method
+                                if (engine.uri) {
+                                    const originalUri = engine.uri;
+                                    engine.uri = function() {
+                                        const uri = originalUri.call(this);
+                                        if (typeof uri === 'string' && uri.includes('https://')) {
+                                            const httpUri = uri.replace('https://', 'http://');
+                                            console.log('🔧 Engine URI forced to HTTP:', httpUri);
+                                            return httpUri;
+                                        }
+                                        return uri;
+                                    };
+                                }
+                            }
+                        }
+                        
+                        return socket;
                     };
                     
                     // Copy all static properties
@@ -715,49 +829,25 @@ export class BankDonationTotalController {
                         withCredentials: false
                     });
                     
-                    // ADDITIONAL: Override socket's internal URL generation
+                    // SIMPLIFIED: Just log the socket info without property overrides
                     if (socket && socket.io && socket.io.engine) {
                         const engine = socket.io.engine;
-                        
-                        // Override engine's URI property
-                        Object.defineProperty(engine, 'uri', {
-                            get: function() {
-                                const uri = this._uri || engine.uri;
-                                if (typeof uri === 'string' && uri.includes('https://')) {
-                                    const httpUri = uri.replace('https://', 'http://');
-                                    console.log('🔧 Socket Engine URI forced to HTTP:', httpUri);
-                                    return httpUri;
-                                }
-                                return uri;
-                            },
-                            set: function(value) {
-                                if (typeof value === 'string' && value.includes('https://')) {
-                                    value = value.replace('https://', 'http://');
-                                    console.log('🔧 Socket Engine URI set to HTTP:', value);
-                                }
-                                this._uri = value;
-                            }
+                        console.log('🔧 Socket Engine Info:', {
+                            uri: engine.uri,
+                            url: engine.url,
+                            readyState: engine.readyState
                         });
                         
-                        // Override engine's URL property
-                        Object.defineProperty(engine, 'url', {
-                            get: function() {
-                                const url = this._url || engine.url;
-                                if (typeof url === 'string' && url.includes('https://')) {
-                                    const httpUrl = url.replace('https://', 'http://');
-                                    console.log('🔧 Socket Engine URL forced to HTTP:', httpUrl);
-                                    return httpUrl;
-                                }
-                                return url;
-                            },
-                            set: function(value) {
-                                if (typeof value === 'string' && value.includes('https://')) {
-                                    value = value.replace('https://', 'http://');
-                                    console.log('🔧 Socket Engine URL set to HTTP:', value);
-                                }
-                                this._url = value;
-                            }
-                        });
+                        // Simple property override without defineProperty
+                        if (engine.uri && typeof engine.uri === 'string' && engine.uri.includes('https://')) {
+                            engine.uri = engine.uri.replace('https://', 'http://');
+                            console.log('🔧 Socket Engine URI forced to HTTP:', engine.uri);
+                        }
+                        
+                        if (engine.url && typeof engine.url === 'string' && engine.url.includes('https://')) {
+                            engine.url = engine.url.replace('https://', 'http://');
+                            console.log('🔧 Socket Engine URL forced to HTTP:', engine.url);
+                        }
                     }
                     
                     // Restore original io function after connection attempt
