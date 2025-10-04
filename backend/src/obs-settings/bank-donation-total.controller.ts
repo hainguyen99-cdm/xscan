@@ -336,9 +336,25 @@ export class BankDonationTotalController {
         // Auto-refresh every 30 seconds with animation
         setInterval(async () => {
             try {
-                // Use the same protocol as the current page to avoid SSL errors
+                // Construct URL properly to avoid protocol issues
                 const currentUrl = window.location.href;
-                const refreshUrl = currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'format=json';
+                let refreshUrl;
+                
+                // Remove existing format parameter if present
+                if (currentUrl.includes('format=')) {
+                    refreshUrl = currentUrl.replace(/[?&]format=[^&]*/, '') + '&format=json';
+                } else {
+                    refreshUrl = currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'format=json';
+                }
+                
+                // Ensure we're using the same protocol as the current page
+                if (window.location.protocol === 'http:' && refreshUrl.startsWith('https:')) {
+                    refreshUrl = refreshUrl.replace('https:', 'http:');
+                } else if (window.location.protocol === 'https:' && refreshUrl.startsWith('http:')) {
+                    refreshUrl = refreshUrl.replace('http:', 'https:');
+                }
+                
+                console.log('Refreshing data from:', refreshUrl);
                 
                 const response = await fetch(refreshUrl);
                 const data = await response.json();
