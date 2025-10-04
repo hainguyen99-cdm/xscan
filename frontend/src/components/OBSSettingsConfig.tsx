@@ -738,7 +738,7 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
                 <Label className="text-sm font-semibold text-green-800 mb-2 block">Bank Total Widget URL</Label>
                 <div className="flex items-center gap-2">
                   <Input
-                    value={settings?.streamerId ? `${'http://14.225.211.248'}/api/widget-public/bank-total/${settings.streamerId}` : ''}
+                    value={settings?.streamerId ? `${'http://14.225.211.248:3001'}/api/widget-public/bank-total/${settings.streamerId}` : ''}
                     readOnly
                     className="font-mono text-sm bg-white/70 border-green-200 focus:border-green-300"
                   />
@@ -746,7 +746,7 @@ const OBSSettingsConfig: React.FC<OBSSettingsConfigProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const url = settings?.streamerId ? `${'http://14.225.211.248'}/api/widget-public/bank-total/${settings.streamerId}` : '';
+                      const url = settings?.streamerId ? `${'http://14.225.211.248:3001'}/api/widget-public/bank-total/${settings.streamerId}` : '';
                       if (url) {
                         navigator.clipboard.writeText(url).catch(() => {
                           // Fallback for older browsers
