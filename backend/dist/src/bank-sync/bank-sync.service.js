@@ -22,12 +22,14 @@ const mongoose_2 = require("mongoose");
 const bank_transaction_schema_1 = require("./schemas/bank-transaction.schema");
 const users_service_1 = require("../users/users.service");
 const obs_widget_gateway_1 = require("../obs-settings/obs-widget.gateway");
+const bank_donation_total_service_1 = require("../obs-settings/bank-donation-total.service");
 const config_service_1 = require("../config/config.service");
 let BankSyncService = BankSyncService_1 = class BankSyncService {
-    constructor(bankTxModel, usersService, obsWidgetGateway, configService) {
+    constructor(bankTxModel, usersService, obsWidgetGateway, bankDonationTotalService, configService) {
         this.bankTxModel = bankTxModel;
         this.usersService = usersService;
         this.obsWidgetGateway = obsWidgetGateway;
+        this.bankDonationTotalService = bankDonationTotalService;
         this.configService = configService;
         this.logger = new common_1.Logger(BankSyncService_1.name);
         this.REQUEST_TIMEOUT_MS = this.configService.bankRequestTimeoutMs;
@@ -186,6 +188,11 @@ let BankSyncService = BankSyncService_1 = class BankSyncService {
                 const next = state.queue.shift();
                 state.inQueueRefs.delete(next.reference);
                 this.obsWidgetGateway.sendDonationAlert(next.streamerId, next.donorName, next.amount, next.currency, next.message);
+                this.bankDonationTotalService.handleNewBankDonation(next.streamerId, {
+                    amount: next.amount,
+                    currency: next.currency,
+                    transactionId: next.reference,
+                });
                 await this.delay(this.DONATION_DISPLAY_MS);
             }
         }
@@ -209,9 +216,11 @@ exports.BankSyncService = BankSyncService = BankSyncService_1 = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(bank_transaction_schema_1.BankTransaction.name)),
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => users_service_1.UsersService))),
     __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => obs_widget_gateway_1.OBSWidgetGateway))),
+    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => bank_donation_total_service_1.BankDonationTotalService))),
     __metadata("design:paramtypes", [mongoose_2.Model,
         users_service_1.UsersService,
         obs_widget_gateway_1.OBSWidgetGateway,
+        bank_donation_total_service_1.BankDonationTotalService,
         config_service_1.ConfigService])
 ], BankSyncService);
 //# sourceMappingURL=bank-sync.service.js.map

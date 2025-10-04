@@ -6,6 +6,7 @@ import { Model, Types } from 'mongoose';
 import { BankTransaction, BankTransactionDocument } from './schemas/bank-transaction.schema';
 import { UsersService } from '../users/users.service';
 import { OBSWidgetGateway } from '../obs-settings/obs-widget.gateway';
+import { BankDonationTotalService } from '../obs-settings/bank-donation-total.service';
 import { ConfigService } from '../config/config.service';
 
 interface VcbTransactionItem {
@@ -37,6 +38,7 @@ export class BankSyncService {
 		@InjectModel(BankTransaction.name) private readonly bankTxModel: Model<BankTransactionDocument>,
 		@Inject(forwardRef(() => UsersService)) private readonly usersService: UsersService,
 		@Inject(forwardRef(() => OBSWidgetGateway)) private readonly obsWidgetGateway: OBSWidgetGateway,
+		@Inject(forwardRef(() => BankDonationTotalService)) private readonly bankDonationTotalService: BankDonationTotalService,
 		private readonly configService: ConfigService,
 	) {}
 
@@ -192,7 +194,17 @@ export class BankSyncService {
 			while (state.queue.length > 0) {
 				const next = state.queue.shift() as DonationAlert;
 				state.inQueueRefs.delete(next.reference);
+				
+				// Send donation alert for OBS alerts
 				this.obsWidgetGateway.sendDonationAlert(next.streamerId, next.donorName, next.amount, next.currency, next.message);
+				
+				// Update bank donation total for OBS bank total widgets
+				this.bankDonationTotalService.handleNewBankDonation(next.streamerId, {
+					amount: next.amount,
+					currency: next.currency,
+					transactionId: next.reference,
+				});
+				
 				await this.delay(this.DONATION_DISPLAY_MS);
 			}
 		} catch (err) {
