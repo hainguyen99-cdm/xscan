@@ -366,6 +366,14 @@ let BankDonationTotalController = class BankDonationTotalController {
                 return;
             }
             
+            // Also check if the current page is being accessed via HTTPS (even if we think it's HTTP)
+            // This happens when browsers upgrade HTTP to HTTPS automatically
+            if (window.location.href.startsWith('https://')) {
+                console.log('Browser upgraded to HTTPS - polling disabled to avoid mixed content errors');
+                console.log('Widget will show static data. For real-time updates, access via HTTP.');
+                return;
+            }
+            
             httpPollingInterval = setInterval(() => {
                 try {
                     const host = window.location.host;
@@ -471,6 +479,26 @@ let BankDonationTotalController = class BankDonationTotalController {
             }
             
             isInitialized = true;
+            
+            // Check if browser has upgraded HTTP to HTTPS
+            const currentUrl = window.location.href;
+            const isHttpsUpgrade = currentUrl.startsWith('https://') && 
+                                 (currentUrl.includes('14.225.211.248') || currentUrl.includes('localhost'));
+            
+            if (isHttpsUpgrade) {
+                console.log('Browser has upgraded HTTP to HTTPS - this causes mixed content errors');
+                console.log('Widget will show static data. For real-time updates:');
+                console.log('1. Access the widget directly via HTTP: http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e');
+                console.log('2. Or use the widget in OBS Browser Source with HTTP URL');
+                
+                // Add a visual indicator that this is static data
+                const amountElement = document.getElementById('totalAmount');
+                if (amountElement) {
+                    amountElement.style.opacity = '0.7';
+                    amountElement.title = 'Static data - use HTTP URL for real-time updates';
+                }
+                return;
+            }
             
             // Server only supports HTTP, so use HTTP polling for all cases
             // This avoids mixed content issues when accessed via HTTPS
