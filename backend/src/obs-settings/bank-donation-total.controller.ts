@@ -542,8 +542,24 @@ export class BankDonationTotalController {
                 return;
             }
             
-            // If we reach here, we're on HTTP - start polling immediately
-            console.log('HTTP page detected - starting real-time polling');
+            // If we reach here, we're on HTTP - but let's double-check before starting polling
+            console.log('HTTP page detected - checking if polling is safe');
+            
+            // Additional safety check: if the current URL shows HTTPS, don't start polling
+            if (window.location.href.includes('https://')) {
+                console.log('URL contains HTTPS - skipping polling to avoid SSL errors');
+                console.log('Widget will show static data. For real-time updates, use HTTP URL directly.');
+                
+                // Add visual indicator
+                const amountElement = document.getElementById('totalAmount');
+                if (amountElement) {
+                    amountElement.style.opacity = '0.7';
+                    amountElement.title = 'Static data - use HTTP URL for real-time updates';
+                }
+                return;
+            }
+            
+            console.log('Starting real-time polling');
             startHttpPolling();
             
         });
