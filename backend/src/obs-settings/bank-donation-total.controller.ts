@@ -336,7 +336,7 @@ export class BankDonationTotalController {
         // Auto-refresh every 30 seconds with animation
         setInterval(async () => {
             try {
-                // Construct URL properly to avoid protocol issues
+                // Force HTTP protocol since the server only supports HTTP
                 const currentUrl = window.location.href;
                 let refreshUrl;
                 
@@ -347,12 +347,8 @@ export class BankDonationTotalController {
                     refreshUrl = currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'format=json';
                 }
                 
-                // Ensure we're using the same protocol as the current page
-                if (window.location.protocol === 'http:' && refreshUrl.startsWith('https:')) {
-                    refreshUrl = refreshUrl.replace('https:', 'http:');
-                } else if (window.location.protocol === 'https:' && refreshUrl.startsWith('http:')) {
-                    refreshUrl = refreshUrl.replace('http:', 'https:');
-                }
+                // Force HTTP protocol to avoid SSL errors
+                refreshUrl = refreshUrl.replace('https:', 'http:');
                 
                 console.log('Refreshing data from:', refreshUrl);
                 
