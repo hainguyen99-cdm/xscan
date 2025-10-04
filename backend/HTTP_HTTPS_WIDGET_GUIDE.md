@@ -18,6 +18,9 @@ https://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3
 
 ✅ CORRECT (HTTP - will work with real-time updates):
 http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e
+
+✅ ALTERNATIVE (Static mode - no WebSocket, no SSL issues):
+http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e?static=true
 ```
 
 ### For Browser Testing
@@ -41,6 +44,13 @@ http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e
 - Live donation total updates
 - All features work correctly
 
+### HTTP Static Mode (✅ Alternative)
+- Static data only (no real-time updates)
+- No WebSocket connection attempts
+- No SSL/TLS issues
+- Perfect for OBS when WebSocket causes problems
+- Use: `?static=true` parameter
+
 ### HTTPS Access (❌ Not Recommended)
 - Static data only (no real-time updates)
 - Visual warning displayed
@@ -63,12 +73,30 @@ For production environments, you would need to:
 
 ## Troubleshooting
 
-If you're still getting SSL errors:
+### If you're still getting SSL errors:
 1. Clear browser cache
 2. Use incognito/private browsing mode
 3. Ensure you're using the exact HTTP URL
 4. Check that the server is running on port 3001
 5. Verify the streamer ID is correct
+
+### If WebSocket still tries to use HTTPS:
+1. **Use Static Mode**: Add `?static=true` to disable WebSocket completely
+   ```
+   http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e?static=true
+   ```
+
+2. **Check Browser Console**: Look for these error patterns:
+   - `net::ERR_SSL_PROTOCOL_ERROR`
+   - `GET https://14.225.211.248:3001/socket.io/`
+   - `WebSocket connection error`
+
+3. **Force HTTP Protocol**: Make sure you're accessing via HTTP, not HTTPS
+
+### Common Error Messages:
+- `net::ERR_SSL_PROTOCOL_ERROR` → Use HTTP instead of HTTPS
+- `WebSocket connection error` → Use static mode or fix protocol
+- `Content Security Policy` → Use static mode to avoid WebSocket
 
 ## Quick Test
 

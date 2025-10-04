@@ -45,12 +45,14 @@ export class BankDonationTotalController {
   @ApiQuery({ name: 'format', required: false, description: 'Response format (html, json)', enum: ['html', 'json'] })
   @ApiQuery({ name: 'theme', required: false, description: 'Widget theme', enum: ['dark', 'light', 'transparent'] })
   @ApiQuery({ name: 'showStats', required: false, description: 'Show additional statistics', type: 'boolean' })
+  @ApiQuery({ name: 'static', required: false, description: 'Force static mode (no WebSocket)', type: 'boolean' })
   @ApiResponse({ status: 200, description: 'Widget HTML or JSON data' })
   async getBankDonationTotalWidget(
     @Param('streamerId') streamerId: string,
     @Query('format') format: string = 'html',
     @Query('theme') theme: string = 'dark',
     @Query('showStats') showStats: string = 'false',
+    @Query('static') staticMode: string = 'false',
     @Req() req: Request,
     @Res() res: Response,
   ) {
@@ -83,7 +85,8 @@ export class BankDonationTotalController {
         ? await this.bankDonationTotalService.getBankDonationStats(streamerId)
         : await this.bankDonationTotalService.getTotalBankDonations(streamerId);
 
-      const html = this.generateWidgetHtml(streamerId, stats, theme, showStatsBool);
+      const isStatic = staticMode === 'true';
+      const html = this.generateWidgetHtml(streamerId, stats, theme, showStatsBool, isStatic);
       
       res.setHeader('Content-Type', 'text/html');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -121,6 +124,7 @@ export class BankDonationTotalController {
     stats: any,
     theme: string = 'dark',
     showStats: boolean = false,
+    isStatic: boolean = false,
   ): string {
     const totalAmount = this.bankDonationTotalService.formatCurrency(stats.totalAmount, stats.currency);
     const themeStyles = this.getThemeStyles(theme);
@@ -404,13 +408,66 @@ export class BankDonationTotalController {
             const script = document.createElement('script');
             script.src = 'http://cdn.socket.io/4.7.2/socket.io.min.js';
             script.onload = function() {
+                // Double-check protocol before attempting connection
+                if (window.location.protocol === 'https:') {
+                    console.error('HTTPS detected in Socket.IO loader - aborting WebSocket connection');
+                    return;
+                }
                 try {
                     const host = window.location.host;
+                    const protocol = window.location.protocol;
                     
                     console.log('Connecting to WebSocket for real-time bank donation updates');
+                    console.log('Current protocol:', protocol);
+                    console.log('Current host:', host);
+                    
+                    // AGGRESSIVE PROTOCOL VALIDATION
+                    if (protocol !== 'http:') {
+                        console.error('PROTOCOL ERROR: Only HTTP is supported, got:', protocol);
+                        return;
+                    }
                     
                     // Force HTTP protocol for WebSocket - server only supports HTTP
-                    socket = io(\`http://\${host}/obs-widget\`, {
+                    const socketUrl = \`http://\${host}/obs-widget\`;
+                    console.log('Socket URL:', socketUrl);
+                    
+                    // VALIDATE URL BEFORE CONNECTION
+                    if (socketUrl.includes('https://')) {
+                        console.error('URL VALIDATION ERROR: HTTPS detected in socket URL:', socketUrl);
+                        return;
+                    }
+                    
+                    // INTERCEPT ANY HTTPS REQUESTS
+                    const originalFetch = window.fetch;
+                    const originalXHR = window.XMLHttpRequest;
+                    
+                    // Override fetch to block HTTPS requests
+                    window.fetch = function(...args) {
+                        const url = args[0];
+                        if (typeof url === 'string' && url.includes('https://')) {
+                            console.error('BLOCKED HTTPS FETCH REQUEST:', url);
+                            return Promise.reject(new Error('HTTPS requests blocked - server only supports HTTP'));
+                        }
+                        return originalFetch.apply(this, args);
+                    };
+                    
+                    // Override XMLHttpRequest to block HTTPS requests
+                    const OriginalXHR = window.XMLHttpRequest;
+                    window.XMLHttpRequest = function() {
+                        const xhr = new OriginalXHR();
+                        const originalOpen = xhr.open;
+                        xhr.open = function(method, url, ...args) {
+                            if (typeof url === 'string' && url.includes('https://')) {
+                                console.error('BLOCKED HTTPS XHR REQUEST:', url);
+                                throw new Error('HTTPS requests blocked - server only supports HTTP');
+                            }
+                            return originalOpen.apply(this, [method, url, ...args]);
+                        };
+                        return xhr;
+                    };
+                    
+                    socket = io(socketUrl, {
+                        // CRITICAL: Only use polling transport to prevent WebSocket upgrade attempts
                         transports: ['polling'],
                         upgrade: false,
                         rememberUpgrade: false,
@@ -418,11 +475,28 @@ export class BankDonationTotalController {
                         timeout: 5000,
                         reconnection: true,
                         reconnectionAttempts: 5,
-                        reconnectionDelay: 1000
+                        reconnectionDelay: 1000,
+                        // Force HTTP protocol explicitly
+                        secure: false,
+                        rejectUnauthorized: false,
+                        // Additional options to prevent HTTPS upgrade
+                        autoConnect: true,
+                        multiplex: false,
+                        // CRITICAL: Disable all WebSocket-related features
+                        allowEIO3: true,
+                        // Force polling-only mode
+                        forceBase64: false,
+                        // Prevent any protocol upgrades
+                        withCredentials: false
                     });
                     
                     socket.on('connect', () => {
                         console.log('WebSocket connected for bank donation updates');
+                        
+                        // Restore original methods on successful connection
+                        window.fetch = originalFetch;
+                        window.XMLHttpRequest = originalXHR;
+                        
                         // Join the bank total room for this streamer
                         socket.emit('joinBankTotalRoom', { streamerId: streamerId });
                     });
@@ -449,6 +523,30 @@ export class BankDonationTotalController {
                     
                     socket.on('connect_error', (error) => {
                         console.error('WebSocket connection error:', error);
+                        
+                        // If we get SSL/TLS errors, disable WebSocket completely
+                        if (error.message && (error.message.includes('SSL') || error.message.includes('TLS') || error.message.includes('HTTPS'))) {
+                            console.error('SSL/TLS error detected - disabling WebSocket for this session');
+                            socket.disconnect();
+                            socket = null;
+                            
+                            // Restore original methods
+                            window.fetch = originalFetch;
+                            window.XMLHttpRequest = originalXHR;
+                            
+                            // Add visual indicator that WebSocket is disabled
+                            const amountElement = document.getElementById('totalAmount');
+                            if (amountElement) {
+                                amountElement.style.opacity = '0.7';
+                                amountElement.title = 'WebSocket disabled due to SSL/TLS error - using static data';
+                            }
+                            
+                            // Add a notice to the page
+                            const notice = document.createElement('div');
+                            notice.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+                            notice.textContent = 'WebSocket disabled - SSL/TLS error';
+                            document.body.appendChild(notice);
+                        }
                     });
                     
                 } catch (error) {
@@ -469,6 +567,27 @@ export class BankDonationTotalController {
             }
             
             isInitialized = true;
+            
+            // Check if static mode is enabled
+            if (${isStatic}) {
+                console.log('Static mode enabled - WebSocket disabled');
+                console.log('Widget will show static data only');
+                
+                // Add visual indicator that this is static data
+                const amountElement = document.getElementById('totalAmount');
+                if (amountElement) {
+                    amountElement.style.opacity = '0.8';
+                    amountElement.title = 'Static mode - no real-time updates';
+                }
+                
+                // Add a notice to the page
+                const notice = document.createElement('div');
+                notice.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(255, 165, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+                notice.textContent = 'Static mode - no WebSocket';
+                document.body.appendChild(notice);
+                
+                return;
+            }
             
             // IMMEDIATE HTTPS CHECK - if we're on HTTPS, don't initialize WebSocket at all
             if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
