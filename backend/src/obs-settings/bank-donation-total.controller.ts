@@ -391,9 +391,10 @@ export class BankDonationTotalController {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
                     const search = window.location.search;
+                    const protocol = window.location.protocol;
                     
-                    // Force HTTP protocol explicitly - server only supports HTTP
-                    let refreshUrl = \`http://\${host}\${pathname}\`;
+                    // Use current protocol to avoid browser upgrades
+                    let refreshUrl = \`\${protocol}//\${host}\${pathname}\`;
                     
                     if (search) {
                         const params = new URLSearchParams(search);
@@ -406,7 +407,7 @@ export class BankDonationTotalController {
                     
                     refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
                     
-                    console.log('HTTP polling from:', refreshUrl);
+                    console.log('Polling from:', refreshUrl);
                     
                     // Use XMLHttpRequest to have more control over protocol
                     const xhr = new XMLHttpRequest();
