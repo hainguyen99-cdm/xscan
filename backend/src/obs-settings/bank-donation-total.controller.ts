@@ -368,28 +368,13 @@ export class BankDonationTotalController {
         // Initialize WebSocket connection
         function initializeWebSocket() {
             try {
-                // Detect server protocol by testing HTTP first
                 const host = window.location.host;
-                const testHttpUrl = \`http://\${host}/api/widget-public/bank-total/\${streamerId}?format=json\`;
                 
                 console.log('Current page protocol:', window.location.protocol);
-                console.log('Testing server protocol with:', testHttpUrl);
+                console.log('Forcing HTTP protocol for WebSocket');
                 
-                // Test if server supports HTTP
-                fetch(testHttpUrl, { method: 'HEAD' })
-                    .then(response => {
-                        if (response.ok) {
-                            console.log('Server supports HTTP, using HTTP for WebSocket');
-                            connectWebSocket(\`http://\${host}/obs-widget\`);
-                        } else {
-                            throw new Error('HTTP not supported');
-                        }
-                    })
-                    .catch(error => {
-                        console.log('HTTP not supported, trying HTTPS for WebSocket');
-                        // If HTTP fails, try HTTPS
-                        connectWebSocket(\`https://\${host}/obs-widget\`);
-                    });
+                // Force HTTP protocol - server only supports HTTP
+                connectWebSocket(\`http://\${host}/obs-widget\`);
                 
             } catch (error) {
                 console.error('Failed to initialize WebSocket:', error);
@@ -458,28 +443,6 @@ export class BankDonationTotalController {
         
         // Fallback HTTP polling (if WebSocket fails)
         let httpPollingInterval = null;
-        let serverProtocol = 'http'; // Default to HTTP
-        
-        function detectServerProtocol() {
-            const host = window.location.host;
-            const testHttpUrl = \`http://\${host}/api/widget-public/bank-total/\${streamerId}?format=json\`;
-            
-            return fetch(testHttpUrl, { method: 'HEAD' })
-                .then(response => {
-                    if (response.ok) {
-                        serverProtocol = 'http';
-                        console.log('Server protocol detected: HTTP');
-                        return 'http';
-                    } else {
-                        throw new Error('HTTP not supported');
-                    }
-                })
-                .catch(error => {
-                    serverProtocol = 'https';
-                    console.log('Server protocol detected: HTTPS');
-                    return 'https';
-                });
-        }
         
         function startHttpPolling() {
             if (httpPollingInterval) {
@@ -489,42 +452,39 @@ export class BankDonationTotalController {
             
             console.log('Starting HTTP polling fallback');
             
-            // Detect server protocol first
-            detectServerProtocol().then(protocol => {
-                httpPollingInterval = setInterval(async () => {
-                    try {
-                        const host = window.location.host;
-                        const pathname = window.location.pathname;
-                        const search = window.location.search;
-                        
-                        // Use detected server protocol
-                        let refreshUrl = \`\${protocol}://\${host}\${pathname}\`;
-                        
-                        if (search) {
-                            const params = new URLSearchParams(search);
-                            params.delete('format');
-                            const queryString = params.toString();
-                            if (queryString) {
-                                refreshUrl += '?' + queryString;
-                            }
+            httpPollingInterval = setInterval(async () => {
+                try {
+                    const host = window.location.host;
+                    const pathname = window.location.pathname;
+                    const search = window.location.search;
+                    
+                    // Force HTTP protocol - server only supports HTTP
+                    let refreshUrl = \`http://\${host}\${pathname}\`;
+                    
+                    if (search) {
+                        const params = new URLSearchParams(search);
+                        params.delete('format');
+                        const queryString = params.toString();
+                        if (queryString) {
+                            refreshUrl += '?' + queryString;
                         }
-                        
-                        refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
-                        
-                        console.log('HTTP polling from:', refreshUrl);
-                        
-                        const response = await fetch(refreshUrl);
-                        const data = await response.json();
-                        
-                        if (data.success && data.data.totalAmount !== currentAmount) {
-                            console.log('Amount changed via HTTP polling:', data.data.totalAmount);
-                            animateToNewAmount(data.data.totalAmount);
-                        }
-                    } catch (error) {
-                        console.error('HTTP polling failed:', error);
                     }
-                }, 30000);
-            });
+                    
+                    refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
+                    
+                    console.log('HTTP polling from:', refreshUrl);
+                    
+                    const response = await fetch(refreshUrl);
+                    const data = await response.json();
+                    
+                    if (data.success && data.data.totalAmount !== currentAmount) {
+                        console.log('Amount changed via HTTP polling:', data.data.totalAmount);
+                        animateToNewAmount(data.data.totalAmount);
+                    }
+                } catch (error) {
+                    console.error('HTTP polling failed:', error);
+                }
+            }, 30000);
         }
         
         function stopHttpPolling() {
@@ -537,7 +497,14 @@ export class BankDonationTotalController {
         
         // Initialize WebSocket when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            initializeWebSocket();
+            // Check if we're on HTTPS and server only supports HTTP
+            if (window.location.protocol === 'https:') {
+                console.log('HTTPS page detected, skipping WebSocket due to mixed content policy');
+                console.log('Using HTTP polling only for real-time updates');
+                startHttpPolling();
+            } else {
+                initializeWebSocket();
+            }
         });
         
         // Cleanup on page unload
