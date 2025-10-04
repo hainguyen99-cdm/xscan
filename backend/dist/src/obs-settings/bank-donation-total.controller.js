@@ -396,7 +396,7 @@ let BankDonationTotalController = class BankDonationTotalController {
                                 console.log('🔧 FORCED HTTPS → HTTP:', url);
                             }
                             if (!url.startsWith('http://')) {
-                                url = 'http://' + url.replace(/^https?:\/\//, '');
+                                url = 'http://' + url.replace(/^https?:\\/\\//, '');
                                 console.log('🔧 ENFORCED HTTP PROTOCOL:', url);
                             }
                         }
@@ -626,7 +626,7 @@ let BankDonationTotalController = class BankDonationTotalController {
                                 console.log('🔧 Custom client forced HTTPS → HTTP:', url);
                             }
                             if (!url.startsWith('http://')) {
-                                url = 'http://' + url.replace(/^https?:\/\//, '');
+                                url = 'http://' + url.replace(/^https?:\\/\\//, '');
                                 console.log('🔧 Custom client enforced HTTP protocol:', url);
                             }
                         }
