@@ -518,24 +518,65 @@ export class BankDonationTotalController {
                     forceNew: true,
                     secure: false,
                     rejectUnauthorized: false,
-                    timeout: 5000,
+                    timeout: 10000,
                     reconnection: true,
-                    reconnectionAttempts: 5,
+                    reconnectionAttempts: 10,
                     reconnectionDelay: 1000,
+                    reconnectionDelayMax: 5000,
+                    maxReconnectionAttempts: 10,
                     autoConnect: true,
                     multiplex: false,
                     allowEIO3: true,
                     forceBase64: false,
-                    withCredentials: false
+                    withCredentials: false,
+                    // Add session cleanup
+                    cleanup: true,
+                    randomizationFactor: 0.5
                 });
                 
                 socket.on('connect', () => {
                     console.log('WebSocket connected for bank donation updates');
-                    socket.emit('joinBankTotalRoom', { streamerId });
+                    console.log('Socket ID:', socket.id);
+                    console.log('Session ID:', socket.io.sessionid);
+                    
+                    // Wait a moment before joining room to ensure connection is stable
+                    setTimeout(() => {
+                        console.log('Emitting joinBankTotalRoom for streamer:', streamerId);
+                        socket.emit('joinBankTotalRoom', { streamerId });
+                        
+                        // Set up a retry mechanism for room joining
+                        const joinRetryInterval = setInterval(() => {
+                            if (!socket.connected) {
+                                clearInterval(joinRetryInterval);
+                                return;
+                            }
+                            
+                            console.log('Retrying room join for streamer:', streamerId);
+                            socket.emit('joinBankTotalRoom', { streamerId });
+                        }, 5000);
+                        
+                        // Clear the retry interval after 30 seconds
+                        setTimeout(() => {
+                            clearInterval(joinRetryInterval);
+                        }, 30000);
+                    }, 100);
                 });
                 
                 socket.on('joinedBankTotalRoom', (data) => {
-                    console.log('Joined bank total room:', data);
+                    console.log('Joined bank total room successfully:', data);
+                });
+                
+                socket.on('connect_failed', (error) => {
+                    console.error('Socket connection failed:', error);
+                });
+                
+                socket.on('session unknown', (error) => {
+                    console.error('Socket session unknown:', error);
+                    console.log('Attempting to reconnect...');
+                    socket.disconnect();
+                    setTimeout(() => {
+                        socket.connect();
+                    }, 1000);
                 });
                 
                 socket.on('bankDonationTotalUpdate', (data) => {
