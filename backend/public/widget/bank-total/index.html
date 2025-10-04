@@ -138,6 +138,13 @@
     <div class="widget-container">
         <div class="header">
             <h1>🏦 Bank Donation Total Widget</h1>
+            <div style="background: rgba(255, 0, 0, 0.1); border: 2px solid #ff4444; border-radius: 8px; padding: 15px; margin: 20px 0; color: #ff4444;">
+                <h3 style="margin: 0 0 10px 0; color: #ff4444;">⚠️ IMPORTANT: Use HTTP, not HTTPS!</h3>
+                <p style="margin: 0; font-size: 14px;">
+                    This server only supports HTTP connections. For real-time WebSocket updates, use:<br>
+                    <strong>http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e</strong>
+                </p>
+            </div>
         </div>
 
         <div class="info-grid">
@@ -352,6 +359,12 @@
         // Initialize widget
         function initWidget() {
             log('info', 'Initializing Bank Donation Total Widget...');
+            
+            // Check protocol and warn if HTTPS
+            if (window.location.protocol === 'https:') {
+                log('warning', '⚠️ HTTPS detected! This server only supports HTTP.');
+                log('warning', 'For real-time WebSocket updates, use HTTP: http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e');
+            }
             
             const params = updateUI(extractUrlParams());
             if (params) {

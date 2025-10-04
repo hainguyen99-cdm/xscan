@@ -363,12 +363,19 @@ let BankDonationTotalController = class BankDonationTotalController {
                     amountElement.style.opacity = '0.7';
                     amountElement.title = 'Static data - server only supports HTTP';
                 }
+                
+                // Add a notice to the page
+                const notice = document.createElement('div');
+                notice.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+                notice.textContent = 'Use HTTP for real-time updates';
+                document.body.appendChild(notice);
+                
                 return;
             }
             
             // Only load Socket.IO if we're on HTTP
             const script = document.createElement('script');
-            script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+            script.src = 'http://cdn.socket.io/4.7.2/socket.io.min.js';
             script.onload = function() {
                 try {
                     const host = window.location.host;
@@ -449,6 +456,13 @@ let BankDonationTotalController = class BankDonationTotalController {
                     amountElement.style.opacity = '0.7';
                     amountElement.title = 'Static data - server only supports HTTP';
                 }
+                
+                // Add a notice to the page
+                const notice = document.createElement('div');
+                notice.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.8); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+                notice.textContent = 'Use HTTP for real-time updates';
+                document.body.appendChild(notice);
+                
                 return;
             }
             
