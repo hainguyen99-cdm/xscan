@@ -352,6 +352,20 @@ let BankDonationTotalController = class BankDonationTotalController {
         let httpPollingInterval = null;
         
         function startHttpPolling() {
+            // IMMEDIATE HTTPS CHECK - if we're on HTTPS, don't start polling at all
+            if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
+                console.log('HTTPS detected in startHttpPolling - aborting to prevent SSL errors');
+                console.log('Widget will show static data. For real-time updates, use HTTP URL directly.');
+                
+                // Add visual indicator
+                const amountElement = document.getElementById('totalAmount');
+                if (amountElement) {
+                    amountElement.style.opacity = '0.7';
+                    amountElement.title = 'Static data - server only supports HTTP';
+                }
+                return;
+            }
+            
             if (httpPollingInterval) {
                 console.log('HTTP polling already active');
                 return;
@@ -495,44 +509,39 @@ let BankDonationTotalController = class BankDonationTotalController {
             
             isInitialized = true;
             
-            // Check if browser has upgraded HTTP to HTTPS
+            // Check if browser has upgraded HTTP to HTTPS or if we're on HTTPS
             const currentUrl = window.location.href;
-            const isHttpsUpgrade = currentUrl.startsWith('https://') && 
-                                 (currentUrl.includes('14.225.211.248') || currentUrl.includes('localhost'));
+            const currentProtocol = window.location.protocol;
             
-            if (isHttpsUpgrade) {
-                console.log('Browser has upgraded HTTP to HTTPS - this causes mixed content errors');
+            console.log('Current URL:', currentUrl);
+            console.log('Current protocol:', currentProtocol);
+            
+            // If we're on HTTPS or the URL contains HTTPS, disable all polling
+            if (currentProtocol === 'https:' || currentUrl.includes('https://')) {
+                console.log('HTTPS detected - disabling all HTTP requests to avoid SSL errors');
                 console.log('Widget will show static data. For real-time updates:');
                 console.log('1. Access the widget directly via HTTP: http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e');
                 console.log('2. Or use the widget in OBS Browser Source with HTTP URL');
+                console.log('3. Server only supports HTTP - HTTPS causes SSL protocol errors');
                 
                 // Add a visual indicator that this is static data
                 const amountElement = document.getElementById('totalAmount');
                 if (amountElement) {
                     amountElement.style.opacity = '0.7';
-                    amountElement.title = 'Static data - use HTTP URL for real-time updates';
+                    amountElement.title = 'Static data - server only supports HTTP';
                 }
-                return;
-            }
-            
-            // If we reach here, we're on HTTP - but let's double-check before starting polling
-            console.log('HTTP page detected - checking if polling is safe');
-            
-            // Additional safety check: if the current URL shows HTTPS, don't start polling
-            if (window.location.href.includes('https://')) {
-                console.log('URL contains HTTPS - skipping polling to avoid SSL errors');
-                console.log('Widget will show static data. For real-time updates, use HTTP URL directly.');
                 
-                // Add visual indicator
-                const amountElement = document.getElementById('totalAmount');
-                if (amountElement) {
-                    amountElement.style.opacity = '0.7';
-                    amountElement.title = 'Static data - use HTTP URL for real-time updates';
-                }
+                // Add a warning message to the page
+                const warningDiv = document.createElement('div');
+                warningDiv.style.cssText = 'position: fixed; top: 10px; right: 10px; background: rgba(255,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999; max-width: 300px;';
+                warningDiv.innerHTML = '⚠️ Static data only<br>Use HTTP URL for real-time updates';
+                document.body.appendChild(warningDiv);
+                
                 return;
             }
             
-            console.log('Starting real-time polling');
+            // Only start polling if we're definitely on HTTP
+            console.log('HTTP page confirmed - starting real-time polling');
             startHttpPolling();
             
         });
