@@ -209,6 +209,16 @@ let BankDonationTotalService = BankDonationTotalService_1 = class BankDonationTo
             this.logger.error(`Failed to broadcast bank donation total update for streamer ${streamerId}:`, error);
         }
     }
+    async handleNewBankDonation(streamerId, donationData) {
+        try {
+            this.logger.log(`New bank donation received for streamer ${streamerId}: ${donationData.amount} ${donationData.currency}`);
+            await this.broadcastBankDonationTotalUpdate(streamerId);
+            this.logger.log(`Bank donation update broadcasted for streamer ${streamerId}`);
+        }
+        catch (error) {
+            this.logger.error(`Failed to handle new bank donation for streamer ${streamerId}:`, error);
+        }
+    }
 };
 exports.BankDonationTotalService = BankDonationTotalService;
 exports.BankDonationTotalService = BankDonationTotalService = BankDonationTotalService_1 = __decorate([

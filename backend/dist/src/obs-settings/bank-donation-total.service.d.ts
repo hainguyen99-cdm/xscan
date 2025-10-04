@@ -24,4 +24,9 @@ export declare class BankDonationTotalService {
     }>;
     formatCurrency(amount: number, currency?: string): string;
     broadcastBankDonationTotalUpdate(streamerId: string): Promise<void>;
+    handleNewBankDonation(streamerId: string, donationData: {
+        amount: number;
+        currency: string;
+        transactionId: string;
+    }): Promise<void>;
 }

@@ -242,4 +242,24 @@ export class BankDonationTotalService {
       this.logger.error(`Failed to broadcast bank donation total update for streamer ${streamerId}:`, error);
     }
   }
+
+  /**
+   * Handle new bank donation and broadcast update
+   */
+  async handleNewBankDonation(streamerId: string, donationData: {
+    amount: number;
+    currency: string;
+    transactionId: string;
+  }): Promise<void> {
+    try {
+      this.logger.log(`New bank donation received for streamer ${streamerId}: ${donationData.amount} ${donationData.currency}`);
+      
+      // Broadcast the update to all connected clients
+      await this.broadcastBankDonationTotalUpdate(streamerId);
+      
+      this.logger.log(`Bank donation update broadcasted for streamer ${streamerId}`);
+    } catch (error) {
+      this.logger.error(`Failed to handle new bank donation for streamer ${streamerId}:`, error);
+    }
+  }
 }

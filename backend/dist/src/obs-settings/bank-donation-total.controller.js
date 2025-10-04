@@ -286,10 +286,12 @@ let BankDonationTotalController = class BankDonationTotalController {
         </div>
     </div>
     
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         let currentAmount = ${stats.totalAmount};
         let isAnimating = false;
         let isInitialized = false;
+        let socket = null;
         const streamerId = '${streamerId}';
         
         // Running number animation function
@@ -347,95 +349,57 @@ let BankDonationTotalController = class BankDonationTotalController {
             }).format(amount);
         }
         
-        
-        // Fallback HTTP polling (if WebSocket fails)
-        let httpPollingInterval = null;
-        
-        function startHttpPolling() {
-            // IMMEDIATE HTTPS CHECK - if we're on HTTPS, don't start polling at all
-            if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
-                console.log('HTTPS detected in startHttpPolling - aborting to prevent SSL errors');
-                console.log('Widget will show static data. For real-time updates, use HTTP URL directly.');
+        // Initialize WebSocket connection
+        function initializeWebSocket() {
+            try {
+                const host = window.location.host;
                 
-                // Add visual indicator
-                const amountElement = document.getElementById('totalAmount');
-                if (amountElement) {
-                    amountElement.style.opacity = '0.7';
-                    amountElement.title = 'Static data - server only supports HTTP';
-                }
-                return;
-            }
-            
-            if (httpPollingInterval) {
-                console.log('HTTP polling already active');
-                return;
-            }
-            
-            console.log('Starting HTTP polling');
-            
-            httpPollingInterval = setInterval(() => {
-                // Double-check for HTTPS before each polling attempt
-                if (window.location.protocol === 'https:' || window.location.href.includes('https://')) {
-                    console.log('HTTPS detected during polling - stopping to avoid SSL errors');
-                    stopHttpPolling();
-                    return;
-                }
+                console.log('Connecting to WebSocket for real-time bank donation updates');
                 
-                try {
-                    const host = window.location.host;
-                    const pathname = window.location.pathname;
-                    const search = window.location.search;
-                    
-                    // Force HTTP protocol - server only supports HTTP
-                    let refreshUrl = \`http://\${host}\${pathname}\`;
-                    
-                    if (search) {
-                        const params = new URLSearchParams(search);
-                        params.delete('format');
-                        const queryString = params.toString();
-                        if (queryString) {
-                            refreshUrl += '?' + queryString;
-                        }
+                // Force HTTP protocol for WebSocket - server only supports HTTP
+                socket = io(\`http://\${host}/obs-widget\`, {
+                    transports: ['polling'],
+                    upgrade: false,
+                    rememberUpgrade: false,
+                    forceNew: true,
+                    timeout: 5000,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000
+                });
+                
+                socket.on('connect', () => {
+                    console.log('WebSocket connected for bank donation updates');
+                    // Join the bank total room for this streamer
+                    socket.emit('joinBankTotalRoom', { streamerId: streamerId });
+                });
+                
+                socket.on('joinedBankTotalRoom', (data) => {
+                    console.log('Joined bank total room:', data);
+                });
+                
+                socket.on('bankDonationTotalUpdate', (data) => {
+                    console.log('Received bank donation total update:', data);
+                    if (data.totalAmount !== currentAmount) {
+                        console.log('Updating total amount from', currentAmount, 'to', data.totalAmount);
+                        animateToNewAmount(data.totalAmount);
                     }
-                    
-                    refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
-                    
-                    console.log('HTTP polling from:', refreshUrl);
-                    
-                    // Use JSONP approach to bypass browser HTTPS upgrades
-                    console.log('Using JSONP method to bypass browser protocol upgrades');
-                    
-                    const script = document.createElement('script');
-                    script.src = refreshUrl + '&callback=handlePollingResponse';
-                    
-                    window.handlePollingResponse = function(data) {
-                        if (data.success && data.data.totalAmount !== currentAmount) {
-                            console.log('Amount changed via HTTP polling (JSONP):', data.data.totalAmount);
-                            animateToNewAmount(data.data.totalAmount);
-                        }
-                        document.head.removeChild(script);
-                        delete window.handlePollingResponse;
-                    };
-                    
-                    script.onerror = function() {
-                        console.error('JSONP method failed - likely HTTPS upgrade issue');
-                        document.head.removeChild(script);
-                        delete window.handlePollingResponse;
-                    };
-                    
-                    document.head.appendChild(script);
-                    
-                } catch (error) {
-                    console.error('HTTP polling failed:', error);
-                }
-        }, 30000);
-        }
-        
-        function stopHttpPolling() {
-            if (httpPollingInterval) {
-                clearInterval(httpPollingInterval);
-                httpPollingInterval = null;
-                console.log('HTTP polling stopped');
+                });
+                
+                socket.on('disconnect', () => {
+                    console.log('WebSocket disconnected');
+                });
+                
+                socket.on('error', (error) => {
+                    console.error('WebSocket error:', error);
+                });
+                
+                socket.on('connect_error', (error) => {
+                    console.error('WebSocket connection error:', error);
+                });
+                
+            } catch (error) {
+                console.error('Failed to initialize WebSocket:', error);
             }
         }
         
@@ -448,31 +412,16 @@ let BankDonationTotalController = class BankDonationTotalController {
             
             isInitialized = true;
             
-            // Check if we're on HTTPS - if so, disable polling since server only supports HTTP
-            if (window.location.protocol === 'https:') {
-                console.log('HTTPS page detected - server only supports HTTP');
-                console.log('Widget will show static data. For real-time updates:');
-                console.log('1. Access the widget via HTTP: http://14.225.211.248:3001/api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e');
-                console.log('2. Use HTTP URL in OBS Browser Source');
-                
-                // Add visual indicator that this is static data
-                const amountElement = document.getElementById('totalAmount');
-                if (amountElement) {
-                    amountElement.style.opacity = '0.7';
-                    amountElement.title = 'Static data - server only supports HTTP';
-                }
-                
-                return;
-            }
-            
-            console.log('HTTP page detected - starting real-time polling');
-            startHttpPolling();
+            console.log('Initializing WebSocket for real-time bank donation updates');
+            initializeWebSocket();
             
         });
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
-            stopHttpPolling();
+            if (socket) {
+                socket.disconnect();
+            }
         });
     </script>
 </body>
