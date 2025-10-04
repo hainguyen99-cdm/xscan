@@ -406,6 +406,13 @@ export class BankDonationTotalController {
             console.log('Current protocol:', window.location.protocol);
             
             httpPollingInterval = setInterval(() => {
+                // Double-check for HTTPS before each polling attempt
+                if (window.location.protocol === 'https:' || window.location.href.startsWith('https://')) {
+                    console.log('HTTPS detected during polling - stopping to avoid SSL errors');
+                    stopHttpPolling();
+                    return;
+                }
+                
                 try {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
@@ -453,12 +460,16 @@ export class BankDonationTotalController {
                             }
                         };
                         
-                        xhr.onerror = function() {
-                            console.error('HTTP polling network error');
-                        };
+                    xhr.onerror = function() {
+                        console.error('HTTP polling network error - likely SSL/HTTPS issue');
+                        console.log('Stopping polling to avoid SSL errors');
+                        stopHttpPolling();
+                    };
                         
                         xhr.ontimeout = function() {
-                            console.error('HTTP polling timeout');
+                            console.error('HTTP polling timeout - likely SSL/HTTPS issue');
+                            console.log('Stopping polling to avoid SSL errors');
+                            stopHttpPolling();
                         };
                         
                         xhr.send();
