@@ -408,6 +408,150 @@ export class BankDonationTotalController {
             const script = document.createElement('script');
             script.src = 'http://cdn.socket.io/4.7.2/socket.io.min.js';
             script.onload = function() {
+                // NUCLEAR OPTION: COMPLETELY OVERRIDE SOCKET.IO TO FORCE HTTP
+                if (window.io) {
+                    console.log('🔧 NUCLEAR OPTION: Completely overriding Socket.IO to force HTTP');
+                    
+                    // Store original Socket.IO
+                    const originalIO = window.io;
+                    
+                    // Create a custom Socket.IO client that ONLY uses HTTP
+                    window.io = function(url, options) {
+                        console.log('🚀 Custom Socket.IO client called with URL:', url);
+                        
+                        // FORCE HTTP PROTOCOL - NO EXCEPTIONS
+                        if (typeof url === 'string') {
+                            if (url.includes('https://')) {
+                                url = url.replace('https://', 'http://');
+                                console.log('🔧 FORCED HTTPS → HTTP:', url);
+                            }
+                            if (!url.startsWith('http://')) {
+                                url = 'http://' + url.replace(/^https?:\/\//, '');
+                                console.log('🔧 ENFORCED HTTP PROTOCOL:', url);
+                            }
+                        }
+                        
+                        // FORCE HTTP OPTIONS
+                        const httpOptions = {
+                            ...options,
+                            secure: false,
+                            rejectUnauthorized: false,
+                            transports: ['polling'],
+                            upgrade: false,
+                            rememberUpgrade: false,
+                            forceNew: true,
+                            timeout: 5000,
+                            reconnection: true,
+                            reconnectionAttempts: 5,
+                            reconnectionDelay: 1000,
+                            autoConnect: true,
+                            multiplex: false,
+                            allowEIO3: true,
+                            forceBase64: false,
+                            withCredentials: false
+                        };
+                        
+                        console.log('🔧 Custom Socket.IO options:', httpOptions);
+                        
+                        // Create the socket with forced HTTP
+                        const socket = originalIO(url, httpOptions);
+                        
+                        // Override socket's internal methods to prevent HTTPS
+                        if (socket && socket.io) {
+                            const originalEngine = socket.io.engine;
+                            if (originalEngine) {
+                                // Override engine's URI
+                                Object.defineProperty(originalEngine, 'uri', {
+                                    get: function() {
+                                        const uri = this._uri || originalEngine.uri;
+                                        if (typeof uri === 'string' && uri.includes('https://')) {
+                                            const httpUri = uri.replace('https://', 'http://');
+                                            console.log('🔧 Engine URI forced to HTTP:', httpUri);
+                                            return httpUri;
+                                        }
+                                        return uri;
+                                    },
+                                    set: function(value) {
+                                        if (typeof value === 'string' && value.includes('https://')) {
+                                            value = value.replace('https://', 'http://');
+                                            console.log('🔧 Engine URI set to HTTP:', value);
+                                        }
+                                        this._uri = value;
+                                    }
+                                });
+                            }
+                        }
+                        
+                        return socket;
+                    };
+                    
+                    // Copy all static properties from original Socket.IO
+                    Object.setPrototypeOf(window.io, originalIO);
+                    Object.assign(window.io, originalIO);
+                    
+                    console.log('✅ Custom Socket.IO client ready - HTTP ONLY');
+                }
+                // OVERRIDE SOCKET.IO CLIENT INTERNALS IMMEDIATELY AFTER LOAD
+                if (window.io && window.io.Manager) {
+                    // Override the Manager's url method
+                    const originalManager = window.io.Manager;
+                    const originalManagerProto = originalManager.prototype;
+                    
+                    if (originalManagerProto && originalManagerProto.url) {
+                        const originalUrl = originalManagerProto.url;
+                        originalManagerProto.url = function() {
+                            const url = originalUrl.call(this);
+                            console.log('Manager.url() returned:', url);
+                            
+                            if (typeof url === 'string' && url.includes('https://')) {
+                                const httpUrl = url.replace('https://', 'http://');
+                                console.log('Manager.url() forced to HTTP:', httpUrl);
+                                return httpUrl;
+                            }
+                            
+                            return url;
+                        };
+                    }
+                    
+                    // Override the Manager's uri method
+                    if (originalManagerProto && originalManagerProto.uri) {
+                        const originalUri = originalManagerProto.uri;
+                        originalManagerProto.uri = function() {
+                            const uri = originalUri.call(this);
+                            console.log('Manager.uri() returned:', uri);
+                            
+                            if (typeof uri === 'string' && uri.includes('https://')) {
+                                const httpUri = uri.replace('https://', 'http://');
+                                console.log('Manager.uri() forced to HTTP:', httpUri);
+                                return httpUri;
+                            }
+                            
+                            return uri;
+                        };
+                    }
+                    
+                    // Override the Manager's engine property
+                    if (originalManagerProto && originalManagerProto.engine) {
+                        const originalEngine = originalManagerProto.engine;
+                        Object.defineProperty(originalManagerProto, 'engine', {
+                            get: function() {
+                                const engine = originalEngine;
+                                if (engine && engine.uri && typeof engine.uri === 'string' && engine.uri.includes('https://')) {
+                                    engine.uri = engine.uri.replace('https://', 'http://');
+                                    console.log('Engine URI forced to HTTP:', engine.uri);
+                                }
+                                return engine;
+                            },
+                            set: function(value) {
+                                if (value && value.uri && typeof value.uri === 'string' && value.uri.includes('https://')) {
+                                    value.uri = value.uri.replace('https://', 'http://');
+                                    console.log('Engine URI set to HTTP:', value.uri);
+                                }
+                                originalEngine = value;
+                            }
+                        });
+                    }
+                }
                 // Double-check protocol before attempting connection
                 if (window.location.protocol === 'https:') {
                     console.error('HTTPS detected in Socket.IO loader - aborting WebSocket connection');
@@ -431,42 +575,123 @@ export class BankDonationTotalController {
                     const socketUrl = \`http://\${host}/obs-widget\`;
                     console.log('Socket URL:', socketUrl);
                     
+                    // ADDITIONAL: Force HTTP in the host variable itself
+                    const httpHost = host.replace('https://', 'http://');
+                    const httpSocketUrl = \`http://\${httpHost}/obs-widget\`;
+                    console.log('HTTP Socket URL:', httpSocketUrl);
+                    
                     // VALIDATE URL BEFORE CONNECTION
                     if (socketUrl.includes('https://')) {
                         console.error('URL VALIDATION ERROR: HTTPS detected in socket URL:', socketUrl);
                         return;
                     }
                     
-                    // INTERCEPT ANY HTTPS REQUESTS
+                    // INTERCEPT AND REDIRECT ANY HTTPS REQUESTS TO HTTP
                     const originalFetch = window.fetch;
                     const originalXHR = window.XMLHttpRequest;
                     
-                    // Override fetch to block HTTPS requests
+                    // Override fetch to redirect HTTPS to HTTP
                     window.fetch = function(...args) {
-                        const url = args[0];
+                        let url = args[0];
                         if (typeof url === 'string' && url.includes('https://')) {
-                            console.error('BLOCKED HTTPS FETCH REQUEST:', url);
-                            return Promise.reject(new Error('HTTPS requests blocked - server only supports HTTP'));
+                            console.log('REDIRECTING HTTPS FETCH REQUEST:', url);
+                            url = url.replace('https://', 'http://');
+                            console.log('REDIRECTED TO HTTP:', url);
+                            args[0] = url;
                         }
                         return originalFetch.apply(this, args);
                     };
                     
-                    // Override XMLHttpRequest to block HTTPS requests
+                    // Override XMLHttpRequest to redirect HTTPS to HTTP
                     const OriginalXHR = window.XMLHttpRequest;
                     window.XMLHttpRequest = function() {
                         const xhr = new OriginalXHR();
                         const originalOpen = xhr.open;
                         xhr.open = function(method, url, ...args) {
                             if (typeof url === 'string' && url.includes('https://')) {
-                                console.error('BLOCKED HTTPS XHR REQUEST:', url);
-                                throw new Error('HTTPS requests blocked - server only supports HTTP');
+                                console.log('REDIRECTING HTTPS XHR REQUEST:', url);
+                                url = url.replace('https://', 'http://');
+                                console.log('REDIRECTED TO HTTP:', url);
                             }
                             return originalOpen.apply(this, [method, url, ...args]);
                         };
                         return xhr;
                     };
                     
-                    socket = io(socketUrl, {
+                    // OVERRIDE SOCKET.IO INTERNAL URL GENERATION
+                    const originalIO = window.io;
+                    window.io = function(url, options) {
+                        console.log('Socket.IO called with URL:', url);
+                        
+                        // Force HTTP protocol in the URL
+                        if (typeof url === 'string' && url.includes('https://')) {
+                            url = url.replace('https://', 'http://');
+                            console.log('Socket.IO URL forced to HTTP:', url);
+                        }
+                        
+                        // Force HTTP in options
+                        if (options) {
+                            options.secure = false;
+                            options.rejectUnauthorized = false;
+                        }
+                        
+                        return originalIO.call(this, url, options);
+                    };
+                    
+                    // NUCLEAR OPTION: Use custom Socket.IO client with forced HTTP
+                    console.log('🚀 Creating Socket.IO connection with NUCLEAR HTTP enforcement');
+                    
+                    // FINAL SAFETY CHECK: Ensure URL is HTTP
+                    const finalSocketUrl = httpSocketUrl.replace('https://', 'http://');
+                    console.log('🔧 Final Socket URL (HTTP enforced):', finalSocketUrl);
+                    
+                    // NUCLEAR OPTION: Create a completely custom HTTP-only Socket.IO client
+                    const customIO = function(url, options) {
+                        console.log('🚀 Custom HTTP-only Socket.IO client called');
+                        
+                        // FORCE HTTP PROTOCOL - NO EXCEPTIONS
+                        if (typeof url === 'string') {
+                            if (url.includes('https://')) {
+                                url = url.replace('https://', 'http://');
+                                console.log('🔧 Custom client forced HTTPS → HTTP:', url);
+                            }
+                            if (!url.startsWith('http://')) {
+                                url = 'http://' + url.replace(/^https?:\/\//, '');
+                                console.log('🔧 Custom client enforced HTTP protocol:', url);
+                            }
+                        }
+                        
+                        // FORCE HTTP OPTIONS
+                        const httpOptions = {
+                            ...options,
+                            secure: false,
+                            rejectUnauthorized: false,
+                            transports: ['polling'],
+                            upgrade: false,
+                            rememberUpgrade: false,
+                            forceNew: true,
+                            timeout: 5000,
+                            reconnection: true,
+                            reconnectionAttempts: 5,
+                            reconnectionDelay: 1000,
+                            autoConnect: true,
+                            multiplex: false,
+                            allowEIO3: true,
+                            forceBase64: false,
+                            withCredentials: false
+                        };
+                        
+                        console.log('🔧 Custom client options:', httpOptions);
+                        
+                        // Use the original Socket.IO with forced HTTP
+                        return originalIO(url, httpOptions);
+                    };
+                    
+                    // Copy all static properties
+                    Object.setPrototypeOf(customIO, originalIO);
+                    Object.assign(customIO, originalIO);
+                    
+                    socket = customIO(finalSocketUrl, {
                         // CRITICAL: Only use polling transport to prevent WebSocket upgrade attempts
                         transports: ['polling'],
                         upgrade: false,
@@ -489,6 +714,216 @@ export class BankDonationTotalController {
                         // Prevent any protocol upgrades
                         withCredentials: false
                     });
+                    
+                    // ADDITIONAL: Override socket's internal URL generation
+                    if (socket && socket.io && socket.io.engine) {
+                        const engine = socket.io.engine;
+                        
+                        // Override engine's URI property
+                        Object.defineProperty(engine, 'uri', {
+                            get: function() {
+                                const uri = this._uri || engine.uri;
+                                if (typeof uri === 'string' && uri.includes('https://')) {
+                                    const httpUri = uri.replace('https://', 'http://');
+                                    console.log('🔧 Socket Engine URI forced to HTTP:', httpUri);
+                                    return httpUri;
+                                }
+                                return uri;
+                            },
+                            set: function(value) {
+                                if (typeof value === 'string' && value.includes('https://')) {
+                                    value = value.replace('https://', 'http://');
+                                    console.log('🔧 Socket Engine URI set to HTTP:', value);
+                                }
+                                this._uri = value;
+                            }
+                        });
+                        
+                        // Override engine's URL property
+                        Object.defineProperty(engine, 'url', {
+                            get: function() {
+                                const url = this._url || engine.url;
+                                if (typeof url === 'string' && url.includes('https://')) {
+                                    const httpUrl = url.replace('https://', 'http://');
+                                    console.log('🔧 Socket Engine URL forced to HTTP:', httpUrl);
+                                    return httpUrl;
+                                }
+                                return url;
+                            },
+                            set: function(value) {
+                                if (typeof value === 'string' && value.includes('https://')) {
+                                    value = value.replace('https://', 'http://');
+                                    console.log('🔧 Socket Engine URL set to HTTP:', value);
+                                }
+                                this._url = value;
+                            }
+                        });
+                    }
+                    
+                    // Restore original io function after connection attempt
+                    setTimeout(() => {
+                        window.io = originalIO;
+                    }, 1000);
+                    
+                    // OVERRIDE ENGINE.IO CLIENT URL GENERATION (MORE AGGRESSIVE)
+                    if (window.io && window.io.Manager) {
+                        const originalManager = window.io.Manager;
+                        window.io.Manager = function(uri, opts) {
+                            console.log('Engine.IO Manager called with URI:', uri);
+                            
+                            // Force HTTP protocol
+                            if (typeof uri === 'string' && uri.includes('https://')) {
+                                uri = uri.replace('https://', 'http://');
+                                console.log('Engine.IO Manager URI forced to HTTP:', uri);
+                            }
+                            
+                            // Force HTTP options
+                            if (opts) {
+                                opts.secure = false;
+                                opts.rejectUnauthorized = false;
+                            }
+                            
+                            return new originalManager(uri, opts);
+                        };
+                        
+                        // Copy static properties
+                        Object.setPrototypeOf(window.io.Manager, originalManager);
+                        Object.assign(window.io.Manager, originalManager);
+                    }
+                    
+                    // OVERRIDE SOCKET.IO CLIENT'S INTERNAL URL PARSING
+                    if (window.io && window.io.Manager && window.io.Manager.prototype) {
+                        const managerProto = window.io.Manager.prototype;
+                        
+                        // Override the _parse method if it exists
+                        if (managerProto._parse) {
+                            const originalParse = managerProto._parse;
+                            managerProto._parse = function(uri) {
+                                console.log('Manager._parse called with URI:', uri);
+                                
+                                if (typeof uri === 'string' && uri.includes('https://')) {
+                                    uri = uri.replace('https://', 'http://');
+                                    console.log('Manager._parse URI forced to HTTP:', uri);
+                                }
+                                
+                                return originalParse.call(this, uri);
+                            };
+                        }
+                        
+                        // Override the _onopen method if it exists
+                        if (managerProto._onopen) {
+                            const originalOnopen = managerProto._onopen;
+                            managerProto._onopen = function() {
+                                console.log('Manager._onopen called');
+                                
+                                // Force HTTP in the transport
+                                if (this.engine && this.engine.uri) {
+                                    const uri = this.engine.uri;
+                                    if (typeof uri === 'string' && uri.includes('https://')) {
+                                        this.engine.uri = uri.replace('https://', 'http://');
+                                        console.log('Engine URI forced to HTTP:', this.engine.uri);
+                                    }
+                                }
+                                
+                                return originalOnopen.call(this);
+                            };
+                        }
+                        
+                        // Override the _onconnect method if it exists
+                        if (managerProto._onconnect) {
+                            const originalOnconnect = managerProto._onconnect;
+                            managerProto._onconnect = function() {
+                                console.log('Manager._onconnect called');
+                                
+                                // Force HTTP in the transport
+                                if (this.engine && this.engine.uri) {
+                                    const uri = this.engine.uri;
+                                    if (typeof uri === 'string' && uri.includes('https://')) {
+                                        this.engine.uri = uri.replace('https://', 'http://');
+                                        console.log('Engine URI forced to HTTP in _onconnect:', this.engine.uri);
+                                    }
+                                }
+                                
+                                return originalOnconnect.call(this);
+                            };
+                        }
+                        
+                        // Override the _onreconnect method if it exists
+                        if (managerProto._onreconnect) {
+                            const originalOnreconnect = managerProto._onreconnect;
+                            managerProto._onreconnect = function() {
+                                console.log('Manager._onreconnect called');
+                                
+                                // Force HTTP in the transport
+                                if (this.engine && this.engine.uri) {
+                                    const uri = this.engine.uri;
+                                    if (typeof uri === 'string' && uri.includes('https://')) {
+                                        this.engine.uri = uri.replace('https://', 'http://');
+                                        console.log('Engine URI forced to HTTP in _onreconnect:', this.engine.uri);
+                                    }
+                                }
+                                
+                                return originalOnreconnect.call(this);
+                            };
+                        }
+                        
+                        // Override the _onreconnect_attempt method if it exists
+                        if (managerProto._onreconnect_attempt) {
+                            const originalOnreconnectAttempt = managerProto._onreconnect_attempt;
+                            managerProto._onreconnect_attempt = function() {
+                                console.log('Manager._onreconnect_attempt called');
+                                
+                                // Force HTTP in the transport
+                                if (this.engine && this.engine.uri) {
+                                    const uri = this.engine.uri;
+                                    if (typeof uri === 'string' && uri.includes('https://')) {
+                                        this.engine.uri = uri.replace('https://', 'http://');
+                                        console.log('Engine URI forced to HTTP in _onreconnect_attempt:', this.engine.uri);
+                                    }
+                                }
+                                
+                                return originalOnreconnectAttempt.call(this);
+                            };
+                        }
+                        
+                        // Override the _onreconnect_error method if it exists
+                        if (managerProto._onreconnect_error) {
+                            const originalOnreconnectError = managerProto._onreconnect_error;
+                            managerProto._onreconnect_error = function() {
+                                console.log('Manager._onreconnect_error called');
+                                
+                                // Force HTTP in the transport
+                                if (this.engine && this.engine.uri) {
+                                    const uri = this.engine.uri;
+                                    if (typeof uri === 'string' && uri.includes('https://')) {
+                                        this.engine.uri = uri.replace('https://', 'http://');
+                                        console.log('Engine URI forced to HTTP in _onreconnect_error:', this.engine.uri);
+                                    }
+                                }
+                                
+                                return originalOnreconnectError.call(this);
+                            };
+                        }
+                        
+                        // Override the _onreconnect_failed method if it exists
+                        if (managerProto._onreconnect_failed) {
+                            const originalOnreconnectFailed = managerProto._onreconnect_failed;
+                            managerProto._onreconnect_failed = function() {
+                                console.log('Manager._onreconnect_failed called');
+                                
+                                // Force HTTP in the transport
+                                if (this.engine && this.engine.uri) {
+                                    const uri = this.engine.uri;
+                                    if (typeof uri === 'string' && uri.includes('https://')) {
+                                        this.engine.uri = uri.replace('https://', 'http://');
+                                        console.log('Engine URI forced to HTTP in _onreconnect_failed:', this.engine.uri);
+                                    }
+                                }
+                                
+                                return originalOnreconnectFailed.call(this);
+                            };
+                        }
+                    }
                     
                     socket.on('connect', () => {
                         console.log('WebSocket connected for bank donation updates');
