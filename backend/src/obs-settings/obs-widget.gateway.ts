@@ -84,9 +84,11 @@ export class OBSWidgetGateway
     // Extract alert token from query parameters
     const alertToken = client.handshake.query.alertToken as string;
     
+    // Allow connections without alert token for bank donation total widgets
     if (!alertToken) {
-      this.logger.warn(`Client ${client.id} connected without alert token`);
-      client.disconnect();
+      this.logger.log(`Client ${client.id} connected without alert token (likely bank donation total widget)`);
+      // Allow connection for bank donation total widgets
+      client.data.isBankTotalWidget = true;
       return;
     }
 
@@ -126,6 +128,12 @@ export class OBSWidgetGateway
 
   handleDisconnect(client: Socket) {
     this.logger.log(`OBS Widget client disconnected: ${client.id}`);
+    
+    // Handle bank total widget disconnection
+    if (client.data?.isBankTotalWidget) {
+      this.logger.log(`Bank total widget ${client.id} disconnected`);
+      return;
+    }
     
     // Remove client from streamer room
     if (client.data?.streamerId) {
@@ -191,7 +199,12 @@ export class OBSWidgetGateway
 
     const roomName = `streamer-${streamerId}`;
     client.join(roomName);
-    this.logger.log(`Client ${client.id} joined bank total room: ${roomName}`);
+    
+    // Mark this client as part of the bank total widget system
+    client.data.isBankTotalWidget = true;
+    client.data.streamerId = streamerId;
+    
+    this.logger.log(`Bank total widget ${client.id} joined room: ${roomName} for streamer: ${streamerId}`);
     
     client.emit('joinedBankTotalRoom', { streamerId, roomName });
   }

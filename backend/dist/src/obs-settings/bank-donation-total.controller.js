@@ -382,13 +382,13 @@ let BankDonationTotalController = class BankDonationTotalController {
                             ...options,
                             secure: false,
                             rejectUnauthorized: false,
-                            transports: ['polling'],
-                            upgrade: false,
-                            rememberUpgrade: false,
-                            forceNew: true,
-                            timeout: 5000,
-                            reconnection: true,
-                            reconnectionAttempts: 5,
+                        transports: ['polling'],
+                        upgrade: false,
+                        rememberUpgrade: false,
+                        forceNew: true,
+                        timeout: 5000,
+                        reconnection: true,
+                        reconnectionAttempts: 5,
                             reconnectionDelay: 1000,
                             autoConnect: true,
                             multiplex: false,
@@ -502,10 +502,10 @@ let BankDonationTotalController = class BankDonationTotalController {
                     // Add session cleanup
                     cleanup: true,
                     randomizationFactor: 0.5
-                });
-                
-                socket.on('connect', () => {
-                    console.log('WebSocket connected for bank donation updates');
+                    });
+                    
+                    socket.on('connect', () => {
+                        console.log('WebSocket connected for bank donation updates');
                     console.log('Socket ID:', socket.id);
                     console.log('Session ID:', socket.io.sessionid);
                     
@@ -530,9 +530,9 @@ let BankDonationTotalController = class BankDonationTotalController {
                             clearInterval(joinRetryInterval);
                         }, 30000);
                     }, 100);
-                });
-                
-                socket.on('joinedBankTotalRoom', (data) => {
+                    });
+                    
+                    socket.on('joinedBankTotalRoom', (data) => {
                     console.log('Joined bank total room successfully:', data);
                 });
                 
@@ -547,26 +547,26 @@ let BankDonationTotalController = class BankDonationTotalController {
                     setTimeout(() => {
                         socket.connect();
                     }, 1000);
-                });
-                
-                socket.on('bankDonationTotalUpdate', (data) => {
-                    console.log('Received bank donation total update:', data);
-                    if (data.totalAmount !== currentAmount) {
-                        console.log('Updating total amount from', currentAmount, 'to', data.totalAmount);
-                        animateToNewAmount(data.totalAmount);
-                    }
-                });
-                
-                socket.on('disconnect', () => {
-                    console.log('WebSocket disconnected');
-                });
-                
-                socket.on('error', (error) => {
-                    console.error('WebSocket error:', error);
-                });
-                
-                socket.on('connect_error', (error) => {
-                    console.error('WebSocket connection error:', error);
+                    });
+                    
+                    socket.on('bankDonationTotalUpdate', (data) => {
+                        console.log('Received bank donation total update:', data);
+                        if (data.totalAmount !== currentAmount) {
+                            console.log('Updating total amount from', currentAmount, 'to', data.totalAmount);
+                            animateToNewAmount(data.totalAmount);
+                        }
+                    });
+                    
+                    socket.on('disconnect', () => {
+                        console.log('WebSocket disconnected');
+                    });
+                    
+                    socket.on('error', (error) => {
+                        console.error('WebSocket error:', error);
+                    });
+                    
+                    socket.on('connect_error', (error) => {
+                        console.error('WebSocket connection error:', error);
                     
                     // If we get SSL/TLS errors, disable WebSocket completely
                     if (error.message && (error.message.includes('SSL') || error.message.includes('TLS') || error.message.includes('HTTPS'))) {

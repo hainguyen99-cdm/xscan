@@ -32,8 +32,8 @@ let OBSWidgetGateway = OBSWidgetGateway_1 = class OBSWidgetGateway {
         this.logger.log(`OBS Widget client connected: ${client.id}`);
         const alertToken = client.handshake.query.alertToken;
         if (!alertToken) {
-            this.logger.warn(`Client ${client.id} connected without alert token`);
-            client.disconnect();
+            this.logger.log(`Client ${client.id} connected without alert token (likely bank donation total widget)`);
+            client.data.isBankTotalWidget = true;
             return;
         }
         try {
@@ -56,6 +56,10 @@ let OBSWidgetGateway = OBSWidgetGateway_1 = class OBSWidgetGateway {
     }
     handleDisconnect(client) {
         this.logger.log(`OBS Widget client disconnected: ${client.id}`);
+        if (client.data?.isBankTotalWidget) {
+            this.logger.log(`Bank total widget ${client.id} disconnected`);
+            return;
+        }
         if (client.data?.streamerId) {
             this.removeClientFromStreamerRoom(client.id, client.data.streamerId);
         }
@@ -104,7 +108,9 @@ let OBSWidgetGateway = OBSWidgetGateway_1 = class OBSWidgetGateway {
         }
         const roomName = `streamer-${streamerId}`;
         client.join(roomName);
-        this.logger.log(`Client ${client.id} joined bank total room: ${roomName}`);
+        client.data.isBankTotalWidget = true;
+        client.data.streamerId = streamerId;
+        this.logger.log(`Bank total widget ${client.id} joined room: ${roomName} for streamer: ${streamerId}`);
         client.emit('joinedBankTotalRoom', { streamerId, roomName });
     }
     async sendBankDonationTotalUpdate(streamerId, totalData) {
