@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Query, Res, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res, Req, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { BankDonationTotalService } from './bank-donation-total.service';
 import { OBSWidgetGateway } from './obs-widget.gateway';
 
@@ -51,6 +51,7 @@ export class BankDonationTotalController {
     @Query('format') format: string = 'html',
     @Query('theme') theme: string = 'dark',
     @Query('showStats') showStats: string = 'false',
+    @Req() req: Request,
     @Res() res: Response,
   ) {
     try {
@@ -61,11 +62,20 @@ export class BankDonationTotalController {
           ? await this.bankDonationTotalService.getBankDonationStats(streamerId)
           : await this.bankDonationTotalService.getTotalBankDonations(streamerId);
         
-        return res.json({
+        const responseData = {
           success: true,
           streamerId,
           data: stats,
-        });
+        };
+        
+        // Check if this is a JSONP request
+        const callback = req.query.callback as string;
+        if (callback) {
+          res.setHeader('Content-Type', 'application/javascript');
+          return res.send(`${callback}(${JSON.stringify(responseData)});`);
+        }
+        
+        return res.json(responseData);
       }
 
       // Generate HTML widget
@@ -383,7 +393,7 @@ export class BankDonationTotalController {
                 return;
             }
             
-            httpPollingInterval = setInterval(async () => {
+            httpPollingInterval = setInterval(() => {
                 try {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
@@ -405,13 +415,67 @@ export class BankDonationTotalController {
                     
                     console.log('HTTP polling from:', refreshUrl);
                     
-                    const response = await fetch(refreshUrl);
-                    const data = await response.json();
+                    // Use XMLHttpRequest to have more control over protocol
+                    const xhr = new XMLHttpRequest();
                     
-                    if (data.success && data.data.totalAmount !== currentAmount) {
-                        console.log('Amount changed via HTTP polling:', data.data.totalAmount);
-                        animateToNewAmount(data.data.totalAmount);
+                    // Try to force HTTP by using a different approach
+                    try {
+                        xhr.open('GET', refreshUrl, true);
+                        xhr.timeout = 10000; // 10 second timeout
+                        
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === 4) {
+                                if (xhr.status === 200) {
+                                    try {
+                                        const data = JSON.parse(xhr.responseText);
+                                        if (data.success && data.data.totalAmount !== currentAmount) {
+                                            console.log('Amount changed via HTTP polling:', data.data.totalAmount);
+                                            animateToNewAmount(data.data.totalAmount);
+                                        }
+                                    } catch (parseError) {
+                                        console.error('Failed to parse response:', parseError);
+                                    }
+                                } else {
+                                    console.error('HTTP polling failed with status:', xhr.status);
+                                }
+                            }
+                        };
+                        
+                        xhr.onerror = function() {
+                            console.error('HTTP polling network error');
+                        };
+                        
+                        xhr.ontimeout = function() {
+                            console.error('HTTP polling timeout');
+                        };
+                        
+                        xhr.send();
+                    } catch (xhrError) {
+                        console.error('XMLHttpRequest failed:', xhrError);
+                        // If XMLHttpRequest also fails, try using a script tag approach
+                        console.log('Trying alternative method with script tag');
+                        
+                        const script = document.createElement('script');
+                        script.src = refreshUrl + '&callback=handlePollingResponse';
+                        
+                        window.handlePollingResponse = function(data) {
+                            if (data.success && data.data.totalAmount !== currentAmount) {
+                                console.log('Amount changed via HTTP polling (script method):', data.data.totalAmount);
+                                animateToNewAmount(data.data.totalAmount);
+                            }
+                            document.head.removeChild(script);
+                            delete window.handlePollingResponse;
+                        };
+                        
+                        script.onerror = function() {
+                            console.error('Script method also failed');
+                            document.head.removeChild(script);
+                            delete window.handlePollingResponse;
+                        };
+                        
+                        document.head.appendChild(script);
                     }
+                    
                 } catch (error) {
                     console.error('HTTP polling failed:', error);
                 }
