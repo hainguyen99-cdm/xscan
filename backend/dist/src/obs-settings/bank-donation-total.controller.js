@@ -280,11 +280,9 @@ let BankDonationTotalController = class BankDonationTotalController {
         </div>
     </div>
     
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         let currentAmount = ${stats.totalAmount};
         let isAnimating = false;
-        let socket = null;
         let isInitialized = false;
         const streamerId = '${streamerId}';
         
@@ -343,95 +341,6 @@ let BankDonationTotalController = class BankDonationTotalController {
             }).format(amount);
         }
         
-        // Initialize WebSocket connection
-        function initializeWebSocket() {
-            // Double-check protocol to prevent HTTPS WebSocket attempts
-            if (window.location.protocol === 'https:') {
-                console.log('HTTPS detected in initializeWebSocket, falling back to HTTP polling');
-                startHttpPolling();
-                return;
-            }
-            
-            try {
-                const host = window.location.host;
-                
-                console.log('Current page protocol:', window.location.protocol);
-                console.log('Forcing HTTP protocol for WebSocket');
-                
-                // Force HTTP protocol - server only supports HTTP
-                connectWebSocket(\`http://\${host}/obs-widget\`);
-                
-            } catch (error) {
-                console.error('Failed to initialize WebSocket:', error);
-                // Fallback to HTTP polling if WebSocket fails
-                startHttpPolling();
-            }
-        }
-        
-        function connectWebSocket(wsUrl) {
-            // Final check to prevent HTTPS WebSocket attempts
-            if (window.location.protocol === 'https:') {
-                console.log('HTTPS detected in connectWebSocket, falling back to HTTP polling');
-                startHttpPolling();
-                return;
-            }
-            
-            console.log('Connecting to WebSocket:', wsUrl);
-            
-            socket = io(wsUrl, {
-                transports: ['polling'],
-                upgrade: false,
-                rememberUpgrade: false,
-                forceNew: true,
-                timeout: 5000,
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000
-            });
-            
-            socket.on('connect', () => {
-                console.log('WebSocket connected');
-                // Stop HTTP polling since WebSocket is working
-                stopHttpPolling();
-                // Join the bank total room for this streamer
-                socket.emit('joinBankTotalRoom', { streamerId: streamerId });
-            });
-            
-            socket.on('joinedBankTotalRoom', (data) => {
-                console.log('Joined bank total room:', data);
-            });
-            
-            socket.on('bankDonationTotalUpdate', (data) => {
-                console.log('Received bank donation total update:', data);
-                if (data.totalAmount !== currentAmount) {
-                    animateToNewAmount(data.totalAmount);
-                }
-            });
-            
-            socket.on('disconnect', () => {
-                console.log('WebSocket disconnected');
-            });
-            
-            socket.on('error', (error) => {
-                console.error('WebSocket error:', error);
-                // If WebSocket fails, fallback to HTTP polling
-                startHttpPolling();
-            });
-            
-            socket.on('connect_error', (error) => {
-                console.error('WebSocket connection error:', error);
-                // If connection fails, fallback to HTTP polling
-                startHttpPolling();
-            });
-            
-            // Timeout fallback
-            setTimeout(() => {
-                if (!socket || !socket.connected) {
-                    console.log('WebSocket connection timeout, falling back to HTTP polling');
-                    startHttpPolling();
-                }
-            }, 10000);
-        }
         
         // Fallback HTTP polling (if WebSocket fails)
         let httpPollingInterval = null;
@@ -476,7 +385,7 @@ let BankDonationTotalController = class BankDonationTotalController {
                 } catch (error) {
                     console.error('HTTP polling failed:', error);
                 }
-            }, 30000);
+        }, 30000);
         }
         
         function stopHttpPolling() {
@@ -496,22 +405,16 @@ let BankDonationTotalController = class BankDonationTotalController {
             
             isInitialized = true;
             
-            // Check if we're on HTTPS and server only supports HTTP
-            if (window.location.protocol === 'https:') {
-                console.log('HTTPS page detected, skipping WebSocket due to mixed content policy');
-                console.log('Using HTTP polling only for real-time updates');
-                startHttpPolling();
-            } else {
-                console.log('HTTP page detected, attempting WebSocket connection');
-                initializeWebSocket();
-            }
+            // Server only supports HTTP, so use HTTP polling for all cases
+            // This avoids mixed content issues when accessed via HTTPS
+            console.log('Server only supports HTTP, using HTTP polling for real-time updates');
+            console.log('Current page protocol:', window.location.protocol);
+            startHttpPolling();
         });
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
-            if (socket) {
-                socket.disconnect();
-            }
+            stopHttpPolling();
         });
     </script>
 </body>
