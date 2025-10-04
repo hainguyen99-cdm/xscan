@@ -336,7 +336,11 @@ export class BankDonationTotalController {
         // Auto-refresh every 30 seconds with animation
         setInterval(async () => {
             try {
-                const response = await fetch(window.location.href + '&format=json');
+                // Use the same protocol as the current page to avoid SSL errors
+                const currentUrl = window.location.href;
+                const refreshUrl = currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'format=json';
+                
+                const response = await fetch(refreshUrl);
                 const data = await response.json();
                 
                 if (data.success && data.data.totalAmount !== currentAmount) {
