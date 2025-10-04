@@ -353,14 +353,21 @@ let BankDonationTotalController = class BankDonationTotalController {
             
             console.log('Starting HTTP polling fallback');
             
+            // Check if we're on HTTPS - if so, disable polling to avoid mixed content errors
+            if (window.location.protocol === 'https:') {
+                console.log('HTTPS page detected - polling disabled to avoid mixed content errors');
+                console.log('Widget will show static data. For real-time updates, access via HTTP.');
+                return;
+            }
+            
             httpPollingInterval = setInterval(async () => {
                 try {
                     const host = window.location.host;
                     const pathname = window.location.pathname;
                     const search = window.location.search;
                     
-                    // Force HTTP protocol - server only supports HTTP
-                    let refreshUrl = \`http://\${host}\${pathname}\`;
+                    // Use relative URL to inherit current protocol
+                    let refreshUrl = pathname;
                     
                     if (search) {
                         const params = new URLSearchParams(search);
