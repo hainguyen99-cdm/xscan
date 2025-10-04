@@ -320,20 +320,28 @@ let BankDonationTotalController = class BankDonationTotalController {
         // Auto-refresh every 30 seconds with animation
         setInterval(async () => {
             try {
-                // Force HTTP protocol since the server only supports HTTP
-                const currentUrl = window.location.href;
-                let refreshUrl;
+                // Construct the refresh URL explicitly using HTTP
+                const host = window.location.host; // 14.225.211.248:3001
+                const pathname = window.location.pathname; // /api/widget-public/bank-total/68cbcda1a8142b7c55edcc3e
+                const search = window.location.search; // existing query params
                 
-                // Remove existing format parameter if present
-                if (currentUrl.includes('format=')) {
-                    refreshUrl = currentUrl.replace(/[?&]format=[^&]*/, '') + '&format=json';
-                } else {
-                    refreshUrl = currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'format=json';
+                // Build URL explicitly with HTTP protocol
+                let refreshUrl = 'http://' + host + pathname;
+                
+                // Add existing query parameters (excluding format)
+                if (search) {
+                    const params = new URLSearchParams(search);
+                    params.delete('format'); // Remove existing format parameter
+                    const queryString = params.toString();
+                    if (queryString) {
+                        refreshUrl += '?' + queryString;
+                    }
                 }
                 
-                // Force HTTP protocol to avoid SSL errors
-                refreshUrl = refreshUrl.replace('https:', 'http:');
+                // Add format=json parameter
+                refreshUrl += (refreshUrl.includes('?') ? '&' : '?') + 'format=json';
                 
+                console.log('Current URL:', window.location.href);
                 console.log('Refreshing data from:', refreshUrl);
                 
                 const response = await fetch(refreshUrl);
