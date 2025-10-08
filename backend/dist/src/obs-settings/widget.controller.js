@@ -337,12 +337,7 @@ let WidgetController = class WidgetController {
             ` : ''}
           }
           
-          @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(-50px); }
-            10% { opacity: 1; transform: translateY(0); }
-            90% { opacity: 1; }
-            100% { opacity: 0; transform: translateY(-50px); }
-          }
+          /* Removed fadeInOut keyframes - now using CSS transitions for better control */
           
           .alert-header {
             display: flex;
@@ -765,6 +760,18 @@ let WidgetController = class WidgetController {
                 }
               }
               
+              // Apply display settings
+              if (newSettings.displaySettings) {
+                const display = newSettings.displaySettings;
+                console.log('🔧 Updated display settings:', {
+                  duration: display.duration,
+                  fadeInDuration: display.fadeInDuration,
+                  fadeOutDuration: display.fadeOutDuration,
+                  autoHide: display.autoHide,
+                  showProgress: display.showProgress
+                });
+              }
+              
               // Update cooldown and other general settings
               if (newSettings.generalSettings) {
                 const general = newSettings.generalSettings;
@@ -834,7 +841,76 @@ let WidgetController = class WidgetController {
               // Update alert content
               document.getElementById('donorName').textContent = alertData.donorName || 'Anonymous';
               document.getElementById('donationVerb').textContent = alertData.donationMessage || 'đã donate';
-              document.getElementById('donorAmount').textContent = (alertData.amount ? alertData.amount : '0.00');
+              
+              // Format amount with thousand separators
+              const formatAmount = (amountStr) => {
+                console.log('🔍 formatAmount called with:', amountStr, 'type:', typeof amountStr);
+                
+                if (!amountStr) return '0.00';
+                
+                const str = amountStr.toString().trim();
+                console.log('🔍 Input string:', str);
+                
+                // Simple approach: split by space
+                const parts = str.split(' ');
+                console.log('🔍 Split parts:', parts);
+                
+                if (parts.length < 2) {
+                  console.log('🔍 Not enough parts, trying number only');
+                  const number = parseFloat(str);
+                  if (isNaN(number)) {
+                    console.log('🔍 Not a valid number, returning original:', str);
+                    return str;
+                  }
+                  const formattedNumber = number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                  console.log('🔢 Number only formatting:', str, '->', formattedNumber);
+                  return formattedNumber;
+                }
+                
+                const number = parseFloat(parts[0]);
+                const currency = parts.slice(1).join(' ');
+                console.log('🔍 Parsed number:', number, 'Currency:', currency);
+                
+                if (isNaN(number)) {
+                  console.log('🔍 Not a valid number, returning original:', str);
+                  return str;
+                }
+                
+                // Manual Vietnamese formatting with dots as thousand separators
+                const numberStr = number.toString();
+                console.log('🔍 Number string:', numberStr);
+                
+                // Simple approach: add dots from right to left
+                let formattedNumber = numberStr;
+                if (numberStr.length > 3) {
+                  let result = '';
+                  for (let i = numberStr.length - 1; i >= 0; i--) {
+                    result = numberStr[i] + result;
+                    // Add dot every 3 digits from the right
+                    if ((numberStr.length - i) % 3 === 0 && i > 0) {
+                      result = '.' + result;
+                    }
+                  }
+                  formattedNumber = result;
+                }
+                
+                console.log('🔍 Formatted number:', formattedNumber);
+                const formatted = formattedNumber + (currency ? ' ' + currency : '');
+                
+                console.log('🔢 Formatting amount:', amountStr, '->', formatted);
+                console.log('🔢 Number:', number, 'Currency:', currency, 'Formatted:', formatted);
+                return formatted;
+              };
+              
+              const donorAmountElement = document.getElementById('donorAmount');
+              if (donorAmountElement) {
+                const formattedAmount = formatAmount(alertData.amount);
+                donorAmountElement.textContent = formattedAmount;
+                donorAmountElement.innerHTML = formattedAmount;
+                console.log('✅ Amount formatted and set:', formattedAmount);
+              } else {
+                console.error('❌ donorAmount element not found');
+              }
               
               // Auto-fit donor amount so currency text is fully visible
               (function fitAmount(){
@@ -960,9 +1036,31 @@ let WidgetController = class WidgetController {
                 console.log('Audio is disabled in settings');
               }
               
-              // Show alert with fadeInOut animation
+              // Calculate display timing based on settings
+              const displaySettings = this.settings.displaySettings || {};
+              const fadeInDuration = displaySettings.fadeInDuration || 300;
+              const fadeOutDuration = displaySettings.fadeOutDuration || 300;
+              const mainDuration = displaySettings.duration || 5000;
+              const totalDuration = fadeInDuration + mainDuration + fadeOutDuration;
+              
+              console.log('🎬 Display timing:', {
+                fadeInDuration,
+                mainDuration,
+                fadeOutDuration,
+                totalDuration
+              });
+              
+              // Show alert with proper fade-in animation
               this.alertContainer.style.display = 'block';
-              this.alertContainer.style.animation = 'fadeInOut ' + (this.settings.displaySettings.duration || 5000) + 'ms ease-in-out';
+              this.alertContainer.style.opacity = '0';
+              this.alertContainer.style.transform = 'translateY(-50px)';
+              
+              // Fade in
+              setTimeout(() => {
+                this.alertContainer.style.transition = 'opacity ' + fadeInDuration + 'ms ease-out, transform ' + fadeInDuration + 'ms ease-out';
+                this.alertContainer.style.opacity = '1';
+                this.alertContainer.style.transform = 'translateY(0)';
+              }, 10);
               
               console.log('🎬 ALERT NOW VISIBLE ON SCREEN:', alertData.donorName, 'ID:', alertId);
               console.log('🎬 Display timestamp:', new Date().toISOString());
@@ -974,10 +1072,18 @@ let WidgetController = class WidgetController {
               // Update last alert time for cooldown
               this.lastAlertTime = Date.now();
               
-              // Hide after animation duration
+              // Start fade out after main duration
               setTimeout(() => {
-                this.alertContainer.style.display = 'none';
-              }, this.settings.displaySettings.duration || 5000);
+                this.alertContainer.style.transition = 'opacity ' + fadeOutDuration + 'ms ease-in, transform ' + fadeOutDuration + 'ms ease-in';
+                this.alertContainer.style.opacity = '0';
+                this.alertContainer.style.transform = 'translateY(-50px)';
+                
+                // Hide completely after fade out
+                setTimeout(() => {
+                  this.alertContainer.style.display = 'none';
+                  this.alertContainer.style.transition = '';
+                }, fadeOutDuration);
+              }, fadeInDuration + mainDuration);
             }
             
             showSoundBanner(pendingUrl) {
@@ -1069,7 +1175,11 @@ let WidgetController = class WidgetController {
                 
                 // Handle fade out if enabled
                 if (this.settings.soundSettings.fadeOut > 0) {
-                  const fadeOutStart = (this.settings.displaySettings.duration || 5000) - this.settings.soundSettings.fadeOut;
+                  const displaySettings = this.settings.displaySettings || {};
+                  const fadeInDuration = displaySettings.fadeInDuration || 300;
+                  const mainDuration = displaySettings.duration || 5000;
+                  const fadeOutStart = fadeInDuration + mainDuration - this.settings.soundSettings.fadeOut;
+                  
                   setTimeout(() => {
                     const fadeOutInterval = setInterval(() => {
                       if (audio.volume > 0) {
@@ -1081,11 +1191,17 @@ let WidgetController = class WidgetController {
                     }, this.settings.soundSettings.fadeOut / 10);
                   }, fadeOutStart);
                 } else {
-                  // Stop audio when alert duration ends
+                  // Stop audio when total alert duration ends
+                  const displaySettings = this.settings.displaySettings || {};
+                  const fadeInDuration = displaySettings.fadeInDuration || 300;
+                  const mainDuration = displaySettings.duration || 5000;
+                  const fadeOutDuration = displaySettings.fadeOutDuration || 300;
+                  const totalDuration = fadeInDuration + mainDuration + fadeOutDuration;
+                  
                   setTimeout(() => {
                     audio.pause();
                     audio.currentTime = 0;
-                  }, this.settings.displaySettings.duration || 5000);
+                  }, totalDuration);
                 }
                 
               } catch (error) {
@@ -1107,7 +1223,9 @@ let WidgetController = class WidgetController {
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.start();
-                const stopAfter = Math.min((this.settings.displaySettings.duration || 500), 800);
+                const displaySettings = this.settings.displaySettings || {};
+                const mainDuration = displaySettings.duration || 5000;
+                const stopAfter = Math.min(mainDuration, 800);
                 setTimeout(() => {
                   osc.stop();
                   ctx.close();
@@ -1184,6 +1302,22 @@ let WidgetController = class WidgetController {
                 fadeOut: this.settings.soundSettings.fadeOut,
                 loop: this.settings.soundSettings.loop,
                 rawSettings: this.settings.soundSettings
+              };
+            }
+            
+            // Debug method to check display settings
+            getDisplaySettings() {
+              const displaySettings = this.settings.displaySettings || {};
+              return {
+                duration: displaySettings.duration || 5000,
+                fadeInDuration: displaySettings.fadeInDuration || 300,
+                fadeOutDuration: displaySettings.fadeOutDuration || 300,
+                autoHide: displaySettings.autoHide !== false,
+                showProgress: displaySettings.showProgress || false,
+                progressColor: displaySettings.progressColor || '#00ff00',
+                progressHeight: displaySettings.progressHeight || 3,
+                totalDuration: (displaySettings.fadeInDuration || 300) + (displaySettings.duration || 5000) + (displaySettings.fadeOutDuration || 300),
+                rawSettings: displaySettings
               };
             }
             
@@ -1454,6 +1588,7 @@ let WidgetController = class WidgetController {
               test: () => widget.test(),
               logAlertData: (data, label) => widget.logAlertData(data, label),
               getSoundSettings: () => widget.getSoundSettings(),
+              getDisplaySettings: () => widget.getDisplaySettings(),
               testUrlField: (url) => widget.testUrlField(url),
               testImageHandling: (data) => widget.testImageHandling(data)
             };

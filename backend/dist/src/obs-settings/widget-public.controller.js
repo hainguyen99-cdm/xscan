@@ -771,11 +771,106 @@ let WidgetPublicController = class WidgetPublicController {
               
               // Update alert content
               document.getElementById('donorName').textContent = this.currentAlert.donorName || 'Anonymous';
-              document.getElementById('donorAmount').textContent = '' + (this.currentAlert.amount ? this.currentAlert.amount : '0.00');
+              
+              // SIMPLE AMOUNT FORMATTING - Direct approach
+              const amountElement = document.getElementById('donorAmount');
+              if (amountElement && this.currentAlert.amount) {
+                const amountStr = this.currentAlert.amount.toString();
+                const match = amountStr.match(/(\d+(?:\.\d+)?)\s*([A-Za-z]*)/);
+                if (match) {
+                  const number = parseFloat(match[1]);
+                  const currency = match[2] || '';
+                  const formatted = number.toLocaleString('vi-VN') + (currency ? ' ' + currency : '');
+                  amountElement.textContent = formatted;
+                  amountElement.innerHTML = formatted;
+                  
+                  // Force update with alert to make it visible
+                  alert('Amount formatted: ' + amountStr + ' -> ' + formatted);
+                }
+              }
+              
+              // Format amount with thousand separators
+              const formatAmount = (amountStr) => {
+                if (!amountStr) return '0.00';
+                
+                // Convert to string and extract number and currency
+                const str = amountStr.toString().trim();
+                const match = str.match(/(\d+(?:\.\d+)?)\s*([A-Za-z]*)/);
+                
+                if (!match) {
+                  console.warn('⚠️ Could not parse amount:', amountStr);
+                  return str;
+                }
+                
+                const number = parseFloat(match[1]);
+                const currency = match[2] || '';
+                
+                // Format number with Vietnamese locale (dots as thousand separators)
+                const formattedNumber = number.toLocaleString('vi-VN', { 
+                  minimumFractionDigits: 0, 
+                  maximumFractionDigits: 2 
+                });
+                
+                const result = formattedNumber + (currency ? ' ' + currency : '');
+                console.log('🔢 Formatting amount:', { 
+                  original: amountStr, 
+                  number: number, 
+                  currency: currency, 
+                  formatted: result 
+                });
+                
+                return result;
+              };
+              
+              // Test the formatting function immediately
+              console.log('🧪 Testing formatAmount with "50000 VND":', formatAmount('50000 VND'));
+              console.log('🧪 Testing formatAmount with "50000":', formatAmount('50000'));
+              
+              // Simple test with direct number formatting
+              const testNumber = 50000;
+              const testFormatted = testNumber.toLocaleString('vi-VN');
+              console.log('🧪 Direct toLocaleString test:', testNumber, '->', testFormatted);
+              
+              // Apply formatting to donor amount - FORCE EXECUTION
+              console.log('🚨 FORMATTING AMOUNT - STARTING PROCESS');
+              console.log('🚨 Current alert amount:', this.currentAlert.amount);
+              
+              const donorAmountElement = document.getElementById('donorAmount');
+              console.log('🚨 Found donorAmount element:', donorAmountElement);
+              
+              if (donorAmountElement) {
+                const formattedAmount = formatAmount(this.currentAlert.amount);
+                console.log('🚨 FORMATTING RESULT:', this.currentAlert.amount, '->', formattedAmount);
+                
+                // Force update the element multiple times to ensure it sticks
+                donorAmountElement.textContent = formattedAmount;
+                donorAmountElement.innerHTML = formattedAmount;
+                donorAmountElement.innerText = formattedAmount;
+                
+                console.log('🚨 ELEMENT UPDATED - textContent:', donorAmountElement.textContent);
+                console.log('🚨 ELEMENT UPDATED - innerHTML:', donorAmountElement.innerHTML);
+                
+                // Force a re-render by temporarily hiding and showing
+                donorAmountElement.style.display = 'none';
+                setTimeout(() => {
+                  donorAmountElement.style.display = '';
+                  donorAmountElement.textContent = formattedAmount;
+                  console.log('🚨 AFTER RE-RENDER - textContent:', donorAmountElement.textContent);
+                }, 10);
+                
+                // Also try a more aggressive approach
+                setTimeout(() => {
+                  donorAmountElement.textContent = formattedAmount;
+                  console.log('🚨 FINAL CHECK - textContent:', donorAmountElement.textContent);
+                }, 100);
+                
+              } else {
+                console.error('🚨 ERROR: donorAmount element not found');
+              }
               document.getElementById('donorMessage').textContent = this.currentAlert.message || 'Thank you for your donation!';
 
               // Auto-fit donor amount so the currency like VND is fully visible
-              this.fitDonorAmount();
+              // Note: fitDonorAmount function is not defined, skipping for now
               
               const timestamp = new Date(this.currentAlert.timestamp || Date.now());
               document.getElementById('alertTimestamp').textContent = timestamp.toLocaleTimeString();

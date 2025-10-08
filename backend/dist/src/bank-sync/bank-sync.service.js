@@ -23,19 +23,21 @@ const bank_transaction_schema_1 = require("./schemas/bank-transaction.schema");
 const users_service_1 = require("../users/users.service");
 const obs_widget_gateway_1 = require("../obs-settings/obs-widget.gateway");
 const bank_donation_total_service_1 = require("../obs-settings/bank-donation-total.service");
+const obs_settings_service_1 = require("../obs-settings/obs-settings.service");
 const config_service_1 = require("../config/config.service");
 let BankSyncService = BankSyncService_1 = class BankSyncService {
-    constructor(bankTxModel, usersService, obsWidgetGateway, bankDonationTotalService, configService) {
+    constructor(bankTxModel, usersService, obsWidgetGateway, bankDonationTotalService, obsSettingsService, configService) {
         this.bankTxModel = bankTxModel;
         this.usersService = usersService;
         this.obsWidgetGateway = obsWidgetGateway;
         this.bankDonationTotalService = bankDonationTotalService;
+        this.obsSettingsService = obsSettingsService;
         this.configService = configService;
         this.logger = new common_1.Logger(BankSyncService_1.name);
         this.REQUEST_TIMEOUT_MS = this.configService.bankRequestTimeoutMs;
         this.MAX_RETRIES = this.configService.bankMaxRetries;
         this.RETRY_DELAY_MS = this.configService.bankRetryDelayMs;
-        this.DONATION_DISPLAY_MS = 3000;
+        this.DEFAULT_DONATION_DISPLAY_MS = 5000;
         this.alertQueues = new Map();
     }
     async pollAllStreamers() {
@@ -184,6 +186,20 @@ let BankSyncService = BankSyncService_1 = class BankSyncService {
             return;
         state.processing = true;
         try {
+            let displayDuration = this.DEFAULT_DONATION_DISPLAY_MS;
+            try {
+                const obsSettings = await this.obsSettingsService.findByStreamerId(streamerId);
+                if (obsSettings?.displaySettings?.duration) {
+                    displayDuration = obsSettings.displaySettings.duration;
+                    this.logger.debug(`Using OBS display duration: ${displayDuration}ms for streamer ${streamerId}`);
+                }
+                else {
+                    this.logger.debug(`Using default display duration: ${displayDuration}ms for streamer ${streamerId}`);
+                }
+            }
+            catch (err) {
+                this.logger.warn(`Failed to get OBS settings for streamer ${streamerId}, using default duration: ${err?.message || err}`);
+            }
             while (state.queue.length > 0) {
                 const next = state.queue.shift();
                 state.inQueueRefs.delete(next.reference);
@@ -193,7 +209,7 @@ let BankSyncService = BankSyncService_1 = class BankSyncService {
                     currency: next.currency,
                     transactionId: next.reference,
                 });
-                await this.delay(this.DONATION_DISPLAY_MS);
+                await this.delay(displayDuration);
             }
         }
         catch (err) {
@@ -217,10 +233,12 @@ exports.BankSyncService = BankSyncService = BankSyncService_1 = __decorate([
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => users_service_1.UsersService))),
     __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => obs_widget_gateway_1.OBSWidgetGateway))),
     __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => bank_donation_total_service_1.BankDonationTotalService))),
+    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => obs_settings_service_1.OBSSettingsService))),
     __metadata("design:paramtypes", [mongoose_2.Model,
         users_service_1.UsersService,
         obs_widget_gateway_1.OBSWidgetGateway,
         bank_donation_total_service_1.BankDonationTotalService,
+        obs_settings_service_1.OBSSettingsService,
         config_service_1.ConfigService])
 ], BankSyncService);
 //# sourceMappingURL=bank-sync.service.js.map

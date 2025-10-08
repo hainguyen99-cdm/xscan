@@ -7,6 +7,7 @@ import { BankTransaction, BankTransactionDocument } from './schemas/bank-transac
 import { UsersService } from '../users/users.service';
 import { OBSWidgetGateway } from '../obs-settings/obs-widget.gateway';
 import { BankDonationTotalService } from '../obs-settings/bank-donation-total.service';
+import { OBSSettingsService } from '../obs-settings/obs-settings.service';
 import { ConfigService } from '../config/config.service';
 
 interface VcbTransactionItem {
@@ -30,7 +31,7 @@ export class BankSyncService {
 	private readonly REQUEST_TIMEOUT_MS = this.configService.bankRequestTimeoutMs;
 	private readonly MAX_RETRIES = this.configService.bankMaxRetries;
 	private readonly RETRY_DELAY_MS = this.configService.bankRetryDelayMs;
-	private readonly DONATION_DISPLAY_MS = 3000; // display duration per donation to space alerts
+	private readonly DEFAULT_DONATION_DISPLAY_MS = 5000; // default display duration per donation to space alerts
 
 	private readonly alertQueues = new Map<string, { queue: DonationAlert[]; processing: boolean; inQueueRefs: Set<string> }>();
 
@@ -39,6 +40,7 @@ export class BankSyncService {
 		@Inject(forwardRef(() => UsersService)) private readonly usersService: UsersService,
 		@Inject(forwardRef(() => OBSWidgetGateway)) private readonly obsWidgetGateway: OBSWidgetGateway,
 		@Inject(forwardRef(() => BankDonationTotalService)) private readonly bankDonationTotalService: BankDonationTotalService,
+		@Inject(forwardRef(() => OBSSettingsService)) private readonly obsSettingsService: OBSSettingsService,
 		private readonly configService: ConfigService,
 	) {}
 
@@ -191,6 +193,20 @@ export class BankSyncService {
 		if (state.processing) return;
 		state.processing = true;
 		try {
+			// Get OBS settings to determine display duration
+			let displayDuration = this.DEFAULT_DONATION_DISPLAY_MS;
+			try {
+				const obsSettings = await this.obsSettingsService.findByStreamerId(streamerId);
+				if (obsSettings?.displaySettings?.duration) {
+					displayDuration = obsSettings.displaySettings.duration;
+					this.logger.debug(`Using OBS display duration: ${displayDuration}ms for streamer ${streamerId}`);
+				} else {
+					this.logger.debug(`Using default display duration: ${displayDuration}ms for streamer ${streamerId}`);
+				}
+			} catch (err) {
+				this.logger.warn(`Failed to get OBS settings for streamer ${streamerId}, using default duration: ${err?.message || err}`);
+			}
+
 			while (state.queue.length > 0) {
 				const next = state.queue.shift() as DonationAlert;
 				state.inQueueRefs.delete(next.reference);
@@ -205,7 +221,7 @@ export class BankSyncService {
 					transactionId: next.reference,
 				});
 				
-				await this.delay(this.DONATION_DISPLAY_MS);
+				await this.delay(displayDuration);
 			}
 		} catch (err) {
 			this.logger.warn(`Queue processing error for ${streamerId}: ${err?.message || err}`);
