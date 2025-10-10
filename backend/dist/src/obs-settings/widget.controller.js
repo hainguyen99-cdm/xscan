@@ -760,6 +760,19 @@ let WidgetController = class WidgetController {
                 }
               }
               
+              // Apply sound settings
+              if (newSettings.soundSettings) {
+                const sound = newSettings.soundSettings;
+                console.log('🔧 Updated sound settings:', {
+                  enabled: sound.enabled,
+                  volume: sound.volume,
+                  url: sound.url ? sound.url.substring(0, 100) + (sound.url.length > 100 ? '...' : '') : 'none',
+                  fadeIn: sound.fadeIn,
+                  fadeOut: sound.fadeOut,
+                  loop: sound.loop
+                });
+              }
+              
               // Apply display settings
               if (newSettings.displaySettings) {
                 const display = newSettings.displaySettings;
@@ -1017,23 +1030,40 @@ let WidgetController = class WidgetController {
                 console.log('🔍 Audio Debug - url type:', alertData.url.substring(0, 20));
               }
               
-              if (this.settings.soundSettings.enabled && alertData.audioUrl) {
-                console.log('Playing alert audio:', alertData.audioUrl);
-                this.playAudio(alertData.audioUrl);
-              } else if (this.settings.soundSettings.enabled && alertData.soundUrl) {
-                console.log('Playing alert sound from soundUrl field:', alertData.soundUrl);
-                this.playAudio(alertData.soundUrl);
-              } else if (this.settings.soundSettings.enabled && alertData.url && alertData.url.startsWith('data:audio/')) {
-                console.log('Playing alert audio from url field (audio):', alertData.url.substring(0, 50) + '...');
-                this.playAudio(alertData.url);
-              } else if (this.settings.soundSettings.enabled && this.settings?.soundSettings?.url) {
-                console.log('Playing configured sound from settings:', this.settings.soundSettings.url);
-                this.playAudio(this.settings.soundSettings.url);
+              // Check for level-specific audio from alert settings (highest priority)
+              let audioSource = null;
+              let audioSourceType = 'none';
+              
+              if (alertData.settings && alertData.settings.soundSettings && alertData.settings.soundSettings.url) {
+                audioSource = alertData.settings.soundSettings.url;
+                audioSourceType = 'alert.settings.soundSettings.url (level-specific)';
+                console.log('🔍 Using level-specific audio from alert settings:', audioSource.substring(0, 100) + (audioSource.length > 100 ? '...' : ''));
+              } else if (alertData.audioUrl) {
+                audioSource = alertData.audioUrl;
+                audioSourceType = 'audioUrl';
+                console.log('🔍 Using audioUrl field:', audioSource);
+              } else if (alertData.soundUrl) {
+                audioSource = alertData.soundUrl;
+                audioSourceType = 'soundUrl';
+                console.log('🔍 Using soundUrl field:', audioSource);
+              } else if (alertData.url && alertData.url.startsWith('data:audio/')) {
+                audioSource = alertData.url;
+                audioSourceType = 'url (audio data)';
+                console.log('🔍 Using url field (audio):', audioSource.substring(0, 50) + '...');
+              } else if (this.settings?.soundSettings?.url) {
+                audioSource = this.settings.soundSettings.url;
+                audioSourceType = 'settings.soundSettings.url (default)';
+                console.log('🔍 Using configured sound from settings:', audioSource);
+              }
+              
+              if (this.settings.soundSettings.enabled && audioSource) {
+                console.log('🔊 Playing audio from', audioSourceType, ':', audioSource.substring(0, 100) + (audioSource.length > 100 ? '...' : ''));
+                this.playAudio(audioSource);
               } else if (this.settings.soundSettings.enabled) {
-                console.log('No audio provided, playing default beep');
+                console.log('🔊 No audio source found, playing default beep');
                 this.playDefaultBeep();
               } else {
-                console.log('Audio is disabled in settings');
+                console.log('🔇 Audio is disabled in settings');
               }
               
               // Calculate display timing based on settings
@@ -1321,6 +1351,102 @@ let WidgetController = class WidgetController {
               };
             }
             
+            // Debug method to test audio source detection
+            testAudioSourceDetection(alertData) {
+              console.log('🧪 Testing audio source detection with alert data:', alertData.donorName);
+              
+              const audioFields = ['audioUrl', 'soundUrl', 'url'];
+              const results = {};
+              
+              // Check direct audio fields
+              audioFields.forEach(field => {
+                if (alertData[field]) {
+                  results[field] = {
+                    exists: true,
+                    value: alertData[field],
+                    isAudio: alertData[field].startsWith('data:audio/'),
+                    type: alertData[field].startsWith('data:audio/') ? 'audio-data' : 'other'
+                  };
+                } else {
+                  results[field] = {
+                    exists: false,
+                    value: null,
+                    isAudio: false,
+                    type: 'none'
+                  };
+                }
+              });
+              
+              // Check level-specific audio from settings
+              let levelAudioSource = null;
+              let levelAudioType = 'none';
+              
+              if (alertData.settings && alertData.settings.soundSettings && alertData.settings.soundSettings.url) {
+                levelAudioSource = alertData.settings.soundSettings.url;
+                levelAudioType = 'level-specific';
+                results['levelAudio'] = {
+                  exists: true,
+                  value: levelAudioSource,
+                  isAudio: levelAudioSource.startsWith('data:audio/') || levelAudioSource.includes('.mp3') || levelAudioSource.includes('.wav'),
+                  type: 'level-specific'
+                };
+              } else {
+                results['levelAudio'] = {
+                  exists: false,
+                  value: null,
+                  isAudio: false,
+                  type: 'none'
+                };
+              }
+              
+              // Determine which source would be used
+              let selectedSource = 'none';
+              let selectedValue = null;
+              
+              if (levelAudioSource) {
+                selectedSource = 'level-specific';
+                selectedValue = levelAudioSource;
+              } else if (alertData.audioUrl) {
+                selectedSource = 'audioUrl';
+                selectedValue = alertData.audioUrl;
+              } else if (alertData.soundUrl) {
+                selectedSource = 'soundUrl';
+                selectedValue = alertData.soundUrl;
+              } else if (alertData.url && alertData.url.startsWith('data:audio/')) {
+                selectedSource = 'url';
+                selectedValue = alertData.url;
+              } else if (this.settings?.soundSettings?.url) {
+                selectedSource = 'default-settings';
+                selectedValue = this.settings.soundSettings.url;
+              }
+              
+              return {
+                fieldAnalysis: results,
+                selectedSource: selectedSource,
+                selectedValue: selectedValue,
+                willUseDefault: selectedSource === 'default-settings',
+                willUseBeep: selectedSource === 'none',
+                recommendation: this.getAudioRecommendation(results, selectedSource)
+              };
+            }
+            
+            // Helper method to get audio recommendation
+            getAudioRecommendation(results, selectedSource) {
+              if (selectedSource === 'none') {
+                return 'No audio source found. Will play default beep.';
+              }
+              
+              if (selectedSource === 'level-specific') {
+                return 'Using level-specific audio. This is correct for donation levels.';
+              }
+              
+              if (selectedSource === 'default-settings') {
+                return 'Using default settings audio. Consider configuring level-specific audio.';
+              }
+              
+              return 'Using ' + selectedSource + ' field. Audio should play correctly.';
+            }
+            
             // Debug method to test URL field detection
             testUrlField(url) {
               if (!url) {
@@ -1589,6 +1715,7 @@ let WidgetController = class WidgetController {
               logAlertData: (data, label) => widget.logAlertData(data, label),
               getSoundSettings: () => widget.getSoundSettings(),
               getDisplaySettings: () => widget.getDisplaySettings(),
+              testAudioSourceDetection: (data) => widget.testAudioSourceDetection(data),
               testUrlField: (url) => widget.testUrlField(url),
               testImageHandling: (data) => widget.testImageHandling(data)
             };
