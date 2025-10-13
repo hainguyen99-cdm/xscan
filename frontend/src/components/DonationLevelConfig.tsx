@@ -65,6 +65,26 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     return `level_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
 
+  // Helper function to safely access configuration properties
+  const getConfigValue = (level: DonationLevel | null, path: string, defaultValue: any = null) => {
+    if (!level?.configuration || (level.configuration as any).removed) {
+      return defaultValue;
+    }
+    
+    const keys = path.split('.');
+    let current: any = level.configuration;
+    
+    for (const key of keys) {
+      if (current && typeof current === 'object' && key in current) {
+        current = current[key];
+      } else {
+        return defaultValue;
+      }
+    }
+    
+    return current !== undefined ? current : defaultValue;
+  };
+
   const createNewLevel = (): DonationLevel => {
     return {
       levelId: generateLevelId(),
@@ -230,7 +250,14 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
 
       // Update local state after successful save
       setDonationLevels(updatedLevels);
-      setSaveMessage({ type: 'success', text: 'Level saved successfully!' });
+      
+      // Check if optimization was applied
+      const wasOptimized = (updatedLevel as any).optimizationApplied;
+      const message = wasOptimized 
+        ? 'Level saved successfully! Some large media files were automatically optimized to fit database limits.'
+        : 'Level saved successfully!';
+      
+      setSaveMessage({ type: 'success', text: message });
       setShowToast(true);
       setEditingLevel(null);
       setShowFullEditor(false);
@@ -412,7 +439,14 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-lg">{level.levelName}</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    {level.levelName}
+                    {level && 'optimizationApplied' in level && (level as any).optimizationApplied && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Optimized
+                      </span>
+                    )}
+                  </CardTitle>
                   <CardDescription>
                     {formatAmount(level.minAmount, level.currency)} - {formatAmount(level.maxAmount, level.currency)}
                   </CardDescription>
@@ -697,7 +731,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                         type="number"
                         min="1000"
                         max="30000"
-                        value={editingLevel.configuration?.displaySettings?.duration || 5000}
+                        value={getConfigValue(editingLevel, 'displaySettings.duration', 5000)}
                         onChange={(e) => setEditingLevel(prev => prev ? {
                           ...prev,
                           configuration: {
@@ -714,7 +748,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                     <div className="space-y-2">
                       <Label className="text-sm font-semibold text-gray-700">Animation Type</Label>
                       <select
-                        value={editingLevel.configuration?.animationSettings?.animationType || 'fade'}
+                        value={getConfigValue(editingLevel, 'animationSettings.animationType', 'fade')}
                         onChange={(e) => setEditingLevel(prev => prev ? {
                           ...prev,
                           configuration: {
@@ -737,7 +771,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                     <div className="space-y-2">
                       <Label className="text-sm font-semibold text-gray-700">Position</Label>
                       <select
-                        value={editingLevel.configuration?.positionSettings?.anchor || 'top-right'}
+                        value={getConfigValue(editingLevel, 'positionSettings.anchor', 'top-right')}
                         onChange={(e) => setEditingLevel(prev => prev ? {
                           ...prev,
                           configuration: {
