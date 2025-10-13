@@ -322,6 +322,100 @@ let OBSSettingsService = class OBSSettingsService {
         }
         return optimized;
     }
+    analyzeDocumentSize(settings, levels, targetIdx, targetUpdate) {
+        console.log(`🔍 Document size analysis:`);
+        console.log(`📊 Total levels: ${levels.length}`);
+        levels.forEach((level, index) => {
+            const levelSize = JSON.stringify(level).length;
+            const levelSizeMB = (levelSize / (1024 * 1024)).toFixed(2);
+            console.log(`📊 Level ${index} (${level.levelName || level.levelId}): ${levelSizeMB}MB`);
+            if (level.configuration) {
+                const configSize = JSON.stringify(level.configuration).length;
+                const configSizeMB = (configSize / (1024 * 1024)).toFixed(2);
+                console.log(`  📊 Configuration: ${configSizeMB}MB`);
+                if (level.configuration.imageSettings) {
+                    const imageSize = JSON.stringify(level.configuration.imageSettings).length;
+                    const imageSizeMB = (imageSize / (1024 * 1024)).toFixed(2);
+                    console.log(`    📊 Image settings: ${imageSizeMB}MB`);
+                }
+                if (level.configuration.soundSettings) {
+                    const soundSize = JSON.stringify(level.configuration.soundSettings).length;
+                    const soundSizeMB = (soundSize / (1024 * 1024)).toFixed(2);
+                    console.log(`    📊 Sound settings: ${soundSizeMB}MB`);
+                }
+            }
+        });
+        const updateSize = JSON.stringify(targetUpdate).length;
+        const updateSizeMB = (updateSize / (1024 * 1024)).toFixed(2);
+        console.log(`📊 Target update size: ${updateSizeMB}MB`);
+    }
+    async optimizeEntireDocument(settings, levels, targetIdx, targetUpdate) {
+        console.log(`🔧 Starting document-wide optimization`);
+        const currentLevel = levels[targetIdx] || {};
+        if (typeof targetUpdate.levelName === 'string')
+            currentLevel.levelName = targetUpdate.levelName;
+        if (typeof targetUpdate.minAmount === 'number')
+            currentLevel.minAmount = targetUpdate.minAmount;
+        if (typeof targetUpdate.maxAmount === 'number')
+            currentLevel.maxAmount = targetUpdate.maxAmount;
+        if (typeof targetUpdate.currency === 'string')
+            currentLevel.currency = targetUpdate.currency;
+        if (typeof targetUpdate.isEnabled === 'boolean')
+            currentLevel.isEnabled = targetUpdate.isEnabled;
+        currentLevel.configuration = {
+            imageSettings: {},
+            soundSettings: {},
+            animationSettings: {},
+            styleSettings: {},
+            positionSettings: {},
+            displaySettings: {},
+            generalSettings: {},
+            removed: true,
+            reason: 'All media files removed due to document size constraints'
+        };
+        levels[targetIdx] = currentLevel;
+        for (let i = 0; i < levels.length; i++) {
+            if (i !== targetIdx && levels[i].configuration) {
+                console.log(`🗑️ Optimizing level ${i} to reduce document size`);
+                levels[i].configuration = {
+                    imageSettings: {},
+                    soundSettings: {},
+                    animationSettings: {},
+                    styleSettings: {},
+                    positionSettings: {},
+                    displaySettings: {},
+                    generalSettings: {},
+                    removed: true,
+                    reason: 'Media files removed to accommodate new level'
+                };
+                levels[i].optimizationApplied = true;
+                levels[i].optimizationMessage = 'Level optimized for document size constraints';
+            }
+        }
+        settings.donationLevels = levels;
+        const finalSize = JSON.stringify(settings.toObject()).length;
+        console.log(`📊 Final document size after document-wide optimization: ${(finalSize / (1024 * 1024)).toFixed(2)}MB`);
+        if (finalSize > 16 * 1024 * 1024) {
+            console.log(`⚠️ Document still too large, removing excess donation levels`);
+            const essentialLevels = [levels[targetIdx]];
+            const otherLevels = levels.filter((_, i) => i !== targetIdx);
+            const sortedLevels = otherLevels.sort((a, b) => {
+                const sizeA = JSON.stringify(a).length;
+                const sizeB = JSON.stringify(b).length;
+                return sizeA - sizeB;
+            });
+            essentialLevels.push(...sortedLevels.slice(0, 2));
+            console.log(`🗑️ Reduced from ${levels.length} to ${essentialLevels.length} donation levels`);
+            settings.donationLevels = essentialLevels;
+            const finalSizeAfterReduction = JSON.stringify(settings.toObject()).length;
+            console.log(`📊 Final document size after level reduction: ${(finalSizeAfterReduction / (1024 * 1024)).toFixed(2)}MB`);
+            if (finalSizeAfterReduction > 16 * 1024 * 1024) {
+                throw new Error(`Document size (${(finalSizeAfterReduction / (1024 * 1024)).toFixed(2)}MB) still exceeds MongoDB BSON limit. Please use smaller media files.`);
+            }
+        }
+        await settings.save();
+        return settings;
+    }
     async applyAggressiveOptimization(data) {
         let optimized = { ...data };
         if (optimized.configuration) {
@@ -522,6 +616,17 @@ let OBSSettingsService = class OBSSettingsService {
             throw new Error('Donation level not found');
         }
         const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+        const tempLevel = { ...levels[idx], ...optimizedUpdate };
+        const tempLevels = [...levels];
+        tempLevels[idx] = tempLevel;
+        const tempSettings = { ...settings.toObject(), donationLevels: tempLevels };
+        const tempDocSize = JSON.stringify(tempSettings).length;
+        console.log(`📊 Temporary document size with optimized level: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
+        this.analyzeDocumentSize(settings, levels, idx, optimizedUpdate);
+        if (tempDocSize > 12 * 1024 * 1024) {
+            console.log(`⚠️ Document still too large after level optimization, applying document-wide optimization`);
+            return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+        }
         const currentLevel = levels[idx] || {};
         if (typeof optimizedUpdate.levelName === 'string')
             currentLevel.levelName = optimizedUpdate.levelName;
