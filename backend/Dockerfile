@@ -10,6 +10,8 @@ COPY package*.json ./
 RUN npm install --legacy-peer-deps --include=dev
 COPY . .
 RUN npm run build
+# Clean up dev dependencies after build to save space
+RUN npm prune --omit=dev
 
 ########################
 # Runtime stage
@@ -24,7 +26,6 @@ RUN npm install --omit=dev --no-audit --no-fund --legacy-peer-deps
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/tsconfig*.json ./
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:3001/api/health || exit 1
