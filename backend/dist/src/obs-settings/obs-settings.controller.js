@@ -51,6 +51,13 @@ let OBSSettingsController = class OBSSettingsController {
         await this.obsSettingsService.updateDonationLevel(req.user.sub, levelId, body);
         return { success: true, message: 'Donation level updated successfully' };
     }
+    async restoreOptimizedLevels(req) {
+        console.log('[OBS Settings] restoreOptimizedLevels called', {
+            streamerId: req?.user?.sub
+        });
+        await this.obsSettingsService.restoreOptimizedLevels(req.user.sub);
+        return { success: true, message: 'Optimized levels restored successfully' };
+    }
 };
 exports.OBSSettingsController = OBSSettingsController;
 __decorate([
@@ -92,6 +99,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], OBSSettingsController.prototype, "updateDonationLevel", null);
+__decorate([
+    (0, common_1.Post)('restore-optimized-levels'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Optimized levels restored successfully' }),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "restoreOptimizedLevels", null);
 exports.OBSSettingsController = OBSSettingsController = __decorate([
     (0, swagger_1.ApiTags)('OBS Settings'),
     (0, swagger_1.ApiBearerAuth)(),

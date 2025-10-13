@@ -320,6 +320,47 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     });
   };
 
+  const handleRestoreOptimizedLevels = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      const response = await fetch('/api/obs-settings/restore-optimized-levels', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to restore optimized levels');
+      }
+
+      setSaveMessage({ type: 'success', text: 'Optimized levels restored successfully! The configuration structure has been fixed.' });
+      setShowToast(true);
+      
+      // Refresh the page to reload the restored data
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error restoring optimized levels:', error);
+      setSaveMessage({ 
+        type: 'error', 
+        text: error instanceof Error ? error.message : 'Failed to restore optimized levels' 
+      });
+      setShowToast(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsLoading(true);
     setSaveMessage(null);
@@ -404,8 +445,20 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold text-gray-900">Donation Level Configuration</h2>
+          {donationLevels.some(level => (level as any).optimizationApplied) && (
+            <Button
+              onClick={handleRestoreOptimizedLevels}
+              disabled={isLoading}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              {isLoading ? 'Restoring...' : 'Restore Optimized Levels'}
+            </Button>
+          )}
+        </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Donation Levels</h2>
           <p className="text-gray-600">Configure different alert settings for different donation amounts</p>
         </div>
         <div className="flex gap-3">

@@ -62,6 +62,17 @@ export class OBSSettingsController {
     await this.obsSettingsService.updateDonationLevel(req.user.sub, levelId, body);
     return { success: true, message: 'Donation level updated successfully' };
   }
+
+  @Post('restore-optimized-levels')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiResponse({ status: 200, description: 'Optimized levels restored successfully' })
+  async restoreOptimizedLevels(@Request() req): Promise<{ success: boolean; message: string }> {
+    console.log('[OBS Settings] restoreOptimizedLevels called', {
+      streamerId: req?.user?.sub
+    });
+    await this.obsSettingsService.restoreOptimizedLevels(req.user.sub);
+    return { success: true, message: 'Optimized levels restored successfully' };
+  }
 }
 
 export {};

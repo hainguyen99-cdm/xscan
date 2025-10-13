@@ -428,6 +428,76 @@ export class OBSSettingsService {
   }
 
   /**
+   * Restore configuration structure for optimized levels
+   */
+  async restoreOptimizedLevels(streamerId: string): Promise<OBSSettings> {
+    const settings = await this.findByStreamerId(streamerId);
+    if (!settings) {
+      throw new Error('OBS settings not found for streamer');
+    }
+
+    if (!Array.isArray((settings as any).donationLevels)) {
+      return settings;
+    }
+
+    const levels: any[] = (settings as any).donationLevels as any[];
+    let restored = false;
+
+    for (let i = 0; i < levels.length; i++) {
+      const level = levels[i];
+      
+      // Check if this level was optimized and needs restoration
+      if (level.configuration && level.configuration.removed && 
+          (!level.configuration.animationSettings || 
+           !level.configuration.styleSettings || 
+           !level.configuration.positionSettings || 
+           !level.configuration.displaySettings)) {
+        
+        console.log(`🔧 Restoring configuration structure for level ${i}: ${level.levelName}`);
+        
+        // Restore the full configuration structure with default values
+        level.configuration = {
+          imageSettings: level.configuration.imageSettings || {},
+          soundSettings: level.configuration.soundSettings || {},
+          animationSettings: {
+            animationType: 'fade',
+            duration: 500,
+            ...level.configuration.animationSettings
+          },
+          styleSettings: {
+            backgroundColor: '#1a1a1a',
+            textColor: '#ffffff',
+            fontFamily: 'Inter',
+            fontSize: 16,
+            ...level.configuration.styleSettings
+          },
+          positionSettings: {
+            anchor: 'top-right',
+            ...level.configuration.positionSettings
+          },
+          displaySettings: {
+            duration: 5000,
+            autoHide: true,
+            ...level.configuration.displaySettings
+          },
+          generalSettings: level.configuration.generalSettings || {},
+          restored: true,
+          reason: 'Configuration structure restored for frontend compatibility'
+        };
+        
+        restored = true;
+      }
+    }
+
+    if (restored) {
+      console.log(`✅ Restored configuration structure for optimized levels`);
+      await (settings as any).save();
+    }
+
+    return settings;
+  }
+
+  /**
    * Analyze document size to understand what's taking up space
    */
   private analyzeDocumentSize(settings: any, levels: any[], targetIdx: number, targetUpdate: any): void {
@@ -479,14 +549,27 @@ export class OBSSettingsService {
     if (typeof targetUpdate.currency === 'string') currentLevel.currency = targetUpdate.currency;
     if (typeof targetUpdate.isEnabled === 'boolean') currentLevel.isEnabled = targetUpdate.isEnabled;
     
-    // Remove ALL media files from the target level
+    // Remove ALL media files from the target level but preserve structure
     currentLevel.configuration = {
       imageSettings: {},
       soundSettings: {},
-      animationSettings: {},
-      styleSettings: {},
-      positionSettings: {},
-      displaySettings: {},
+      animationSettings: {
+        animationType: 'fade',
+        duration: 500
+      },
+      styleSettings: {
+        backgroundColor: '#1a1a1a',
+        textColor: '#ffffff',
+        fontFamily: 'Inter',
+        fontSize: 16
+      },
+      positionSettings: {
+        anchor: 'top-right'
+      },
+      displaySettings: {
+        duration: 5000,
+        autoHide: true
+      },
       generalSettings: {},
       removed: true,
       reason: 'All media files removed due to document size constraints'
@@ -501,10 +584,23 @@ export class OBSSettingsService {
         levels[i].configuration = {
           imageSettings: {},
           soundSettings: {},
-          animationSettings: {},
-          styleSettings: {},
-          positionSettings: {},
-          displaySettings: {},
+          animationSettings: {
+            animationType: 'fade',
+            duration: 500
+          },
+          styleSettings: {
+            backgroundColor: '#1a1a1a',
+            textColor: '#ffffff',
+            fontFamily: 'Inter',
+            fontSize: 16
+          },
+          positionSettings: {
+            anchor: 'top-right'
+          },
+          displaySettings: {
+            duration: 5000,
+            autoHide: true
+          },
           generalSettings: {},
           removed: true,
           reason: 'Media files removed to accommodate new level'
@@ -590,10 +686,23 @@ export class OBSSettingsService {
       optimized.configuration = {
         imageSettings: {},
         soundSettings: {},
-        animationSettings: {},
-        styleSettings: {},
-        positionSettings: {},
-        displaySettings: {},
+        animationSettings: {
+          animationType: 'fade',
+          duration: 500
+        },
+        styleSettings: {
+          backgroundColor: '#1a1a1a',
+          textColor: '#ffffff',
+          fontFamily: 'Inter',
+          fontSize: 16
+        },
+        positionSettings: {
+          anchor: 'top-right'
+        },
+        displaySettings: {
+          duration: 5000,
+          autoHide: true
+        },
         generalSettings: {},
         removed: true,
         reason: 'Configuration removed due to size constraints'
@@ -613,6 +722,26 @@ export class OBSSettingsService {
         currency: optimized.currency || 'VND',
         isEnabled: optimized.isEnabled !== undefined ? optimized.isEnabled : true,
         configuration: {
+          imageSettings: {},
+          soundSettings: {},
+          animationSettings: {
+            animationType: 'fade',
+            duration: 500
+          },
+          styleSettings: {
+            backgroundColor: '#1a1a1a',
+            textColor: '#ffffff',
+            fontFamily: 'Inter',
+            fontSize: 16
+          },
+          positionSettings: {
+            anchor: 'top-right'
+          },
+          displaySettings: {
+            duration: 5000,
+            autoHide: true
+          },
+          generalSettings: {},
           removed: true,
           reason: 'Level optimized due to size constraints - only basic settings preserved'
         },
