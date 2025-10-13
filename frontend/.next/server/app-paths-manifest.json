@@ -1,1 +1,3 @@
-{}
+{
+  "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js"
+}

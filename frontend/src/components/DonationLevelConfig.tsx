@@ -85,6 +85,22 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     return current !== undefined ? current : defaultValue;
   };
 
+  // Helper function to safely get amount values
+  const getAmountValue = (level: DonationLevel | null, field: 'minAmount' | 'maxAmount', defaultValue: number = 0): number => {
+    if (!level || level[field] === undefined || level[field] === null || isNaN(level[field])) {
+      return defaultValue;
+    }
+    return level[field];
+  };
+
+  // Helper function to safely get currency
+  const getCurrencyValue = (level: DonationLevel | null, defaultValue: string = 'VND'): string => {
+    if (!level || !level.currency) {
+      return defaultValue;
+    }
+    return level.currency;
+  };
+
   // Create differential update - only include changed fields
   const createDifferentialUpdate = (currentLevel: DonationLevel, originalLevel: DonationLevel | null): any => {
     const update: any = {
@@ -250,7 +266,16 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
   };
 
   const handleEditLevel = (level: DonationLevel) => {
-    setEditingLevel({ ...level });
+    // Ensure the level has proper default values
+    const levelWithDefaults = {
+      ...level,
+      minAmount: level.minAmount ?? 0,
+      maxAmount: level.maxAmount ?? 100000,
+      currency: level.currency ?? 'VND',
+      isEnabled: level.isEnabled ?? true,
+      levelName: level.levelName ?? ''
+    };
+    setEditingLevel(levelWithDefaults);
     setShowFullEditor(false);
     lastEditedLevelIdRef.current = level.levelId;
     // Scroll the edited level into view so the editor appears right below it
@@ -488,7 +513,27 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
 
   const generateWidgetUrl = (level: DonationLevel) => {
     if (!settings?.widgetUrl) return '';
-    return `${settings.widgetUrl}?level=${level.levelId}`;
+    
+    // Get server IP from environment or use default
+    const serverIp = process.env.NEXT_PUBLIC_SERVER_IP || '14.225.211.248';
+    let widgetUrl = settings.widgetUrl;
+    
+    // Replace localhost with server IP for external access
+    if (widgetUrl.includes('localhost')) {
+      widgetUrl = widgetUrl.replace('localhost', serverIp);
+    }
+    
+    // If no protocol specified, add http://
+    if (!widgetUrl.startsWith('http://') && !widgetUrl.startsWith('https://')) {
+      widgetUrl = `http://${widgetUrl}`;
+    }
+    
+    // Ensure the URL ends with the widget endpoint
+    if (!widgetUrl.includes('/widget')) {
+      widgetUrl = widgetUrl.replace(/\/$/, '') + '/widget';
+    }
+    
+    return `${widgetUrl}?level=${level.levelId}`;
   };
 
   const generateAlertToken = (level: DonationLevel) => {
@@ -512,7 +557,12 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     }
   };
 
-  const formatAmount = (amount: number, currency: string) => {
+  const formatAmount = (amount: number | undefined | null, currency: string) => {
+    // Handle undefined, null, or invalid amounts
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return `0 ${currency}`;
+    }
+    
     if (currency === 'VND') {
       return `${amount.toLocaleString('vi-VN')} VND`;
     }
@@ -581,7 +631,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                     )}
                   </CardTitle>
                   <CardDescription>
-                    {formatAmount(level.minAmount, level.currency)} - {formatAmount(level.maxAmount, level.currency)}
+                    {formatAmount(getAmountValue(level, 'minAmount'), getCurrencyValue(level))} - {formatAmount(getAmountValue(level, 'maxAmount'), getCurrencyValue(level))}
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -637,15 +687,15 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                 </div>
                 <div>
                   <span className="font-medium text-gray-600">Animation:</span>
-                  <span className="ml-2">{level.configuration.animationSettings?.animationType || 'fade'}</span>
+                  <span className="ml-2">{getConfigValue(level, 'animationSettings.animationType', 'fade')}</span>
                 </div>
                 <div>
                   <span className="font-medium text-gray-600">Duration:</span>
-                  <span className="ml-2">{Math.round((level.configuration.displaySettings?.duration || 5000) / 1000)}s</span>
+                  <span className="ml-2">{Math.round((getConfigValue(level, 'displaySettings.duration', 5000)) / 1000)}s</span>
                 </div>
                 <div>
                   <span className="font-medium text-gray-600">Position:</span>
-                  <span className="ml-2">{level.configuration.positionSettings?.anchor || 'top-left'}</span>
+                  <span className="ml-2">{getConfigValue(level, 'positionSettings.anchor', 'top-left')}</span>
                 </div>
               </div>
             </CardContent>
@@ -842,8 +892,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => playSound(editingLevel.configuration.soundSettings?.url || '')}
-                          disabled={!editingLevel.configuration.soundSettings?.url}
+                          onClick={() => playSound(getConfigValue(editingLevel, 'soundSettings.url', '') || '')}
+                          disabled={!getConfigValue(editingLevel, 'soundSettings.url')}
                           className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
                         >
                           <Play className="w-4 h-4" />
@@ -1101,11 +1151,11 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                           zIndex: 1000
                         }}
                       >
-                        {editingLevel.configuration?.imageSettings?.url && (
+                        {getConfigValue(editingLevel, 'imageSettings.url') && (
                           <div className="mb-2">
-                            {editingLevel.configuration.imageSettings.mediaType === 'video' ? (
+                            {getConfigValue(editingLevel, 'imageSettings.mediaType') === 'video' ? (
                               <video
-                                src={editingLevel.configuration.imageSettings.url}
+                                src={getConfigValue(editingLevel, 'imageSettings.url')}
                                 className="w-full h-16 object-cover rounded"
                                 muted
                                 autoPlay
@@ -1113,7 +1163,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                               />
                             ) : (
                               <img
-                                src={editingLevel.configuration.imageSettings.url}
+                                src={getConfigValue(editingLevel, 'imageSettings.url')}
                                 alt="Alert media"
                                 className="w-full h-16 object-cover rounded"
                               />
@@ -1124,7 +1174,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                           <div className="flex items-center justify-between">
                             <span className="font-semibold text-sm">John Doe</span>
                             <span className="text-xs opacity-75">
-                              {formatAmount(editingLevel.minAmount, editingLevel.currency)}
+                              {formatAmount(getAmountValue(editingLevel, 'minAmount'), getCurrencyValue(editingLevel))}
                             </span>
                           </div>
                           <p className="text-xs opacity-90">Thank you for the stream!</p>
@@ -1390,8 +1440,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => playSound(editingLevel.configuration.soundSettings?.url || '')}
-                      disabled={!editingLevel.configuration.soundSettings?.url}
+                      onClick={() => playSound(getConfigValue(editingLevel, 'soundSettings.url', '') || '')}
+                      disabled={!getConfigValue(editingLevel, 'soundSettings.url')}
                       className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
                     >
                       <Play className="w-4 h-4" />
@@ -1659,11 +1709,11 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                     }}
                   >
                     {/* Media Display */}
-                    {editingLevel.configuration?.imageSettings?.url && (
+                    {getConfigValue(editingLevel, 'imageSettings.url') && (
                       <div className="mb-2">
-                        {editingLevel.configuration.imageSettings.mediaType === 'video' ? (
+                        {getConfigValue(editingLevel, 'imageSettings.mediaType') === 'video' ? (
                           <video
-                            src={editingLevel.configuration.imageSettings.url}
+                            src={getConfigValue(editingLevel, 'imageSettings.url')}
                             className="w-full h-16 object-cover rounded"
                             muted
                             autoPlay
@@ -1671,7 +1721,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                           />
                         ) : (
                           <img
-                            src={editingLevel.configuration.imageSettings.url}
+                            src={getConfigValue(editingLevel, 'imageSettings.url')}
                             alt="Alert media"
                             className="w-full h-16 object-cover rounded"
                           />
@@ -1684,7 +1734,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-sm">John Doe</span>
                         <span className="text-xs opacity-75">
-                          {formatAmount(editingLevel.minAmount, editingLevel.currency)}
+                          {formatAmount(getAmountValue(editingLevel, 'minAmount'), getCurrencyValue(editingLevel))}
                         </span>
                       </div>
                       <p className="text-xs opacity-90">Thank you for the stream!</p>
@@ -1870,7 +1920,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                   <div>
                     <span className="text-gray-600">Range:</span>
                     <span className="ml-2 font-medium">
-                      {formatAmount(previewLevel.minAmount, previewLevel.currency)} - {formatAmount(previewLevel.maxAmount, previewLevel.currency)}
+                      {formatAmount(getAmountValue(previewLevel, 'minAmount'), getCurrencyValue(previewLevel))} - {formatAmount(getAmountValue(previewLevel, 'maxAmount'), getCurrencyValue(previewLevel))}
                     </span>
                   </div>
                   <div>
@@ -2056,7 +2106,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                         <div className="flex justify-between items-start mb-2">
                           <h5 className="font-medium text-gray-900">{level.levelName}</h5>
                           <span className="text-xs text-gray-500">
-                            {formatAmount(level.minAmount, level.currency)} - {formatAmount(level.maxAmount, level.currency)}
+                            {formatAmount(getAmountValue(level, 'minAmount'), getCurrencyValue(level))} - {formatAmount(getAmountValue(level, 'maxAmount'), getCurrencyValue(level))}
                           </span>
                         </div>
                         <div className="space-y-2 text-sm">
