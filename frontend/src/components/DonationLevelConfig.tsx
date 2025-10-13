@@ -518,23 +518,22 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
   const generateWidgetUrl = (level: DonationLevel) => {
     if (!settings?.widgetUrl) return '';
     
-    // Get server IP from environment or use default
-    const serverIp = process.env.NEXT_PUBLIC_SERVER_IP || '14.225.211.248';
     let widgetUrl = settings.widgetUrl;
     
-    // Replace localhost with server IP for external access
-    if (widgetUrl.includes('localhost')) {
-      widgetUrl = widgetUrl.replace('localhost', serverIp);
+    // Use internal Docker service name for widget URLs
+    // Replace server IP with internal service name for Docker networking
+    if (widgetUrl.includes('14.225.211.248')) {
+      widgetUrl = widgetUrl.replace('14.225.211.248', 'xscan-backend');
     }
     
-    // If no protocol specified, add http://
+    // Also handle localhost replacement for internal communication
+    if (widgetUrl.includes('localhost')) {
+      widgetUrl = widgetUrl.replace('localhost', 'xscan-backend');
+    }
+    
+    // Ensure proper protocol
     if (!widgetUrl.startsWith('http://') && !widgetUrl.startsWith('https://')) {
       widgetUrl = `http://${widgetUrl}`;
-    }
-    
-    // Ensure the URL ends with the widget endpoint
-    if (!widgetUrl.includes('/widget')) {
-      widgetUrl = widgetUrl.replace(/\/$/, '') + '/widget';
     }
     
     return `${widgetUrl}?level=${level.levelId}`;
