@@ -322,8 +322,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
         // Editing existing level - only save this specific level with differential update
         await onSave([differentialUpdate]);
       } else {
-        // Adding new level - save all levels including the new one
-        await onSave(updatedLevels);
+        // Adding new level - send the full level data (not differential)
+        await onSave([updatedLevel]);
       }
       
       setUploadProgress(100);

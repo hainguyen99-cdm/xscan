@@ -1008,8 +1008,35 @@ export class OBSSettingsService {
 
     const levels: any[] = (settings as any).donationLevels as any[];
     const idx = levels.findIndex((lvl: any) => lvl.levelId === levelId);
-    if (idx === -1) {
-      throw new Error('Donation level not found');
+    const isNewLevel = idx === -1;
+    
+    if (isNewLevel) {
+      console.log(`📊 Creating new donation level: ${levelId}`);
+      // For new levels, add to the end of the array
+      levels.push({} as any);
+      const newIdx = levels.length - 1;
+      levels[newIdx] = { ...levelUpdate, createdAt: new Date(), updatedAt: new Date() };
+      
+      // Optimize the new level
+      const optimizedUpdate = await this.optimizeMediaFiles(levels[newIdx]);
+      levels[newIdx] = optimizedUpdate;
+      
+      // Check document size for new level
+      const tempSettings = { ...settings.toObject(), donationLevels: levels };
+      const tempDocSize = JSON.stringify(tempSettings).length;
+      
+      console.log(`📊 Document size with new level: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
+      
+      if (tempDocSize > 12 * 1024 * 1024) {
+        console.log(`⚠️ Document too large with new level, applying document-wide optimization`);
+        return await this.optimizeEntireDocument(settings, levels, newIdx, optimizedUpdate);
+      }
+      
+      // Save the new level
+      (settings as any).donationLevels = levels;
+      await (settings as any).save();
+      
+      return settings;
     }
 
     // Check if this is a differential update (only changed fields)
