@@ -520,15 +520,15 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     
     let widgetUrl = settings.widgetUrl;
     
-    // Use internal Docker service name for widget URLs
-    // Replace server IP with internal service name for Docker networking
-    if (widgetUrl.includes('14.225.211.248')) {
-      widgetUrl = widgetUrl.replace('14.225.211.248', 'xscan-backend');
+    // Ensure we use the external server IP for widget URLs (for OBS Browser Source)
+    // Replace internal service names with external server IP
+    if (widgetUrl.includes('xscan-backend')) {
+      widgetUrl = widgetUrl.replace('xscan-backend', '14.225.211.248');
     }
     
-    // Also handle localhost replacement for internal communication
+    // Also handle localhost replacement for external access
     if (widgetUrl.includes('localhost')) {
-      widgetUrl = widgetUrl.replace('localhost', 'xscan-backend');
+      widgetUrl = widgetUrl.replace('localhost', '14.225.211.248');
     }
     
     // Ensure proper protocol
