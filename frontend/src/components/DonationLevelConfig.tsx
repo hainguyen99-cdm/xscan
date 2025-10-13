@@ -85,6 +85,72 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     return current !== undefined ? current : defaultValue;
   };
 
+  // Create differential update - only include changed fields
+  const createDifferentialUpdate = (currentLevel: DonationLevel, originalLevel: DonationLevel | null): any => {
+    const update: any = {
+      levelId: currentLevel.levelId,
+      updatedAt: new Date()
+    };
+
+    // Compare primitive fields
+    if (!originalLevel || currentLevel.levelName !== originalLevel.levelName) {
+      update.levelName = currentLevel.levelName;
+    }
+    if (!originalLevel || currentLevel.minAmount !== originalLevel.minAmount) {
+      update.minAmount = currentLevel.minAmount;
+    }
+    if (!originalLevel || currentLevel.maxAmount !== originalLevel.maxAmount) {
+      update.maxAmount = currentLevel.maxAmount;
+    }
+    if (!originalLevel || currentLevel.currency !== originalLevel.currency) {
+      update.currency = currentLevel.currency;
+    }
+    if (!originalLevel || currentLevel.isEnabled !== originalLevel.isEnabled) {
+      update.isEnabled = currentLevel.isEnabled;
+    }
+
+    // Compare configuration fields
+    if (currentLevel.configuration) {
+      const configUpdate: any = {};
+      let hasConfigChanges = false;
+
+      // Compare each configuration section
+      const configSections = ['imageSettings', 'soundSettings', 'animationSettings', 'styleSettings', 'positionSettings', 'displaySettings', 'generalSettings'] as const;
+      
+      for (const section of configSections) {
+        const currentSection = currentLevel.configuration[section];
+        const originalSection = originalLevel?.configuration?.[section];
+        
+        if (currentSection && (!originalSection || JSON.stringify(currentSection) !== JSON.stringify(originalSection))) {
+          (configUpdate as any)[section] = currentSection;
+          hasConfigChanges = true;
+        }
+      }
+
+      if (hasConfigChanges) {
+        update.configuration = configUpdate;
+      }
+    }
+
+    // Compare customization fields
+    const currentCustomization = (currentLevel as any).customization;
+    if (currentCustomization) {
+      const originalCustomization = (originalLevel as any)?.customization;
+      if (!originalCustomization || JSON.stringify(currentCustomization) !== JSON.stringify(originalCustomization)) {
+        update.customization = currentCustomization;
+      }
+    }
+
+    console.log(`📊 Differential update created:`, {
+      fields: Object.keys(update),
+      size: JSON.stringify(update).length,
+      originalSize: originalLevel ? JSON.stringify(originalLevel).length : 0,
+      reduction: originalLevel ? `${((1 - JSON.stringify(update).length / JSON.stringify(originalLevel).length) * 100).toFixed(1)}%` : 'N/A'
+    });
+
+    return update;
+  };
+
   const createNewLevel = (): DonationLevel => {
     return {
       levelId: generateLevelId(),
@@ -221,13 +287,27 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       
       // Compute updated levels synchronously to avoid relying on async state updates
       const existingIndex = donationLevels.findIndex(level => level.levelId === editingLevel.levelId);
+      
+      // Create differential update - only send changed fields
+      const differentialUpdate = createDifferentialUpdate(editingLevel, existingIndex >= 0 ? donationLevels[existingIndex] : null);
+      
       const updatedLevel: DonationLevel = { ...editingLevel, updatedAt: new Date() } as DonationLevel;
       const updatedLevels: DonationLevel[] = existingIndex >= 0
         ? donationLevels.map((lvl, idx) => (idx === existingIndex ? updatedLevel : lvl))
         : [...donationLevels, updatedLevel];
 
       // Simulate progress for large payloads
-      const payloadSize = JSON.stringify(updatedLevel).length;
+      const payloadSize = JSON.stringify(differentialUpdate).length;
+      console.log(`📊 Differential update size: ${(payloadSize / (1024 * 1024)).toFixed(2)}MB`);
+      
+      // Show efficiency message for differential updates
+      if (existingIndex >= 0) {
+        const originalLevel = donationLevels[existingIndex];
+        const originalSize = JSON.stringify(originalLevel).length;
+        const reduction = ((1 - payloadSize / originalSize) * 100).toFixed(1);
+        console.log(`📊 Size reduction: ${reduction}% (${(originalSize / (1024 * 1024)).toFixed(2)}MB → ${(payloadSize / (1024 * 1024)).toFixed(2)}MB)`);
+      }
+      
       if (payloadSize > 1024 * 1024) { // If payload is larger than 1MB
         setUploadProgress(25);
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -239,8 +319,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       // For editing existing levels, only save the specific level being edited
       // For new levels, save all levels (including the new one)
       if (existingIndex >= 0) {
-        // Editing existing level - only save this specific level
-        await onSave([updatedLevel]);
+        // Editing existing level - only save this specific level with differential update
+        await onSave([differentialUpdate]);
       } else {
         // Adding new level - save all levels including the new one
         await onSave(updatedLevels);

@@ -428,6 +428,70 @@ export class OBSSettingsService {
   }
 
   /**
+   * Merge differential update with existing level data
+   */
+  private mergeDifferentialUpdate(existingLevel: any, differentialUpdate: any): any {
+    const merged = { ...existingLevel };
+    
+    // Merge primitive fields
+    if (differentialUpdate.levelName !== undefined) {
+      merged.levelName = differentialUpdate.levelName;
+    }
+    if (differentialUpdate.minAmount !== undefined) {
+      merged.minAmount = differentialUpdate.minAmount;
+    }
+    if (differentialUpdate.maxAmount !== undefined) {
+      merged.maxAmount = differentialUpdate.maxAmount;
+    }
+    if (differentialUpdate.currency !== undefined) {
+      merged.currency = differentialUpdate.currency;
+    }
+    if (differentialUpdate.isEnabled !== undefined) {
+      merged.isEnabled = differentialUpdate.isEnabled;
+    }
+    
+    // Merge configuration fields
+    if (differentialUpdate.configuration) {
+      merged.configuration = {
+        ...(merged.configuration || {}),
+        ...differentialUpdate.configuration
+      };
+      
+      // Deep merge each configuration section
+      const configSections = ['imageSettings', 'soundSettings', 'animationSettings', 'styleSettings', 'positionSettings', 'displaySettings', 'generalSettings'];
+      
+      for (const section of configSections) {
+        if (differentialUpdate.configuration[section]) {
+          merged.configuration[section] = {
+            ...(merged.configuration[section] || {}),
+            ...differentialUpdate.configuration[section]
+          };
+        }
+      }
+    }
+    
+    // Merge customization fields
+    if (differentialUpdate.customization) {
+      merged.customization = {
+        ...(merged.customization || {}),
+        ...differentialUpdate.customization
+      };
+    }
+    
+    // Update timestamp
+    merged.updatedAt = new Date();
+    
+    console.log(`📊 Merged differential update:`, {
+      originalSize: JSON.stringify(existingLevel).length,
+      updateSize: JSON.stringify(differentialUpdate).length,
+      mergedSize: JSON.stringify(merged).length,
+      efficiency: `${((1 - JSON.stringify(differentialUpdate).length / JSON.stringify(existingLevel).length) * 100).toFixed(1)}% size reduction`
+    });
+    
+    return merged;
+  }
+
+  /**
    * Restore configuration structure for optimized levels
    */
   async restoreOptimizedLevels(streamerId: string): Promise<OBSSettings> {
@@ -948,43 +1012,77 @@ export class OBSSettingsService {
       throw new Error('Donation level not found');
     }
 
-    // Optimize media files to prevent MongoDB BSON size limit (16MB)
-    const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+    // Check if this is a differential update (only changed fields)
+    const isDifferentialUpdate = levelUpdate.levelId && Object.keys(levelUpdate).length < 10;
     
-    // Check if we need to optimize the entire document
-    const tempLevel = { ...levels[idx], ...optimizedUpdate };
-    const tempLevels = [...levels];
-    tempLevels[idx] = tempLevel;
-    const tempSettings = { ...settings.toObject(), donationLevels: tempLevels };
-    const tempDocSize = JSON.stringify(tempSettings).length;
-    
-    console.log(`📊 Temporary document size with optimized level: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
-    
-    // Analyze document structure for debugging
-    this.analyzeDocumentSize(settings, levels, idx, optimizedUpdate);
-    
-    if (tempDocSize > 12 * 1024 * 1024) {
-      console.log(`⚠️ Document still too large after level optimization, applying document-wide optimization`);
-      return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+    if (isDifferentialUpdate) {
+      console.log(`📊 Processing differential update for level: ${levelId}`);
+      console.log(`📊 Update fields:`, Object.keys(levelUpdate));
+      
+      // Merge differential update with existing level
+      const existingLevel = levels[idx];
+      const mergedUpdate = this.mergeDifferentialUpdate(existingLevel, levelUpdate);
+      
+      // Optimize only the merged update
+      const optimizedUpdate = await this.optimizeMediaFiles(mergedUpdate);
+      
+      // Check if we need to optimize the entire document
+      const tempLevel = { ...levels[idx], ...optimizedUpdate };
+      const tempLevels = [...levels];
+      tempLevels[idx] = tempLevel;
+      const tempSettings = { ...settings.toObject(), donationLevels: tempLevels };
+      const tempDocSize = JSON.stringify(tempSettings).length;
+      
+      console.log(`📊 Temporary document size with differential update: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
+      
+      if (tempDocSize > 12 * 1024 * 1024) {
+        console.log(`⚠️ Document still too large after differential update, applying document-wide optimization`);
+        return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+      }
+      
+      // Use the optimized differential update
+      levelUpdate = optimizedUpdate;
+    } else {
+      // Full update - use existing optimization logic
+      const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+      
+      // Check if we need to optimize the entire document
+      const tempLevel = { ...levels[idx], ...optimizedUpdate };
+      const tempLevels = [...levels];
+      tempLevels[idx] = tempLevel;
+      const tempSettings = { ...settings.toObject(), donationLevels: tempLevels };
+      const tempDocSize = JSON.stringify(tempSettings).length;
+      
+      console.log(`📊 Temporary document size with full update: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
+      
+      // Analyze document structure for debugging
+      this.analyzeDocumentSize(settings, levels, idx, optimizedUpdate);
+      
+      if (tempDocSize > 12 * 1024 * 1024) {
+        console.log(`⚠️ Document still too large after level optimization, applying document-wide optimization`);
+        return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+      }
+      
+      levelUpdate = optimizedUpdate;
     }
 
     const currentLevel = levels[idx] || {};
 
     // Primitive fields
-    if (typeof optimizedUpdate.levelName === 'string') currentLevel.levelName = optimizedUpdate.levelName;
-    if (typeof optimizedUpdate.minAmount === 'number') currentLevel.minAmount = optimizedUpdate.minAmount;
-    if (typeof optimizedUpdate.maxAmount === 'number') currentLevel.maxAmount = optimizedUpdate.maxAmount;
-    if (typeof optimizedUpdate.currency === 'string') currentLevel.currency = optimizedUpdate.currency;
-    if (typeof optimizedUpdate.isEnabled === 'boolean') currentLevel.isEnabled = optimizedUpdate.isEnabled;
+    if (typeof levelUpdate.levelName === 'string') currentLevel.levelName = levelUpdate.levelName;
+    if (typeof levelUpdate.minAmount === 'number') currentLevel.minAmount = levelUpdate.minAmount;
+    if (typeof levelUpdate.maxAmount === 'number') currentLevel.maxAmount = levelUpdate.maxAmount;
+    if (typeof levelUpdate.currency === 'string') currentLevel.currency = levelUpdate.currency;
+    if (typeof levelUpdate.isEnabled === 'boolean') currentLevel.isEnabled = levelUpdate.isEnabled;
 
     // Support direct configuration overrides (now optimized)
     currentLevel.configuration = {
       ...(currentLevel.configuration || {}),
-      ...(optimizedUpdate.configuration || {}),
+      ...(levelUpdate.configuration || {}),
     };
 
     // Support frontend "customization" shape (map to configuration)
-    const cz = optimizedUpdate.customization || {};
+    const cz = levelUpdate.customization || {};
     if (cz) {
       const cfg = currentLevel.configuration || {};
 
@@ -1054,7 +1152,7 @@ export class OBSSettingsService {
 
     // Add optimization metadata
     currentLevel.updatedAt = new Date();
-    if (optimizedUpdate.configuration) {
+    if (levelUpdate.configuration) {
       currentLevel.optimizationApplied = true;
       currentLevel.optimizationMessage = 'Level optimized for database storage';
     }

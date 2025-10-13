@@ -20,6 +20,7 @@ export declare class OBSSettingsService {
     update(streamerId: string, updateOBSSettingsDto: UpdateOBSSettingsDto): Promise<OBSSettings>;
     private mapFrontendToBackendFormat;
     private optimizeMediaFiles;
+    private mergeDifferentialUpdate;
     restoreOptimizedLevels(streamerId: string): Promise<OBSSettings>;
     private analyzeDocumentSize;
     private optimizeEntireDocument;
