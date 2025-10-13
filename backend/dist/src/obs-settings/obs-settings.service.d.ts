@@ -22,6 +22,7 @@ export declare class OBSSettingsService {
     private optimizeMediaFiles;
     private applyAggressiveOptimization;
     private removeLargeMediaFiles;
+    private removeAllMediaFiles;
     private optimizeImageSettings;
     private optimizeSoundSettings;
     updateDonationLevel(streamerId: string, levelId: string, levelUpdate: any): Promise<OBSSettings>;

@@ -431,19 +431,71 @@ export class OBSSettingsService {
    * Apply aggressive optimization to reduce document size
    */
   private async applyAggressiveOptimization(data: any): Promise<any> {
-    const optimized = { ...data };
+    let optimized = { ...data };
     
+    // First pass: Remove all media files larger than 500KB
     if (optimized.configuration) {
       const config = optimized.configuration;
       
-      // Remove or compress large media files
       if (config.imageSettings) {
-        config.imageSettings = this.removeLargeMediaFiles(config.imageSettings, 'image');
+        config.imageSettings = this.removeLargeMediaFiles(config.imageSettings, 'image', 500 * 1024);
       }
       
       if (config.soundSettings) {
-        config.soundSettings = this.removeLargeMediaFiles(config.soundSettings, 'audio');
+        config.soundSettings = this.removeLargeMediaFiles(config.soundSettings, 'audio', 500 * 1024);
       }
+    }
+    
+    // Check size after first pass
+    let currentSize = JSON.stringify(optimized).length;
+    console.log(`📊 Size after first optimization: ${(currentSize / (1024 * 1024)).toFixed(2)}MB`);
+    
+    // If still too large, remove ALL media files
+    if (currentSize > 12 * 1024 * 1024) { // 12MB threshold
+      console.log(`🗑️ Document still too large, removing ALL media files`);
+      optimized = this.removeAllMediaFiles(optimized);
+      currentSize = JSON.stringify(optimized).length;
+      console.log(`📊 Size after removing all media: ${(currentSize / (1024 * 1024)).toFixed(2)}MB`);
+    }
+    
+    // If still too large, remove configuration entirely
+    if (currentSize > 12 * 1024 * 1024) {
+      console.log(`🗑️ Document still too large, removing configuration`);
+      optimized.configuration = {
+        imageSettings: {},
+        soundSettings: {},
+        animationSettings: {},
+        styleSettings: {},
+        positionSettings: {},
+        displaySettings: {},
+        generalSettings: {},
+        removed: true,
+        reason: 'Configuration removed due to size constraints'
+      };
+      currentSize = JSON.stringify(optimized).length;
+      console.log(`📊 Size after removing configuration: ${(currentSize / (1024 * 1024)).toFixed(2)}MB`);
+    }
+    
+    // Final check: If still too large, create minimal level
+    if (currentSize > 12 * 1024 * 1024) {
+      console.log(`🗑️ Document still too large, creating minimal level`);
+      optimized = {
+        levelId: optimized.levelId,
+        levelName: optimized.levelName || 'Optimized Level',
+        minAmount: optimized.minAmount || 0,
+        maxAmount: optimized.maxAmount || 100000,
+        currency: optimized.currency || 'VND',
+        isEnabled: optimized.isEnabled !== undefined ? optimized.isEnabled : true,
+        configuration: {
+          removed: true,
+          reason: 'Level optimized due to size constraints - only basic settings preserved'
+        },
+        optimizationApplied: true,
+        createdAt: optimized.createdAt || new Date(),
+        updatedAt: new Date()
+      };
+      currentSize = JSON.stringify(optimized).length;
+      console.log(`📊 Size after minimal optimization: ${(currentSize / (1024 * 1024)).toFixed(2)}MB`);
     }
     
     return optimized;
@@ -452,7 +504,7 @@ export class OBSSettingsService {
   /**
    * Remove large media files and replace with placeholders
    */
-  private removeLargeMediaFiles(settings: any, type: 'image' | 'audio'): any {
+  private removeLargeMediaFiles(settings: any, type: 'image' | 'audio', sizeThreshold: number = 1024 * 1024): any {
     if (!settings) return settings;
     
     const optimized = { ...settings };
@@ -464,18 +516,69 @@ export class OBSSettingsService {
       if (optimized[field] && optimized[field].data) {
         const base64Data = optimized[field].data;
         
-        // If file is larger than 1MB, replace with placeholder
-        if (base64Data.length > 1024 * 1024) {
-          console.log(`🗑️ Removing large ${type} file: ${field} (${base64Data.length} chars)`);
+        // If file is larger than threshold, replace with placeholder
+        if (base64Data.length > sizeThreshold) {
+          console.log(`🗑️ Removing large ${type} file: ${field} (${base64Data.length} chars, threshold: ${sizeThreshold})`);
           optimized[field] = {
             name: optimized[field].name,
             type: optimized[field].type,
             size: optimized[field].size,
             data: null, // Remove the actual data
             removed: true,
-            reason: 'File too large for database storage',
+            reason: `File too large for database storage (${(base64Data.length / (1024 * 1024)).toFixed(2)}MB)`,
             originalSize: base64Data.length
           };
+        }
+      }
+    }
+    
+    return optimized;
+  }
+
+  /**
+   * Remove ALL media files to drastically reduce document size
+   */
+  private removeAllMediaFiles(data: any): any {
+    const optimized = { ...data };
+    
+    if (optimized.configuration) {
+      const config = optimized.configuration;
+      
+      // Remove all image files
+      if (config.imageSettings) {
+        const imageFields = ['backgroundImage', 'overlayImage', 'alertImage', 'customImage'];
+        for (const field of imageFields) {
+          if (config.imageSettings[field] && config.imageSettings[field].data) {
+            console.log(`🗑️ Removing ALL image file: ${field}`);
+            config.imageSettings[field] = {
+              name: config.imageSettings[field].name,
+              type: config.imageSettings[field].type,
+              size: config.imageSettings[field].size,
+              data: null,
+              removed: true,
+              reason: 'All media files removed due to document size constraints',
+              originalSize: config.imageSettings[field].data.length
+            };
+          }
+        }
+      }
+      
+      // Remove all audio files
+      if (config.soundSettings) {
+        const audioFields = ['alertSound', 'backgroundMusic', 'customSound'];
+        for (const field of audioFields) {
+          if (config.soundSettings[field] && config.soundSettings[field].data) {
+            console.log(`🗑️ Removing ALL audio file: ${field}`);
+            config.soundSettings[field] = {
+              name: config.soundSettings[field].name,
+              type: config.soundSettings[field].type,
+              size: config.soundSettings[field].size,
+              data: null,
+              removed: true,
+              reason: 'All media files removed due to document size constraints',
+              originalSize: config.soundSettings[field].data.length
+            };
+          }
         }
       }
     }
@@ -681,6 +784,7 @@ export class OBSSettingsService {
     currentLevel.updatedAt = new Date();
     if (optimizedUpdate.configuration) {
       currentLevel.optimizationApplied = true;
+      currentLevel.optimizationMessage = 'Level optimized for database storage';
     }
 
     levels[idx] = currentLevel;
