@@ -776,17 +776,34 @@ let OBSSettingsService = class OBSSettingsService {
         const isNewLevel = idx === -1;
         if (isNewLevel) {
             console.log(`📊 Creating new donation level: ${levelId}`);
-            levels.push({});
-            const newIdx = levels.length - 1;
-            levels[newIdx] = { ...levelUpdate, createdAt: new Date(), updatedAt: new Date() };
-            const optimizedUpdate = await this.optimizeMediaFiles(levels[newIdx]);
-            levels[newIdx] = optimizedUpdate;
+            if (!levelUpdate.levelId) {
+                levelUpdate.levelId = levelId;
+            }
+            if (!levelUpdate.levelName) {
+                levelUpdate.levelName = 'New Level';
+            }
+            if (levelUpdate.minAmount === undefined) {
+                levelUpdate.minAmount = 0;
+            }
+            if (levelUpdate.maxAmount === undefined) {
+                levelUpdate.maxAmount = 100000;
+            }
+            if (!levelUpdate.currency) {
+                levelUpdate.currency = 'VND';
+            }
+            if (levelUpdate.isEnabled === undefined) {
+                levelUpdate.isEnabled = true;
+            }
+            levelUpdate.createdAt = new Date();
+            levelUpdate.updatedAt = new Date();
+            const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+            levels.push(optimizedUpdate);
             const tempSettings = { ...settings.toObject(), donationLevels: levels };
             const tempDocSize = JSON.stringify(tempSettings).length;
             console.log(`📊 Document size with new level: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
             if (tempDocSize > 12 * 1024 * 1024) {
                 console.log(`⚠️ Document too large with new level, applying document-wide optimization`);
-                return await this.optimizeEntireDocument(settings, levels, newIdx, optimizedUpdate);
+                return await this.optimizeEntireDocument(settings, levels, levels.length - 1, optimizedUpdate);
             }
             settings.donationLevels = levels;
             await settings.save();

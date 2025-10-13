@@ -1012,14 +1012,36 @@ export class OBSSettingsService {
     
     if (isNewLevel) {
       console.log(`📊 Creating new donation level: ${levelId}`);
-      // For new levels, add to the end of the array
-      levels.push({} as any);
-      const newIdx = levels.length - 1;
-      levels[newIdx] = { ...levelUpdate, createdAt: new Date(), updatedAt: new Date() };
+      
+      // Validate required fields for new level
+      if (!levelUpdate.levelId) {
+        levelUpdate.levelId = levelId;
+      }
+      if (!levelUpdate.levelName) {
+        levelUpdate.levelName = 'New Level';
+      }
+      if (levelUpdate.minAmount === undefined) {
+        levelUpdate.minAmount = 0;
+      }
+      if (levelUpdate.maxAmount === undefined) {
+        levelUpdate.maxAmount = 100000;
+      }
+      if (!levelUpdate.currency) {
+        levelUpdate.currency = 'VND';
+      }
+      if (levelUpdate.isEnabled === undefined) {
+        levelUpdate.isEnabled = true;
+      }
+      
+      // Add timestamps
+      levelUpdate.createdAt = new Date();
+      levelUpdate.updatedAt = new Date();
       
       // Optimize the new level
-      const optimizedUpdate = await this.optimizeMediaFiles(levels[newIdx]);
-      levels[newIdx] = optimizedUpdate;
+      const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+      
+      // Add to levels array
+      levels.push(optimizedUpdate);
       
       // Check document size for new level
       const tempSettings = { ...settings.toObject(), donationLevels: levels };
@@ -1029,7 +1051,7 @@ export class OBSSettingsService {
       
       if (tempDocSize > 12 * 1024 * 1024) {
         console.log(`⚠️ Document too large with new level, applying document-wide optimization`);
-        return await this.optimizeEntireDocument(settings, levels, newIdx, optimizedUpdate);
+        return await this.optimizeEntireDocument(settings, levels, levels.length - 1, optimizedUpdate);
       }
       
       // Save the new level

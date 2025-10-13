@@ -1,3 +1,6 @@
 {
-  "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js"
+  "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js",
+  "/api/auth/profile/route": "app/api/auth/profile/route.js",
+  "/api/obs-settings/route": "app/api/obs-settings/route.js",
+  "/not-found": "app/not-found.js"
 }
