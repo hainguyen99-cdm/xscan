@@ -298,28 +298,28 @@ export default function OBSSettingsPage() {
         throw new Error('Authentication required. Please log in again.');
       }
 
-      console.log('💾 Saving donation levels...');
+      console.log('💾 Saving donation levels (per-level PUT)...');
       console.log('📝 Levels to save:', JSON.stringify(levels, null, 2));
 
-      const response = await fetch('/api/obs-settings/donation-levels', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ donationLevels: levels }),
-      });
+      // Persist each level individually to hit backend controller PUT /obs-settings/donation-levels/:levelId
+      for (const level of levels) {
+        const response = await fetch(`/api/obs-settings/donation-levels/${encodeURIComponent(level.levelId)}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(level),
+        });
 
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save donation levels');
+        console.log('📡 Level update status:', level.levelId, response.status);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to save donation level ${level.levelName || level.levelId}`);
+        }
       }
 
-      const result = await response.json();
-      console.log('✅ Donation levels saved:', result);
+      console.log('✅ All donation levels saved');
       
       setDonationLevels(levels);
       

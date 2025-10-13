@@ -117,13 +117,16 @@ export const useAppStore = create<AppState>()(
             if (currentState.user && currentState.isAuthenticated && token) {
               console.log('Found persisted user and token, validating...');
               try {
-                const { isValid, user } = await validateAuthToken();
-                console.log('Token validation result:', { isValid, user: user ? 'exists' : 'null' });
+                const { isValid, user, isNetworkError } = await validateAuthToken();
+                console.log('Token validation result:', { isValid, user: user ? 'exists' : 'null', isNetworkError: !!isNetworkError });
                 
                 if (isValid && user) {
                   console.log('Token valid, keeping existing user:', user.name);
                   // Update user data if needed, but keep authentication state
                   set({ user: { ...currentState.user, ...user }, isAuthenticated: true });
+                  return;
+                } else if (isNetworkError) {
+                  console.log('Network error during validation, keeping current auth state');
                   return;
                 } else {
                   console.log('Token invalid, clearing auth state');
@@ -145,19 +148,32 @@ export const useAppStore = create<AppState>()(
               }
             }
             
-            // If no persisted user or token, try to validate from scratch
-            if (!currentState.user && !currentState.isAuthenticated) {
-              console.log('No persisted state, validating token from scratch...');
-              const { isValid, user } = await validateAuthToken();
-              console.log('Token validation result:', { isValid, user: user ? 'exists' : 'null' });
-              
+            // If no persisted user but a token exists, validate to populate the user on reload
+            const hasToken = !!token;
+            if (!currentState.user && hasToken) {
+              console.log('Token present but no user in state, validating to populate user...');
+              const { isValid, user, isNetworkError } = await validateAuthToken();
+              console.log('Token validation result:', { isValid, user: user ? 'exists' : 'null', isNetworkError: !!isNetworkError });
               if (isValid && user) {
-                console.log('Setting authenticated user:', user.name);
+                console.log('Validation successful, setting authenticated user:', user.name);
                 set({ user, isAuthenticated: true });
-              } else {
-                console.log('No valid token found');
-                set({ user: null, isAuthenticated: false });
+                return;
               }
+              if (isNetworkError) {
+                console.log('Network error during validation with token; keep isAuthenticated true and retry later');
+                set({ isAuthenticated: true });
+                return;
+              }
+              console.log('Token invalid; clearing auth state');
+              removeAuthToken();
+              set({ user: null, isAuthenticated: false });
+              return;
+            }
+
+            // If no persisted user and no token, ensure logged out
+            if (!currentState.user && !hasToken) {
+              console.log('No token and no user; ensuring logged out');
+              set({ user: null, isAuthenticated: false });
             }
           } catch (error: any) {
             console.error('Authentication initialization error:', error);

@@ -1,11 +1,6 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
   "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js",
-  "/login/page": "app/login/page.js",
-  "/donate-for-streamers/page": "app/donate-for-streamers/page.js",
-  "/donate/[slug]/page": "app/donate/[slug]/page.js",
   "/not-found": "app/not-found.js",
-  "/api/auth/login/route": "app/api/auth/login/route.js",
-  "/api/obs-settings/route": "app/api/obs-settings/route.js",
-  "/api/donations/process/route": "app/api/donations/process/route.js"
+  "/api/auth/profile/route": "app/api/auth/profile/route.js",
+  "/api/obs-settings/route": "app/api/obs-settings/route.js"
 }

@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+// Resolve backend URL safely to avoid self-calls (which cause redirect loops)
+const resolveBackendUrl = (): string => {
+  const serverUrl = process.env.BACKEND_URL;
+  const publicUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  let url = serverUrl || publicUrl || 'http://localhost:3001';
+  // Prevent recursive calls to the same Next server (port 3000) in local dev
+  if (url.includes('localhost:3000')) {
+    url = url.replace('localhost:3000', 'localhost:3001');
+  }
+  return url;
+};
+
+const BACKEND_URL = resolveBackendUrl();
 
 export async function GET(request: NextRequest) {
   try {

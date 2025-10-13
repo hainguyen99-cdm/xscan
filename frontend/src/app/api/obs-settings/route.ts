@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+// Resolve backend URL safely to avoid self-calls (port 3000) in local dev
+const resolveBackendUrl = (): string => {
+  const serverUrl = process.env.BACKEND_URL;
+  const publicUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  let url = serverUrl || publicUrl || 'http://localhost:3001';
+  if (url.includes('localhost:3000')) {
+    url = url.replace('localhost:3000', 'localhost:3001');
+  }
+  return url;
+};
+
+const BACKEND_URL = resolveBackendUrl();
 
 // Custom body parser for handling large payloads
 async function parseBody(request: NextRequest): Promise<any> {
@@ -272,6 +283,10 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    // Ensure widgetUrl is present for the frontend
+    if (data && data.streamerId && data.alertToken && !data.widgetUrl) {
+      data.widgetUrl = `${BACKEND_URL}/api/widget-public/alert/${data.streamerId}/${data.alertToken}`;
+    }
     console.log('✅ Successfully retrieved OBS settings:', data);
     return NextResponse.json(data);
   } catch (error) {

@@ -28,6 +28,9 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [previewLevel, setPreviewLevel] = useState<DonationLevel | null>(null);
   const [showWidgetInfo, setShowWidgetInfo] = useState(false);
+  const [showFullEditor, setShowFullEditor] = useState(false);
+  const levelRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const lastEditedLevelIdRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   
@@ -148,17 +151,35 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
   const handleAddLevel = () => {
     const newLevel = createNewLevel();
     setEditingLevel(newLevel);
+    setShowFullEditor(true);
+    lastEditedLevelIdRef.current = newLevel.levelId;
+    // Smooth scroll to bottom editor for a nice look
+    requestAnimationFrame(() => {
+      const bottomEditor = document.getElementById('new-level-editor');
+      if (bottomEditor && typeof bottomEditor.scrollIntoView === 'function') {
+        bottomEditor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   };
 
   const handleEditLevel = (level: DonationLevel) => {
     setEditingLevel({ ...level });
+    setShowFullEditor(false);
+    lastEditedLevelIdRef.current = level.levelId;
+    // Scroll the edited level into view so the editor appears right below it
+    requestAnimationFrame(() => {
+      const container = levelRefs.current[level.levelId];
+      if (container && typeof container.scrollIntoView === 'function') {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   };
 
   const handleDeleteLevel = (levelId: string) => {
     setDonationLevels(prev => prev.filter(level => level.levelId !== levelId));
   };
 
-  const handleSaveLevel = () => {
+  const handleSaveLevel = async () => {
     if (!editingLevel) return;
 
     if (!editingLevel.levelName.trim()) {
@@ -173,22 +194,58 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       return;
     }
 
-    setDonationLevels(prev => {
-      const existingIndex = prev.findIndex(level => level.levelId === editingLevel.levelId);
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = { ...editingLevel, updatedAt: new Date() };
-        return updated;
-      } else {
-        return [...prev, editingLevel];
-      }
-    });
+    try {
+      // Compute updated levels synchronously to avoid relying on async state updates
+      const existingIndex = donationLevels.findIndex(level => level.levelId === editingLevel.levelId);
+      const updatedLevel: DonationLevel = { ...editingLevel, updatedAt: new Date() } as DonationLevel;
+      const updatedLevels: DonationLevel[] = existingIndex >= 0
+        ? donationLevels.map((lvl, idx) => (idx === existingIndex ? updatedLevel : lvl))
+        : [...donationLevels, updatedLevel];
 
-    setEditingLevel(null);
+      // Persist immediately using the provided onSave handler with the correct array
+      await onSave(updatedLevels);
+
+      // Update local state after successful save
+      setDonationLevels(updatedLevels);
+      setSaveMessage({ type: 'success', text: 'Level saved successfully!' });
+      setShowToast(true);
+      setEditingLevel(null);
+      setShowFullEditor(false);
+      // After saving, scroll back to the saved level's position
+      const targetId = lastEditedLevelIdRef.current;
+      if (targetId) {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            const container = levelRefs.current[targetId!];
+            if (container && typeof container.scrollIntoView === 'function') {
+              container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 200);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to save level:', err);
+      setSaveMessage({ type: 'error', text: 'Failed to save level. Please try again.' });
+      setShowToast(true);
+    }
   };
 
   const handleCancelEdit = () => {
+    const wasNewLevel = editingLevel ? !donationLevels.some(l => l.levelId === editingLevel.levelId) : false;
     setEditingLevel(null);
+    setShowFullEditor(false);
+    // After cancel, scroll back to last edited level if exists, else scroll top if it was a new level
+    const targetId = lastEditedLevelIdRef.current;
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const container = targetId ? levelRefs.current[targetId] : null;
+        if (container && typeof container.scrollIntoView === 'function') {
+          container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (wasNewLevel && typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 200);
+    });
   };
 
   const handleSave = async () => {
@@ -269,6 +326,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     return `${amount.toLocaleString()} ${currency}`;
   };
 
+  const isEditingExisting = !!(editingLevel && donationLevels.some(l => l.levelId === editingLevel.levelId));
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -299,7 +358,12 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       {/* Donation Levels List */}
       <div className="grid gap-4">
         {donationLevels.map((level) => (
-          <Card key={level.levelId} className="border border-gray-200 shadow-sm">
+          <div
+            key={level.levelId}
+            ref={(el) => { levelRefs.current[level.levelId] = el; }}
+            id={`level-${level.levelId}`}
+          >
+          <Card className="border border-gray-200 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div>
@@ -374,6 +438,484 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* Inline Edit Form: render directly below the level being edited */}
+          {editingLevel && editingLevel.levelId === level.levelId && (
+            <Card className="border-2 border-indigo-200 shadow-lg mt-2">
+              <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center gap-3 text-white">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Settings className="w-5 h-5" />
+                  </div>
+                  {editingLevel.levelId.startsWith('level_') ? 'Add New Level' : 'Edit Level'}
+                </CardTitle>
+                <CardDescription className="text-indigo-100">
+                  Configure alert settings for this donation range
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 p-6">
+                {/* Basic Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Level Name</Label>
+                    <Input
+                      value={editingLevel.levelName}
+                      onChange={(e) => setEditingLevel(prev => prev ? { ...prev, levelName: e.target.value } : null)}
+                      placeholder="e.g., Small Donation, Big Donation"
+                      className="border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Currency</Label>
+                    <select
+                      value={editingLevel.currency}
+                      onChange={(e) => setEditingLevel(prev => prev ? { ...prev, currency: e.target.value } : null)}
+                      className="w-full p-3 border border-gray-200 rounded-lg bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    >
+                      <option value="VND">VND</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                </div>
+                {/* Amount Range */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Minimum Amount</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={editingLevel.minAmount}
+                      onChange={(e) => setEditingLevel(prev => prev ? { ...prev, minAmount: parseFloat(e.target.value) || 0 } : null)}
+                      className="border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Maximum Amount</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={editingLevel.maxAmount}
+                      onChange={(e) => setEditingLevel(prev => prev ? { ...prev, maxAmount: parseFloat(e.target.value) || 0 } : null)}
+                      className="border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
+                </div>
+
+                {/* Media Settings */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-800">Media Settings</h4>
+                  {/* Image/Video Upload */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold text-gray-700">Alert Media</Label>
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-100 rounded-lg">
+                          <Upload className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            type="file"
+                            accept="image/*,video/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                  setModalState({
+                                    isOpen: true,
+                                    type: 'warning',
+                                    title: 'File Too Large',
+                                    message: 'File size must be under 10MB.',
+                                    details: 'Please choose a smaller file to continue.'
+                                  });
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                  setEditingLevel(prev => prev ? {
+                                    ...prev,
+                                    configuration: {
+                                      ...prev.configuration,
+                                      imageSettings: {
+                                        ...prev.configuration.imageSettings,
+                                        url: e.target?.result as string,
+                                        mediaType: file.type.startsWith('video/') ? 'video' : file.type === 'image/gif' ? 'gif' : 'image'
+                                      }
+                                    }
+                                  } : null);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="border-0 bg-transparent p-0 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB. Supported formats: Images (JPG, PNG, GIF), Videos (MP4, WebM)</p>
+                    </div>
+                  </div>
+
+                  {/* Sound Upload */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold text-gray-700">Alert Sound</Label>
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-100 rounded-lg">
+                          <Music className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            type="file"
+                            accept="audio/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                  setModalState({
+                                    isOpen: true,
+                                    type: 'warning',
+                                    title: 'File Too Large',
+                                    message: 'File size must be under 10MB.',
+                                    details: 'Please choose a smaller file to continue.'
+                                  });
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                  setEditingLevel(prev => prev ? {
+                                    ...prev,
+                                    configuration: {
+                                      ...prev.configuration,
+                                      soundSettings: {
+                                        ...prev.configuration.soundSettings,
+                                        url: e.target?.result as string
+                                      }
+                                    }
+                                  } : null);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="border-0 bg-transparent p-0 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => playSound(editingLevel.configuration.soundSettings?.url || '')}
+                          disabled={!editingLevel.configuration.soundSettings?.url}
+                          className="border-indigo-300 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+                        >
+                          <Play className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB. Supported formats: MP3, WAV, OGG</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Display Settings */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-800">Display Settings</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Duration (milliseconds)</Label>
+                      <Input
+                        type="number"
+                        min="1000"
+                        max="30000"
+                        value={editingLevel.configuration?.displaySettings?.duration || 5000}
+                        onChange={(e) => setEditingLevel(prev => prev ? {
+                          ...prev,
+                          configuration: {
+                            ...prev.configuration,
+                            displaySettings: {
+                              ...prev.configuration.displaySettings,
+                              duration: parseInt(e.target.value) || 5000
+                            }
+                          }
+                        } : null)}
+                        className="border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Animation Type</Label>
+                      <select
+                        value={editingLevel.configuration?.animationSettings?.animationType || 'fade'}
+                        onChange={(e) => setEditingLevel(prev => prev ? {
+                          ...prev,
+                          configuration: {
+                            ...prev.configuration,
+                            animationSettings: {
+                              ...prev.configuration.animationSettings,
+                              animationType: e.target.value as 'fade' | 'slide' | 'bounce' | 'zoom' | 'none'
+                            }
+                          }
+                        } : null)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option value="fade">Fade</option>
+                        <option value="slide">Slide</option>
+                        <option value="bounce">Bounce</option>
+                        <option value="zoom">Zoom</option>
+                        <option value="none">None</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Position</Label>
+                      <select
+                        value={editingLevel.configuration?.positionSettings?.anchor || 'top-right'}
+                        onChange={(e) => setEditingLevel(prev => prev ? {
+                          ...prev,
+                          configuration: {
+                            ...prev.configuration,
+                            positionSettings: {
+                              ...prev.configuration.positionSettings,
+                              anchor: e.target.value as 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'middle-center' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
+                            }
+                          }
+                        } : null)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option value="top-left">Top Left</option>
+                        <option value="top-center">Top Center</option>
+                        <option value="top-right">Top Right</option>
+                        <option value="middle-left">Middle Left</option>
+                        <option value="middle-center">Middle Center</option>
+                        <option value="middle-right">Middle Right</option>
+                        <option value="bottom-left">Bottom Left</option>
+                        <option value="bottom-center">Bottom Center</option>
+                        <option value="bottom-right">Bottom Right</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Auto Hide</Label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={editingLevel.configuration?.displaySettings?.autoHide !== false}
+                          onChange={(e) => setEditingLevel(prev => prev ? {
+                            ...prev,
+                            configuration: {
+                              ...prev.configuration,
+                              displaySettings: {
+                                ...prev.configuration.displaySettings,
+                                autoHide: e.target.checked
+                              }
+                            }
+                          } : null)}
+                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        />
+                        <span className="text-sm text-gray-600">Automatically hide after duration</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Style Settings */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-800">Style Settings</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Background Color</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={editingLevel.configuration?.styleSettings?.backgroundColor || '#1a1a1a'}
+                          onChange={(e) => setEditingLevel(prev => prev ? {
+                            ...prev,
+                            configuration: {
+                              ...prev.configuration,
+                              styleSettings: {
+                                ...prev.configuration.styleSettings,
+                                backgroundColor: e.target.value
+                              }
+                            }
+                          } : null)}
+                          className="w-12 h-10 border border-gray-200 rounded cursor-pointer"
+                        />
+                        <Input
+                          value={editingLevel.configuration?.styleSettings?.backgroundColor || '#1a1a1a'}
+                          onChange={(e) => setEditingLevel(prev => prev ? {
+                            ...prev,
+                            configuration: {
+                              ...prev.configuration,
+                              styleSettings: {
+                                ...prev.configuration.styleSettings,
+                                backgroundColor: e.target.value
+                              }
+                            }
+                          } : null)}
+                          className="border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Text Color</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={editingLevel.configuration?.styleSettings?.textColor || '#ffffff'}
+                          onChange={(e) => setEditingLevel(prev => prev ? {
+                            ...prev,
+                            configuration: {
+                              ...prev.configuration,
+                              styleSettings: {
+                                ...prev.configuration.styleSettings,
+                                textColor: e.target.value
+                              }
+                            }
+                          } : null)}
+                          className="w-12 h-10 border border-gray-200 rounded cursor-pointer"
+                        />
+                        <Input
+                          value={editingLevel.configuration?.styleSettings?.textColor || '#ffffff'}
+                          onChange={(e) => setEditingLevel(prev => prev ? {
+                            ...prev,
+                            configuration: {
+                              ...prev.configuration,
+                              styleSettings: {
+                                ...prev.configuration.styleSettings,
+                                textColor: e.target.value
+                              }
+                            }
+                          } : null)}
+                          className="border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Font Family</Label>
+                      <select
+                        value={editingLevel.configuration?.styleSettings?.fontFamily || 'Inter'}
+                        onChange={(e) => setEditingLevel(prev => prev ? {
+                          ...prev,
+                          configuration: {
+                            ...prev.configuration,
+                            styleSettings: {
+                              ...prev.configuration.styleSettings,
+                              fontFamily: e.target.value
+                            }
+                          }
+                        } : null)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      >
+                        <option value="Inter">Inter</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Courier New">Courier New</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">Font Size (px)</Label>
+                      <Input
+                        type="number"
+                        min="8"
+                        max="72"
+                        value={editingLevel.configuration?.styleSettings?.fontSize || 16}
+                        onChange={(e) => setEditingLevel(prev => prev ? {
+                          ...prev,
+                          configuration: {
+                            ...prev.configuration,
+                            styleSettings: {
+                              ...prev.configuration.styleSettings,
+                              fontSize: parseInt(e.target.value) || 16
+                            }
+                          }
+                        } : null)}
+                        className="border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Preview */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-800">Live Preview</h4>
+                  <div className="bg-gray-100 p-4 rounded-lg min-h-[200px] relative overflow-hidden">
+                    <div className="text-sm text-gray-600 mb-2">Preview of how your alert will appear:</div>
+                    <div className="relative">
+                      <div
+                        className={`absolute transition-all duration-500 ${
+                          editingLevel.configuration?.animationSettings?.animationType === 'fade' ? 'animate-fade-in' :
+                          editingLevel.configuration?.animationSettings?.animationType === 'slide' ? 'animate-slide-in' :
+                          editingLevel.configuration?.animationSettings?.animationType === 'bounce' ? 'animate-bounce' : ''
+                        }`}
+                        style={{
+                          left: (editingLevel.configuration?.positionSettings?.anchor === 'top-left' || editingLevel.configuration?.positionSettings?.anchor === 'bottom-left') ? '20px' : undefined,
+                          top: (editingLevel.configuration?.positionSettings?.anchor === 'top-left' || editingLevel.configuration?.positionSettings?.anchor === 'top-right') ? '20px' : undefined,
+                          right: editingLevel.configuration?.positionSettings?.anchor === 'top-right' || editingLevel.configuration?.positionSettings?.anchor === 'bottom-right' ? '20px' : undefined,
+                          bottom: editingLevel.configuration?.positionSettings?.anchor === 'bottom-left' || editingLevel.configuration?.positionSettings?.anchor === 'bottom-right' ? '20px' : undefined,
+                          backgroundColor: editingLevel.configuration?.styleSettings?.backgroundColor || '#1a1a1a',
+                          color: editingLevel.configuration?.styleSettings?.textColor || '#ffffff',
+                          fontFamily: editingLevel.configuration?.styleSettings?.fontFamily || 'Inter',
+                          fontSize: `${editingLevel.configuration?.styleSettings?.fontSize || 16}px`,
+                          fontWeight: 'normal',
+                          maxWidth: '250px',
+                          padding: '12px',
+                          borderRadius: '6px',
+                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                          zIndex: 1000
+                        }}
+                      >
+                        {editingLevel.configuration?.imageSettings?.url && (
+                          <div className="mb-2">
+                            {editingLevel.configuration.imageSettings.mediaType === 'video' ? (
+                              <video
+                                src={editingLevel.configuration.imageSettings.url}
+                                className="w-full h-16 object-cover rounded"
+                                muted
+                                autoPlay
+                                loop
+                              />
+                            ) : (
+                              <img
+                                src={editingLevel.configuration.imageSettings.url}
+                                alt="Alert media"
+                                className="w-full h-16 object-cover rounded"
+                              />
+                            )}
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-sm">John Doe</span>
+                            <span className="text-xs opacity-75">
+                              {formatAmount(editingLevel.minAmount, editingLevel.currency)}
+                            </span>
+                          </div>
+                          <p className="text-xs opacity-90">Thank you for the stream!</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 pt-4 border-t border-gray-200">
+                  <Button
+                    onClick={handleSaveLevel}
+                    className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Level
+                  </Button>
+                  {/* Removed Advanced settings button: full editor now opens directly when editing */}
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          </div>
         ))}
 
         {donationLevels.length === 0 && (
@@ -398,9 +940,9 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
         )}
       </div>
 
-      {/* Edit Level Modal */}
-      {editingLevel && (
-        <Card className="border-2 border-indigo-200 shadow-lg">
+      {/* Bottom Edit Form (only for new levels not yet in the list) */}
+      {editingLevel && !isEditingExisting && (
+        <Card id="new-level-editor" className="border-2 border-indigo-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3 text-white">
               <div className="p-2 bg-white/20 rounded-lg">

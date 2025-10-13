@@ -454,37 +454,42 @@ export function removeAuthToken() {
   }
 }
 
-export async function validateAuthToken(): Promise<{ isValid: boolean; user: User | null }> {
+export async function validateAuthToken(): Promise<{ isValid: boolean; user: User | null; isNetworkError?: boolean }> {
   try {
     console.log('Validating auth token...');
     const token = getStoredToken();
     console.log('Stored token found:', !!token);
-    
     if (!token) {
       console.log('No token found, returning invalid');
       return { isValid: false, user: null };
     }
-    
-    const response = await apiClient.auth.getProfile();
-    console.log('Profile response:', response);
-    
-    // Backend returns { user: {...} } directly, not wrapped in ApiResponse
-    if (response && response.user) {
-      console.log('Token validation successful, user:', response.user.username);
-      return { isValid: true, user: response.user };
+    // Use a direct fetch to avoid axios baseURL/interceptor issues during early bootstrap
+    const res = await fetch('/api/auth/profile', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        console.log('Authentication error, clearing token and returning invalid');
+        removeAuthToken();
+        return { isValid: false, user: null, isNetworkError: false };
+      }
+      // Treat non-auth HTTP errors as network/backend issues to avoid logging users out
+      return { isValid: false, user: null, isNetworkError: true };
     }
-    
+    const data = await res.json();
+    if (data && data.user) {
+      console.log('Token validation successful, user:', data.user.username);
+      return { isValid: true, user: data.user as User };
+    }
     console.log('Token validation failed: no user data in response');
     return { isValid: false, user: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Token validation error:', error);
-    
-    // On any error, treat as invalid and clear token for auth errors
-    if (error?.response?.status === 401 || error?.response?.status === 403) {
-      console.log('Authentication error, clearing token and returning invalid');
-      removeAuthToken();
-    }
-    return { isValid: false, user: null };
+    // Network error (e.g., backend down or CORS), do not log the user out
+    return { isValid: false, user: null, isNetworkError: true };
   }
 }
 

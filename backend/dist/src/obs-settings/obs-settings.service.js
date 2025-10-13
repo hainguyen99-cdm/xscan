@@ -304,6 +304,93 @@ let OBSSettingsService = class OBSSettingsService {
         console.log(`📝 Final mapped data:`, JSON.stringify(mappedData, null, 2));
         return mappedData;
     }
+    async updateDonationLevel(streamerId, levelId, levelUpdate) {
+        const settings = await this.findByStreamerId(streamerId);
+        if (!settings) {
+            throw new Error('OBS settings not found for streamer');
+        }
+        if (!Array.isArray(settings.donationLevels)) {
+            settings.donationLevels = [];
+        }
+        const levels = settings.donationLevels;
+        const idx = levels.findIndex((lvl) => lvl.levelId === levelId);
+        if (idx === -1) {
+            throw new Error('Donation level not found');
+        }
+        const currentLevel = levels[idx] || {};
+        if (typeof levelUpdate.levelName === 'string')
+            currentLevel.levelName = levelUpdate.levelName;
+        if (typeof levelUpdate.minAmount === 'number')
+            currentLevel.minAmount = levelUpdate.minAmount;
+        if (typeof levelUpdate.maxAmount === 'number')
+            currentLevel.maxAmount = levelUpdate.maxAmount;
+        if (typeof levelUpdate.currency === 'string')
+            currentLevel.currency = levelUpdate.currency;
+        if (typeof levelUpdate.isEnabled === 'boolean')
+            currentLevel.isEnabled = levelUpdate.isEnabled;
+        currentLevel.configuration = {
+            ...(currentLevel.configuration || {}),
+            ...(levelUpdate.configuration || {}),
+        };
+        const cz = levelUpdate.customization || {};
+        if (cz) {
+            const cfg = currentLevel.configuration || {};
+            if (cz.image) {
+                cfg.imageSettings = {
+                    ...(cfg.imageSettings || {}),
+                    url: cz.image.url ?? (cfg.imageSettings?.url),
+                    mediaType: cz.image.type ?? (cfg.imageSettings?.mediaType),
+                    duration: cz.image.duration ?? (cfg.imageSettings?.duration),
+                };
+            }
+            if (cz.sound) {
+                cfg.soundSettings = {
+                    ...(cfg.soundSettings || {}),
+                    url: cz.sound.url ?? (cfg.soundSettings?.url),
+                    volume: cz.sound.volume ?? (cfg.soundSettings?.volume),
+                    duration: cz.sound.duration ?? (cfg.soundSettings?.duration),
+                };
+            }
+            if (cz.text) {
+                cfg.styleSettings = {
+                    ...(cfg.styleSettings || {}),
+                    fontFamily: cz.text.font ?? (cfg.styleSettings?.fontFamily),
+                    fontSize: cz.text.fontSize ?? (cfg.styleSettings?.fontSize),
+                    textColor: cz.text.color ?? (cfg.styleSettings?.textColor),
+                    backgroundColor: cz.text.backgroundColor ?? (cfg.styleSettings?.backgroundColor),
+                };
+                if (typeof cz.text.animation !== 'undefined') {
+                    cfg.animationSettings = {
+                        ...(cfg.animationSettings || {}),
+                        animationType: cz.text.animation === 'none' ? 'none' : 'fade',
+                        duration: cz.text.animation === 'none' ? 0 : 500,
+                    };
+                }
+            }
+            if (typeof cz.position !== 'undefined') {
+                cfg.positionSettings = {
+                    ...(cfg.positionSettings || {}),
+                    anchor: cz.position,
+                };
+            }
+            if (typeof cz.duration !== 'undefined') {
+                let durationMs = cz.duration;
+                if (typeof durationMs === 'number' && durationMs < 1000) {
+                    durationMs = durationMs * 1000;
+                }
+                cfg.displaySettings = {
+                    ...(cfg.displaySettings || {}),
+                    duration: durationMs,
+                };
+            }
+            currentLevel.configuration = cfg;
+            currentLevel.customization = { ...(currentLevel.customization || {}), ...cz };
+        }
+        levels[idx] = currentLevel;
+        settings.donationLevels = levels;
+        await settings.save();
+        return settings;
+    }
     async delete(streamerId) {
         const result = await this.obsSettingsModel.deleteOne({
             streamerId: new mongoose_2.Types.ObjectId(streamerId),
