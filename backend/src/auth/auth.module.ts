@@ -15,14 +15,33 @@ import { ConfigService } from '../config/config.service';
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret:
-          configService.jwtSecret ||
-          'your-super-secret-jwt-key-change-in-production',
-        signOptions: {
-          expiresIn: configService.jwtExpiresIn || '24h', // Default to 24 hours
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const expiresIn = configService.jwtExpiresIn || '24h';
+        // Convert string format to seconds if needed
+        let expiresInSeconds: number;
+        if (typeof expiresIn === 'string') {
+          if (expiresIn.endsWith('h')) {
+            expiresInSeconds = parseInt(expiresIn.replace('h', '')) * 3600;
+          } else if (expiresIn.endsWith('d')) {
+            expiresInSeconds = parseInt(expiresIn.replace('d', '')) * 86400;
+          } else if (expiresIn.endsWith('m')) {
+            expiresInSeconds = parseInt(expiresIn.replace('m', '')) * 60;
+          } else {
+            expiresInSeconds = parseInt(expiresIn) || 86400; // Default to 24 hours
+          }
+        } else {
+          expiresInSeconds = expiresIn;
+        }
+        
+        return {
+          secret:
+            configService.jwtSecret ||
+            'your-super-secret-jwt-key-change-in-production',
+          signOptions: {
+            expiresIn: expiresInSeconds,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],
