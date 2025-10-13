@@ -11,20 +11,61 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 async function bootstrap() {
-    const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, {
+        bodyParser: false,
+    });
     app.useWebSocketAdapter(new platform_socket_io_1.IoAdapter(app));
-    app.use(express.json({ limit: '10mb' }));
-    app.use(express.urlencoded({ limit: '10mb', extended: true }));
-    app.use('/api/obs-settings', express.json({ limit: '10mb' }));
-    app.use('/api/obs-settings', express.urlencoded({ limit: '10mb', extended: true }));
     app.use((req, res, next) => {
         const contentLength = req.headers['content-length'];
         if (contentLength) {
             const sizeInMB = Math.round(parseInt(contentLength) / (1024 * 1024) * 100) / 100;
-            console.log(`📝 Request size: ${sizeInMB}MB (${contentLength} bytes)`);
+            console.log(`📝 Request size: ${sizeInMB}MB (${contentLength} bytes) - ${req.method} ${req.path}`);
+            if (parseInt(contentLength) > 10 * 1024 * 1024) {
+                console.warn(`⚠️ Large payload detected: ${sizeInMB}MB for ${req.method} ${req.path}`);
+            }
         }
         next();
     });
+    app.use((error, req, res, next) => {
+        if (error.type === 'entity.too.large') {
+            console.error(`❌ Payload too large error: ${req.method} ${req.path}`, {
+                contentLength: req.headers['content-length'],
+                error: error.message
+            });
+            return res.status(413).json({
+                error: 'Request payload too large',
+                message: 'The request payload exceeds the maximum allowed size of 50MB',
+                code: 'PAYLOAD_TOO_LARGE'
+            });
+        }
+        next(error);
+    });
+    app.use(express.json({
+        limit: '50mb',
+        verify: (req, res, buf) => {
+            console.log(`🔍 Body parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+        }
+    }));
+    app.use(express.urlencoded({
+        limit: '50mb',
+        extended: true,
+        verify: (req, res, buf) => {
+            console.log(`🔍 URL encoded parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+        }
+    }));
+    app.use('/api/obs-settings', express.json({
+        limit: '50mb',
+        verify: (req, res, buf) => {
+            console.log(`🎯 OBS Settings body parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+        }
+    }));
+    app.use('/api/obs-settings', express.urlencoded({
+        limit: '50mb',
+        extended: true,
+        verify: (req, res, buf) => {
+            console.log(`🎯 OBS Settings URL encoded parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+        }
+    }));
     const configService = app.get(config_service_1.ConfigService);
     app.enableCors({
         origin: configService.corsOrigin || 'http://localhost:3000',

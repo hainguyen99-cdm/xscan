@@ -10,28 +10,76 @@ import * as path from 'path';
 import * as express from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // Disable NestJS built-in body parser to use our custom Express middleware
+    bodyParser: false,
+  });
 
   // Enable WebSocket support
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  // Configure body parser middleware for larger payloads
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ limit: '10mb', extended: true }));
-  
-  // Add specific configuration for OBS settings API (large media files)
-  app.use('/api/obs-settings', express.json({ limit: '10mb' }));
-  app.use('/api/obs-settings', express.urlencoded({ limit: '10mb', extended: true }));
-  
-  // Add logging middleware for debugging large payloads
+  // Add logging middleware for debugging large payloads (BEFORE body parsing)
   app.use((req, res, next) => {
     const contentLength = req.headers['content-length'];
     if (contentLength) {
       const sizeInMB = Math.round(parseInt(contentLength) / (1024 * 1024) * 100) / 100;
-      console.log(`📝 Request size: ${sizeInMB}MB (${contentLength} bytes)`);
+      console.log(`📝 Request size: ${sizeInMB}MB (${contentLength} bytes) - ${req.method} ${req.path}`);
+      
+      // Warn if payload is very large
+      if (parseInt(contentLength) > 10 * 1024 * 1024) { // 10MB
+        console.warn(`⚠️ Large payload detected: ${sizeInMB}MB for ${req.method} ${req.path}`);
+      }
     }
     next();
   });
+
+  // Add error handling middleware for body parser errors
+  app.use((error, req, res, next) => {
+    if (error.type === 'entity.too.large') {
+      console.error(`❌ Payload too large error: ${req.method} ${req.path}`, {
+        contentLength: req.headers['content-length'],
+        error: error.message
+      });
+      return res.status(413).json({
+        error: 'Request payload too large',
+        message: 'The request payload exceeds the maximum allowed size of 50MB',
+        code: 'PAYLOAD_TOO_LARGE'
+      });
+    }
+    next(error);
+  });
+
+  // Configure body parser middleware for larger payloads
+  // Apply global limits first
+  app.use(express.json({ 
+    limit: '50mb',
+    verify: (req: any, res, buf) => {
+      console.log(`🔍 Body parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+    }
+  }));
+  app.use(express.urlencoded({ 
+    limit: '50mb', 
+    extended: true,
+    verify: (req: any, res, buf) => {
+      console.log(`🔍 URL encoded parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+    }
+  }));
+  
+  // Add specific configuration for OBS settings API (large media files)
+  // This should override the global settings for these specific routes
+  app.use('/api/obs-settings', express.json({ 
+    limit: '50mb',
+    verify: (req: any, res, buf) => {
+      console.log(`🎯 OBS Settings body parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+    }
+  }));
+  app.use('/api/obs-settings', express.urlencoded({ 
+    limit: '50mb', 
+    extended: true,
+    verify: (req: any, res, buf) => {
+      console.log(`🎯 OBS Settings URL encoded parser processing ${req.method} ${req.url}, buffer size: ${buf.length} bytes`);
+    }
+  }));
 
   // Get config service
   const configService = app.get(ConfigService);

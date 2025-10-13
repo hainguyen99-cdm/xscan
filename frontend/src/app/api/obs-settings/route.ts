@@ -59,8 +59,8 @@ async function parseBody(request: NextRequest): Promise<any> {
       console.log(`📝 Raw request body size: ${text.length} characters`);
       
       // Check if the payload is too large
-      if (text.length > 10 * 1024 * 1024) { // 10MB limit
-        throw new Error('Request payload exceeds 10MB limit');
+      if (text.length > 50 * 1024 * 1024) { // 50MB limit
+        throw new Error('Request payload exceeds 50MB limit');
       }
       
       try {
@@ -373,8 +373,8 @@ export async function PATCH(request: NextRequest) {
 
     // Check if body is too large for backend
     const bodySize = JSON.stringify(body).length;
-    if (bodySize > 5 * 1024 * 1024) { // 5MB limit for backend
-      console.warn('⚠️ Body size exceeds 5MB, may cause backend issues');
+    if (bodySize > 50 * 1024 * 1024) { // 50MB limit for backend
+      console.warn('⚠️ Body size exceeds 50MB, may cause backend issues');
     }
 
     // Update OBS settings
@@ -418,7 +418,7 @@ export async function PATCH(request: NextRequest) {
     // Handle specific parsing errors
     if (error instanceof Error && error.message.includes('Failed to parse request body')) {
       return NextResponse.json({ 
-        error: 'Request payload is too large or invalid. Please ensure files are under 10MB.',
+        error: 'Request payload is too large or invalid. Please ensure files are under 50MB.',
         code: 'PAYLOAD_TOO_LARGE'
       }, { status: 413 });
     }

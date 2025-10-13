@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-const getBackendUrl = (): string => {
-  return process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:3001';
+// Resolve backend URL safely to avoid self-calls (port 3000) in local dev
+const resolveBackendUrl = (): string => {
+  const serverUrl = process.env.BACKEND_URL;
+  const publicUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  let url = serverUrl || publicUrl || 'http://localhost:3001';
+  if (url.includes('localhost:3000')) {
+    url = url.replace('localhost:3000', 'localhost:3001');
+  }
+  return url;
 };
+
+const BACKEND_URL = resolveBackendUrl();
 
 // Custom body parser for handling large payloads (same as main obs-settings route)
 async function parseBody(request: NextRequest): Promise<any> {
@@ -52,8 +61,8 @@ async function parseBody(request: NextRequest): Promise<any> {
       console.log(`📝 Raw request body size: ${text.length} characters`);
       
       // Check if the payload is too large
-      if (text.length > 10 * 1024 * 1024) { // 10MB limit
-        throw new Error('Request payload exceeds 10MB limit');
+      if (text.length > 50 * 1024 * 1024) { // 50MB limit for frontend processing
+        throw new Error('Request payload exceeds 50MB limit');
       }
       
       try {
@@ -71,7 +80,19 @@ async function parseBody(request: NextRequest): Promise<any> {
 
 export async function PUT(req: NextRequest, { params }: { params: { levelId: string } }) {
   try {
-    console.log('🚀 PUT request received for donation level:', params.levelId);
+    // Decode the levelId since it's encoded in the URL
+    const decodedLevelId = decodeURIComponent(params.levelId);
+    console.log('🚀 PUT request received for donation level:', decodedLevelId);
+    console.log('🔍 Original encoded levelId:', params.levelId);
+    
+    // Validate levelId format
+    if (!decodedLevelId || typeof decodedLevelId !== 'string') {
+      console.error('❌ Invalid levelId:', decodedLevelId);
+      return NextResponse.json({ 
+        error: 'Invalid level ID format',
+        code: 'INVALID_LEVEL_ID'
+      }, { status: 400 });
+    }
     
     // Get the authorization header
     const authHeader = req.headers.get('authorization');
@@ -94,28 +115,74 @@ export async function PUT(req: NextRequest, { params }: { params: { levelId: str
     
     console.log('📝 Parsed request body size:', JSON.stringify(body).length, 'characters');
     console.log('📝 Body keys:', Object.keys(body));
+    console.log('📝 Body levelId:', body.levelId);
+    console.log('📝 URL levelId:', decodedLevelId);
+    console.log('📝 LevelId match:', body.levelId === decodedLevelId);
 
     // Check if body is too large for backend
     const bodySize = JSON.stringify(body).length;
-    if (bodySize > 5 * 1024 * 1024) { // 5MB limit for backend
-      console.warn('⚠️ Body size exceeds 5MB, may cause backend issues');
+    if (bodySize > 50 * 1024 * 1024) { // 50MB limit for backend
+      console.warn('⚠️ Body size exceeds 50MB, may cause backend issues');
     }
 
-    const backend = getBackendUrl();
+    console.log('🌐 Backend URL:', BACKEND_URL);
     const cookie = req.headers.get('cookie') || '';
+    
+    // Test backend connectivity first
+    try {
+      const healthCheck = await fetch(`${BACKEND_URL}/api/health`, { 
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('🏥 Backend health check status:', healthCheck.status);
+    } catch (error) {
+      console.error('❌ Backend connectivity test failed:', error);
+      return NextResponse.json({ 
+        error: 'Backend service is not available. Please ensure the backend server is running.',
+        code: 'BACKEND_UNAVAILABLE'
+      }, { status: 503 });
+    }
 
-    const upstream = await fetch(`${backend}/api/obs-settings/donation-levels/${params.levelId}`, {
+    // Add timeout and additional headers for large payloads
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
+    console.log('🌐 Making request to:', `${BACKEND_URL}/api/obs-settings/donation-levels/${encodeURIComponent(decodedLevelId)}`);
+    console.log('📝 Request body size:', JSON.stringify(body).length);
+    console.log('📝 Request headers:', {
+      'Content-Type': 'application/json',
+      'Content-Length': JSON.stringify(body).length.toString(),
+      'Authorization': authHeader ? 'Bearer [REDACTED]' : 'None',
+      'Cookie': cookie ? 'Present' : 'None'
+    });
+
+    const upstream = await fetch(`${BACKEND_URL}/api/obs-settings/donation-levels/${encodeURIComponent(decodedLevelId)}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Content-Length': JSON.stringify(body).length.toString(),
         cookie,
         authorization: authHeader,
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     const text = await upstream.text();
     const responseContentType = upstream.headers.get('Content-Type') || 'application/json';
+    
+    console.log('📡 Backend response status:', upstream.status);
+    console.log('📡 Backend response text length:', text.length);
+    
+    if (!upstream.ok) {
+      console.error('❌ Backend request failed:', upstream.status, text);
+      return new NextResponse(text, { 
+        status: upstream.status, 
+        headers: { 'Content-Type': responseContentType } 
+      });
+    }
     
     console.log('✅ Backend update successful');
     return new NextResponse(text, { 
@@ -128,9 +195,25 @@ export async function PUT(req: NextRequest, { params }: { params: { levelId: str
     // Handle specific parsing errors
     if (err instanceof Error && err.message.includes('Failed to parse request body')) {
       return NextResponse.json({ 
-        error: 'Request payload is too large or invalid. Please ensure files are under 10MB.',
+        error: 'Request payload is too large or invalid. Please ensure files are under 50MB.',
         code: 'PAYLOAD_TOO_LARGE'
       }, { status: 413 });
+    }
+    
+    // Handle timeout errors
+    if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('timeout'))) {
+      return NextResponse.json({ 
+        error: 'Request timed out. The file may be too large or the server is busy. Please try again.',
+        code: 'REQUEST_TIMEOUT'
+      }, { status: 408 });
+    }
+    
+    // Handle network errors
+    if (err instanceof Error && err.message.includes('fetch')) {
+      return NextResponse.json({ 
+        error: 'Network error. Please check your connection and try again.',
+        code: 'NETWORK_ERROR'
+      }, { status: 503 });
     }
     
     const message = err instanceof Error ? err.message : 'Unknown error';

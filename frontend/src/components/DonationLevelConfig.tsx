@@ -29,6 +29,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
   const [previewLevel, setPreviewLevel] = useState<DonationLevel | null>(null);
   const [showWidgetInfo, setShowWidgetInfo] = useState(false);
   const [showFullEditor, setShowFullEditor] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const levelRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const lastEditedLevelIdRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -195,12 +196,25 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     }
 
     try {
+      // Show upload progress for large files
+      setUploadProgress(0);
+      
       // Compute updated levels synchronously to avoid relying on async state updates
       const existingIndex = donationLevels.findIndex(level => level.levelId === editingLevel.levelId);
       const updatedLevel: DonationLevel = { ...editingLevel, updatedAt: new Date() } as DonationLevel;
       const updatedLevels: DonationLevel[] = existingIndex >= 0
         ? donationLevels.map((lvl, idx) => (idx === existingIndex ? updatedLevel : lvl))
         : [...donationLevels, updatedLevel];
+
+      // Simulate progress for large payloads
+      const payloadSize = JSON.stringify(updatedLevel).length;
+      if (payloadSize > 1024 * 1024) { // If payload is larger than 1MB
+        setUploadProgress(25);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        setUploadProgress(50);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        setUploadProgress(75);
+      }
 
       // For editing existing levels, only save the specific level being edited
       // For new levels, save all levels (including the new one)
@@ -211,6 +225,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
         // Adding new level - save all levels including the new one
         await onSave(updatedLevels);
       }
+      
+      setUploadProgress(100);
 
       // Update local state after successful save
       setDonationLevels(updatedLevels);
@@ -218,6 +234,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       setShowToast(true);
       setEditingLevel(null);
       setShowFullEditor(false);
+      setUploadProgress(null);
       // After saving, scroll back to the saved level's position
       const targetId = lastEditedLevelIdRef.current;
       if (targetId) {
@@ -238,7 +255,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       
       if (err instanceof Error) {
         if (err.message.includes('413') || err.message.includes('too large') || err.message.includes('PAYLOAD_TOO_LARGE')) {
-          errorMessage = 'File size too large. Please use smaller images or audio files (under 10MB each).';
+          errorMessage = 'File size too large. Please use smaller images or audio files (under 50MB each).';
         } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
           errorMessage = 'Authentication required. Please log in again.';
         } else if (err.message.includes('403') || err.message.includes('forbidden')) {
@@ -250,6 +267,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       
       setSaveMessage({ type: 'error', text: errorMessage });
       setShowToast(true);
+      setUploadProgress(null);
     }
   };
 
@@ -543,13 +561,13 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                // Check file size (10MB limit)
-                                if (file.size > 10 * 1024 * 1024) {
+                                // Check file size (50MB limit)
+                                if (file.size > 50 * 1024 * 1024) {
                                   setModalState({
                                     isOpen: true,
                                     type: 'warning',
                                     title: 'File Too Large',
-                                    message: 'File size must be under 10MB.',
+                                    message: 'File size must be under 50MB.',
                                     details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
                                   });
                                   return;
@@ -588,7 +606,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                           />
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB. Supported formats: Images (JPG, PNG, GIF), Videos (MP4, WebM)</p>
+                      <p className="text-xs text-gray-500 mt-2">Maximum file size: 50MB. Supported formats: Images (JPG, PNG, GIF), Videos (MP4, WebM)</p>
                     </div>
                   </div>
 
@@ -607,13 +625,13 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                // Check file size (10MB limit)
-                                if (file.size > 10 * 1024 * 1024) {
+                                // Check file size (50MB limit)
+                                if (file.size > 50 * 1024 * 1024) {
                                   setModalState({
                                     isOpen: true,
                                     type: 'warning',
                                     title: 'File Too Large',
-                                    message: 'File size must be under 10MB.',
+                                    message: 'File size must be under 50MB.',
                                     details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
                                   });
                                   return;
@@ -660,7 +678,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                           <Play className="w-4 h-4" />
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB. Supported formats: MP3, WAV, OGG</p>
+                      <p className="text-xs text-gray-500 mt-2">Maximum file size: 50MB. Supported formats: MP3, WAV, OGG</p>
                     </div>
                   </div>
                 </div>
@@ -945,14 +963,31 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                   </div>
                 </div>
 
+                {/* Upload Progress */}
+                {uploadProgress !== null && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Saving level...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="flex gap-4 pt-4 border-t border-gray-200">
                   <Button
                     onClick={handleSaveLevel}
-                    className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                    disabled={uploadProgress !== null}
+                    className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white disabled:opacity-50"
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    Save Level
+                    {uploadProgress !== null ? 'Saving...' : 'Save Level'}
                   </Button>
                   {/* Removed Advanced settings button: full editor now opens directly when editing */}
                   <Button
@@ -1191,7 +1226,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                       <Play className="w-4 h-4" />
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB. Supported formats: MP3, WAV, OGG</p>
+                  <p className="text-xs text-gray-500 mt-2">Maximum file size: 50MB. Supported formats: MP3, WAV, OGG</p>
                 </div>
               </div>
             </div>
@@ -1488,14 +1523,31 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
               </div>
             </div>
 
+            {/* Upload Progress */}
+            {uploadProgress !== null && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Saving level...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-4 pt-4 border-t border-gray-200">
               <Button
                 onClick={handleSaveLevel}
-                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+                disabled={uploadProgress !== null}
+                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white disabled:opacity-50"
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save Level
+                {uploadProgress !== null ? 'Saving...' : 'Save Level'}
               </Button>
               <Button
                 variant="outline"

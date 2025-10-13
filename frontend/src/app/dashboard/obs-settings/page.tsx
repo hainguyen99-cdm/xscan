@@ -342,7 +342,7 @@ export default function OBSSettingsPage() {
       
       if (error instanceof Error) {
         if (error.message.includes('413') || error.message.includes('too large') || error.message.includes('PAYLOAD_TOO_LARGE')) {
-          errorMessage = 'File size too large. Please use smaller images or audio files (under 10MB each).';
+          errorMessage = 'File size too large. Please use smaller images or audio files (under 50MB each).';
         } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
           errorMessage = 'Authentication required. Please log in again.';
         } else if (error.message.includes('403') || error.message.includes('forbidden')) {
