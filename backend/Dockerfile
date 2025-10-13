@@ -10,8 +10,8 @@ COPY package*.json ./
 RUN npm install --legacy-peer-deps --include=dev
 COPY . .
 RUN npm run build
-# Clean up dev dependencies after build to save space
-RUN npm prune --omit=dev
+# Clean up dev dependencies and cache to save space
+RUN rm -rf node_modules && npm install --only=production --no-audit --no-fund --legacy-peer-deps && npm cache clean --force
 
 ########################
 # Runtime stage
