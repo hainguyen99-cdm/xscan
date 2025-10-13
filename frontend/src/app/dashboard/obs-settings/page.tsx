@@ -336,7 +336,24 @@ export default function OBSSettingsPage() {
       
     } catch (error) {
       console.error('❌ Failed to save donation levels:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save donation levels';
+      
+      // Handle specific error types
+      let errorMessage = 'Failed to save donation levels';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('413') || error.message.includes('too large') || error.message.includes('PAYLOAD_TOO_LARGE')) {
+          errorMessage = 'File size too large. Please use smaller images or audio files (under 10MB each).';
+        } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (error.message.includes('403') || error.message.includes('forbidden')) {
+          errorMessage = 'Access denied. You do not have permission to save levels.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       throw new Error(errorMessage);
     } finally {
       setIsLoading(false);

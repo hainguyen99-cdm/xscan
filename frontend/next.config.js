@@ -31,6 +31,8 @@ const nextConfig = {
     serverComponentsExternalPackages: [],
     forceSwcTransforms: true,
   },
+  // Note: For App Router, body size limits are handled in individual API routes
+  // The custom parseBody function in our API routes handles large payloads
   // Disable static optimization completely
   staticPageGenerationTimeout: 0,
   generateBuildId: () => 'build',

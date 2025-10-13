@@ -232,7 +232,23 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       }
     } catch (err) {
       console.error('Failed to save level:', err);
-      setSaveMessage({ type: 'error', text: 'Failed to save level. Please try again.' });
+      
+      // Handle specific error types
+      let errorMessage = 'Failed to save level. Please try again.';
+      
+      if (err instanceof Error) {
+        if (err.message.includes('413') || err.message.includes('too large') || err.message.includes('PAYLOAD_TOO_LARGE')) {
+          errorMessage = 'File size too large. Please use smaller images or audio files (under 10MB each).';
+        } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (err.message.includes('403') || err.message.includes('forbidden')) {
+          errorMessage = 'Access denied. You do not have permission to save levels.';
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.';
+        }
+      }
+      
+      setSaveMessage({ type: 'error', text: errorMessage });
       setShowToast(true);
     }
   };
@@ -527,13 +543,27 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
+                                // Check file size (10MB limit)
                                 if (file.size > 10 * 1024 * 1024) {
                                   setModalState({
                                     isOpen: true,
                                     type: 'warning',
                                     title: 'File Too Large',
                                     message: 'File size must be under 10MB.',
-                                    details: 'Please choose a smaller file to continue.'
+                                    details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
+                                  });
+                                  return;
+                                }
+                                
+                                // Check if file type is supported
+                                const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm'];
+                                if (!supportedTypes.includes(file.type)) {
+                                  setModalState({
+                                    isOpen: true,
+                                    type: 'warning',
+                                    title: 'Unsupported File Type',
+                                    message: 'Please choose a supported file type.',
+                                    details: 'Supported formats: JPG, PNG, GIF, MP4, WebM'
                                   });
                                   return;
                                 }
@@ -577,13 +607,27 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
+                                // Check file size (10MB limit)
                                 if (file.size > 10 * 1024 * 1024) {
                                   setModalState({
                                     isOpen: true,
                                     type: 'warning',
                                     title: 'File Too Large',
                                     message: 'File size must be under 10MB.',
-                                    details: 'Please choose a smaller file to continue.'
+                                    details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
+                                  });
+                                  return;
+                                }
+                                
+                                // Check if file type is supported
+                                const supportedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3'];
+                                if (!supportedTypes.includes(file.type)) {
+                                  setModalState({
+                                    isOpen: true,
+                                    type: 'warning',
+                                    title: 'Unsupported File Type',
+                                    message: 'Please choose a supported audio file type.',
+                                    details: 'Supported formats: MP3, WAV, OGG'
                                   });
                                   return;
                                 }
@@ -1030,13 +1074,27 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
+                            // Check file size (10MB limit)
                             if (file.size > 10 * 1024 * 1024) {
                               setModalState({
                                 isOpen: true,
                                 type: 'warning',
                                 title: 'File Too Large',
                                 message: 'File size must be under 10MB.',
-                                details: 'Please choose a smaller file to continue.'
+                                details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
+                              });
+                              return;
+                            }
+                            
+                            // Check if file type is supported
+                            const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm'];
+                            if (!supportedTypes.includes(file.type)) {
+                              setModalState({
+                                isOpen: true,
+                                type: 'warning',
+                                title: 'Unsupported File Type',
+                                message: 'Please choose a supported file type.',
+                                details: 'Supported formats: JPG, PNG, GIF, MP4, WebM'
                               });
                               return;
                             }
@@ -1080,13 +1138,27 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
+                            // Check file size (10MB limit)
                             if (file.size > 10 * 1024 * 1024) {
                               setModalState({
                                 isOpen: true,
                                 type: 'warning',
                                 title: 'File Too Large',
                                 message: 'File size must be under 10MB.',
-                                details: 'Please choose a smaller file to continue.'
+                                details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
+                              });
+                              return;
+                            }
+                            
+                            // Check if file type is supported
+                            const supportedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3'];
+                            if (!supportedTypes.includes(file.type)) {
+                              setModalState({
+                                isOpen: true,
+                                type: 'warning',
+                                title: 'Unsupported File Type',
+                                message: 'Please choose a supported audio file type.',
+                                details: 'Supported formats: MP3, WAV, OGG'
                               });
                               return;
                             }
