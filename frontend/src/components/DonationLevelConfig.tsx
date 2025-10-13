@@ -202,8 +202,15 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
         ? donationLevels.map((lvl, idx) => (idx === existingIndex ? updatedLevel : lvl))
         : [...donationLevels, updatedLevel];
 
-      // Persist immediately using the provided onSave handler with the correct array
-      await onSave(updatedLevels);
+      // For editing existing levels, only save the specific level being edited
+      // For new levels, save all levels (including the new one)
+      if (existingIndex >= 0) {
+        // Editing existing level - only save this specific level
+        await onSave([updatedLevel]);
+      } else {
+        // Adding new level - save all levels including the new one
+        await onSave(updatedLevels);
+      }
 
       // Update local state after successful save
       setDonationLevels(updatedLevels);

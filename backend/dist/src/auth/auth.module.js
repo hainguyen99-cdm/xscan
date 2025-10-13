@@ -27,13 +27,34 @@ exports.AuthModule = AuthModule = __decorate([
             passport_1.PassportModule,
             jwt_1.JwtModule.registerAsync({
                 imports: [config_module_1.ConfigModule],
-                useFactory: async (configService) => ({
-                    secret: configService.jwtSecret ||
-                        'your-super-secret-jwt-key-change-in-production',
-                    signOptions: {
-                        expiresIn: configService.jwtExpiresIn || '24h',
-                    },
-                }),
+                useFactory: async (configService) => {
+                    const expiresIn = configService.jwtExpiresIn || '24h';
+                    let expiresInSeconds;
+                    if (typeof expiresIn === 'string') {
+                        if (expiresIn.endsWith('h')) {
+                            expiresInSeconds = parseInt(expiresIn.replace('h', '')) * 3600;
+                        }
+                        else if (expiresIn.endsWith('d')) {
+                            expiresInSeconds = parseInt(expiresIn.replace('d', '')) * 86400;
+                        }
+                        else if (expiresIn.endsWith('m')) {
+                            expiresInSeconds = parseInt(expiresIn.replace('m', '')) * 60;
+                        }
+                        else {
+                            expiresInSeconds = parseInt(expiresIn) || 86400;
+                        }
+                    }
+                    else {
+                        expiresInSeconds = expiresIn;
+                    }
+                    return {
+                        secret: configService.jwtSecret ||
+                            'your-super-secret-jwt-key-change-in-production',
+                        signOptions: {
+                            expiresIn: expiresInSeconds,
+                        },
+                    };
+                },
                 inject: [config_service_1.ConfigService],
             }),
         ],
