@@ -1,21 +1,30 @@
 ########################
-# Build stage
+# Minimal build stage - uses less disk space
 ########################
 FROM node:18-alpine AS builder
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache libc6-compat
+
+# Copy only package files first
 COPY package*.json ./
-# Install with minimal cache and clean up immediately
-RUN npm install --legacy-peer-deps --include=dev --no-audit --no-fund && npm cache clean --force
+
+# Install with minimal footprint
+RUN npm install --legacy-peer-deps --include=dev --no-audit --no-fund --prefer-offline --no-optional
+
+# Copy source code
 COPY . .
-# Build app (must succeed to produce standalone output)
+
+# Build with minimal memory usage
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
-# Ensure prerender manifest exists to allow `next start`
+
+# Create minimal prerender manifest
 RUN node -e "const fs=require('fs');const dir='.next';const file=dir+'/prerender-manifest.json';if(!fs.existsSync(dir)){fs.mkdirSync(dir,{recursive:true});}if(!fs.existsSync(file)){fs.writeFileSync(file, JSON.stringify({version:3,routes:{},dynamicRoutes:{},notFoundRoutes:[],preview:{previewModeId:'',previewModeSigningKey:'',previewModeEncryptionKey:''}}, null, 2));}"
-# Clean up dev dependencies and cache to save space
-RUN rm -rf node_modules && npm install --only=production --no-audit --no-fund --legacy-peer-deps && npm cache clean --force
+
+# Aggressive cleanup
+RUN rm -rf node_modules .npm package-lock.json && npm cache clean --force
 
 ########################
 # Runtime stage (standalone)
@@ -25,16 +34,15 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    NODE_OPTIONS=--max-http-header-size=1024000 --max-old-space-size=4096
-# Use Next.js standalone output to avoid copying node_modules
+    NODE_OPTIONS=--max-http-header-size=1024000 --max-old-space-size=2048
+
+# Copy only essential files
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/prerender-manifest.json ./.next/prerender-manifest.json
 COPY --from=builder /app/next.config.js ./next.config.js
-COPY --from=builder /app/package.json ./package.json
+
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:3000/api/health || exit 1
 CMD ["node", "server.js"]
-
-
