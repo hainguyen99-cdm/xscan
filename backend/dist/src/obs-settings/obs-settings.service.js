@@ -30,11 +30,11 @@ let OBSSettingsService = class OBSSettingsService {
         return (0, crypto_1.randomBytes)(32).toString('hex');
     }
     generateWidgetUrl(streamerId, alertToken) {
-        const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+        const baseUrl = process.env.EXTERNAL_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:3001';
         return `${baseUrl}/api/widget-public/alert/${streamerId}/${alertToken}`;
     }
     generateWidgetUrlWithoutToken(streamerId) {
-        const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+        const baseUrl = process.env.EXTERNAL_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:3001';
         return `${baseUrl}/widget-public/alert/${streamerId}`;
     }
     generateLegacyWidgetUrl(alertToken) {

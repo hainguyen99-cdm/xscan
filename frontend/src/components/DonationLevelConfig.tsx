@@ -518,25 +518,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
   const generateWidgetUrl = (level: DonationLevel) => {
     if (!settings?.widgetUrl) return '';
     
-    let widgetUrl = settings.widgetUrl;
-    
-    // Ensure we use the external server IP for widget URLs (for OBS Browser Source)
-    // Replace internal service names with external server IP
-    if (widgetUrl.includes('xscan-backend')) {
-      widgetUrl = widgetUrl.replace('xscan-backend', '14.225.211.248');
-    }
-    
-    // Also handle localhost replacement for external access
-    if (widgetUrl.includes('localhost')) {
-      widgetUrl = widgetUrl.replace('localhost', '14.225.211.248');
-    }
-    
-    // Ensure proper protocol
-    if (!widgetUrl.startsWith('http://') && !widgetUrl.startsWith('https://')) {
-      widgetUrl = `http://${widgetUrl}`;
-    }
-    
-    return `${widgetUrl}?level=${level.levelId}`;
+    // Backend now generates the correct external URL, so we can use it directly
+    return `${settings.widgetUrl}?level=${level.levelId}`;
   };
 
   const generateAlertToken = (level: DonationLevel) => {

@@ -44,6 +44,7 @@ services:
       REDIS_PORT: 6379
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       BASE_URL: ${BASE_URL:-http://localhost:3001}
+      EXTERNAL_BACKEND_URL: ${EXTERNAL_BACKEND_URL:-http://14.225.211.248:3001}
     ports:
       - "3001:3001"
     depends_on:
