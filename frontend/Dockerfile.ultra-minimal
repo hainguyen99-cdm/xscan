@@ -1,0 +1,49 @@
+########################
+# Ultra-minimal build - maximum space efficiency
+########################
+FROM node:18-alpine AS builder
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Install only essential packages
+RUN apk add --no-cache libc6-compat
+
+# Copy package files
+COPY package*.json ./
+
+# Install with maximum space efficiency
+RUN npm install --legacy-peer-deps --include=dev --no-audit --no-fund --prefer-offline --no-optional --no-package-lock --production=false
+
+# Copy source code
+COPY . .
+
+# Build with minimal memory
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+RUN npm run build
+
+# Create prerender manifest
+RUN node -e "const fs=require('fs');const dir='.next';const file=dir+'/prerender-manifest.json';if(!fs.existsSync(dir)){fs.mkdirSync(dir,{recursive:true});}if(!fs.existsSync(file)){fs.writeFileSync(file, JSON.stringify({version:3,routes:{},dynamicRoutes:{},notFoundRoutes:[],preview:{previewModeId:'',previewModeSigningKey:'',previewModeEncryptionKey:''}}, null, 2));}"
+
+# Aggressive cleanup - remove everything not needed
+RUN rm -rf node_modules .npm package-lock.json && npm cache clean --force
+
+########################
+# Runtime stage
+########################
+FROM node:18-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0 \
+    NODE_OPTIONS=--max-http-header-size=1024000 --max-old-space-size=1024
+
+# Copy only essential files
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/.next/prerender-manifest.json ./.next/prerender-manifest.json
+COPY --from=builder /app/next.config.js ./next.config.js
+
+EXPOSE 3000
+CMD ["node", "server.js"]
