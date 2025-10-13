@@ -19,6 +19,11 @@ export declare class OBSSettingsService {
     findByAlertTokenWithSecurity(alertToken: string, clientIp?: string, userAgent?: string, signatureData?: any): Promise<OBSSettings>;
     update(streamerId: string, updateOBSSettingsDto: UpdateOBSSettingsDto): Promise<OBSSettings>;
     private mapFrontendToBackendFormat;
+    private optimizeMediaFiles;
+    private applyAggressiveOptimization;
+    private removeLargeMediaFiles;
+    private optimizeImageSettings;
+    private optimizeSoundSettings;
     updateDonationLevel(streamerId: string, levelId: string, levelUpdate: any): Promise<OBSSettings>;
     delete(streamerId: string): Promise<void>;
     toggleActive(streamerId: string): Promise<OBSSettings>;

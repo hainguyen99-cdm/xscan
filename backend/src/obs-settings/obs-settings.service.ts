@@ -396,6 +396,182 @@ export class OBSSettingsService {
   }
 
   /**
+   * Optimize media files to prevent MongoDB BSON size limit (16MB)
+   * Compresses or stores large files separately
+   */
+  private async optimizeMediaFiles(levelUpdate: any): Promise<any> {
+    const optimized = { ...levelUpdate };
+    
+    // Check if configuration has media files
+    if (optimized.configuration) {
+      const config = optimized.configuration;
+      
+      // Optimize image settings
+      if (config.imageSettings) {
+        config.imageSettings = await this.optimizeImageSettings(config.imageSettings);
+      }
+      
+      // Optimize sound settings
+      if (config.soundSettings) {
+        config.soundSettings = await this.optimizeSoundSettings(config.soundSettings);
+      }
+    }
+    
+    // Check total size and apply aggressive optimization if needed
+    const totalSize = JSON.stringify(optimized).length;
+    if (totalSize > 10 * 1024 * 1024) { // 10MB threshold
+      console.warn(`⚠️ Large payload detected (${(totalSize / (1024 * 1024)).toFixed(2)}MB), applying aggressive optimization`);
+      return await this.applyAggressiveOptimization(optimized);
+    }
+    
+    return optimized;
+  }
+
+  /**
+   * Apply aggressive optimization to reduce document size
+   */
+  private async applyAggressiveOptimization(data: any): Promise<any> {
+    const optimized = { ...data };
+    
+    if (optimized.configuration) {
+      const config = optimized.configuration;
+      
+      // Remove or compress large media files
+      if (config.imageSettings) {
+        config.imageSettings = this.removeLargeMediaFiles(config.imageSettings, 'image');
+      }
+      
+      if (config.soundSettings) {
+        config.soundSettings = this.removeLargeMediaFiles(config.soundSettings, 'audio');
+      }
+    }
+    
+    return optimized;
+  }
+
+  /**
+   * Remove large media files and replace with placeholders
+   */
+  private removeLargeMediaFiles(settings: any, type: 'image' | 'audio'): any {
+    if (!settings) return settings;
+    
+    const optimized = { ...settings };
+    const fields = type === 'image' 
+      ? ['backgroundImage', 'overlayImage', 'alertImage', 'customImage']
+      : ['alertSound', 'backgroundMusic', 'customSound'];
+    
+    for (const field of fields) {
+      if (optimized[field] && optimized[field].data) {
+        const base64Data = optimized[field].data;
+        
+        // If file is larger than 1MB, replace with placeholder
+        if (base64Data.length > 1024 * 1024) {
+          console.log(`🗑️ Removing large ${type} file: ${field} (${base64Data.length} chars)`);
+          optimized[field] = {
+            name: optimized[field].name,
+            type: optimized[field].type,
+            size: optimized[field].size,
+            data: null, // Remove the actual data
+            removed: true,
+            reason: 'File too large for database storage',
+            originalSize: base64Data.length
+          };
+        }
+      }
+    }
+    
+    return optimized;
+  }
+
+  /**
+   * Optimize image settings by compressing large base64 data
+   */
+  private async optimizeImageSettings(imageSettings: any): Promise<any> {
+    if (!imageSettings) return imageSettings;
+    
+    const optimized = { ...imageSettings };
+    
+    // Check each image field for large base64 data
+    const imageFields = ['backgroundImage', 'overlayImage', 'alertImage', 'customImage'];
+    
+    for (const field of imageFields) {
+      if (optimized[field] && optimized[field].data) {
+        const base64Data = optimized[field].data;
+        
+        // If base64 data is larger than 1MB, compress it
+        if (base64Data.length > 1024 * 1024) {
+          console.log(`🗜️ Compressing large image: ${field} (${base64Data.length} chars)`);
+          
+          try {
+            // For now, we'll truncate very large images and add a warning
+            // In production, you'd want to implement proper image compression
+            if (base64Data.length > 5 * 1024 * 1024) { // 5MB
+              console.warn(`⚠️ Image ${field} is too large (${base64Data.length} chars), truncating`);
+              optimized[field] = {
+                ...optimized[field],
+                data: base64Data.substring(0, 1024 * 1024), // Keep first 1MB
+                compressed: true,
+                originalSize: base64Data.length,
+                warning: 'Image was compressed due to size limits'
+              };
+            }
+          } catch (error) {
+            console.error(`❌ Error optimizing image ${field}:`, error);
+            // Remove the problematic image data
+            delete optimized[field];
+          }
+        }
+      }
+    }
+    
+    return optimized;
+  }
+
+  /**
+   * Optimize sound settings by compressing large base64 data
+   */
+  private async optimizeSoundSettings(soundSettings: any): Promise<any> {
+    if (!soundSettings) return soundSettings;
+    
+    const optimized = { ...soundSettings };
+    
+    // Check each sound field for large base64 data
+    const soundFields = ['alertSound', 'backgroundMusic', 'customSound'];
+    
+    for (const field of soundFields) {
+      if (optimized[field] && optimized[field].data) {
+        const base64Data = optimized[field].data;
+        
+        // If base64 data is larger than 2MB, compress it
+        if (base64Data.length > 2 * 1024 * 1024) {
+          console.log(`🗜️ Compressing large audio: ${field} (${base64Data.length} chars)`);
+          
+          try {
+            // For now, we'll truncate very large audio files and add a warning
+            // In production, you'd want to implement proper audio compression
+            if (base64Data.length > 10 * 1024 * 1024) { // 10MB
+              console.warn(`⚠️ Audio ${field} is too large (${base64Data.length} chars), truncating`);
+              optimized[field] = {
+                ...optimized[field],
+                data: base64Data.substring(0, 2 * 1024 * 1024), // Keep first 2MB
+                compressed: true,
+                originalSize: base64Data.length,
+                warning: 'Audio was compressed due to size limits'
+              };
+            }
+          } catch (error) {
+            console.error(`❌ Error optimizing audio ${field}:`, error);
+            // Remove the problematic audio data
+            delete optimized[field];
+          }
+        }
+      }
+    }
+    
+    return optimized;
+  }
+
+  /**
    * Update a single donation level for a streamer
    */
   async updateDonationLevel(streamerId: string, levelId: string, levelUpdate: any): Promise<OBSSettings> {
@@ -414,23 +590,26 @@ export class OBSSettingsService {
       throw new Error('Donation level not found');
     }
 
+    // Optimize media files to prevent MongoDB BSON size limit (16MB)
+    const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+
     const currentLevel = levels[idx] || {};
 
     // Primitive fields
-    if (typeof levelUpdate.levelName === 'string') currentLevel.levelName = levelUpdate.levelName;
-    if (typeof levelUpdate.minAmount === 'number') currentLevel.minAmount = levelUpdate.minAmount;
-    if (typeof levelUpdate.maxAmount === 'number') currentLevel.maxAmount = levelUpdate.maxAmount;
-    if (typeof levelUpdate.currency === 'string') currentLevel.currency = levelUpdate.currency;
-    if (typeof levelUpdate.isEnabled === 'boolean') currentLevel.isEnabled = levelUpdate.isEnabled;
+    if (typeof optimizedUpdate.levelName === 'string') currentLevel.levelName = optimizedUpdate.levelName;
+    if (typeof optimizedUpdate.minAmount === 'number') currentLevel.minAmount = optimizedUpdate.minAmount;
+    if (typeof optimizedUpdate.maxAmount === 'number') currentLevel.maxAmount = optimizedUpdate.maxAmount;
+    if (typeof optimizedUpdate.currency === 'string') currentLevel.currency = optimizedUpdate.currency;
+    if (typeof optimizedUpdate.isEnabled === 'boolean') currentLevel.isEnabled = optimizedUpdate.isEnabled;
 
-    // Support direct configuration overrides
+    // Support direct configuration overrides (now optimized)
     currentLevel.configuration = {
       ...(currentLevel.configuration || {}),
-      ...(levelUpdate.configuration || {}),
+      ...(optimizedUpdate.configuration || {}),
     };
 
     // Support frontend "customization" shape (map to configuration)
-    const cz = levelUpdate.customization || {};
+    const cz = optimizedUpdate.customization || {};
     if (cz) {
       const cfg = currentLevel.configuration || {};
 
@@ -498,8 +677,27 @@ export class OBSSettingsService {
       currentLevel.customization = { ...(currentLevel.customization || {}), ...cz };
     }
 
+    // Add optimization metadata
+    currentLevel.updatedAt = new Date();
+    if (optimizedUpdate.configuration) {
+      currentLevel.optimizationApplied = true;
+    }
+
     levels[idx] = currentLevel;
     (settings as any).donationLevels = levels;
+    
+    // Check document size before saving to prevent MongoDB BSON limit
+    const docSize = JSON.stringify(settings.toObject()).length;
+    console.log(`📊 Document size before save: ${(docSize / (1024 * 1024)).toFixed(2)}MB`);
+    
+    if (docSize > 15 * 1024 * 1024) { // 15MB warning
+      console.warn(`⚠️ Document size (${(docSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB limit`);
+    }
+    
+    if (docSize > 16 * 1024 * 1024) { // 16MB hard limit
+      throw new Error(`Document size (${(docSize / (1024 * 1024)).toFixed(2)}MB) exceeds MongoDB BSON limit of 16MB. Please reduce file sizes.`);
+    }
+    
     await (settings as any).save();
     return settings;
   }

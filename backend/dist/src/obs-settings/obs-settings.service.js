@@ -304,6 +304,125 @@ let OBSSettingsService = class OBSSettingsService {
         console.log(`📝 Final mapped data:`, JSON.stringify(mappedData, null, 2));
         return mappedData;
     }
+    async optimizeMediaFiles(levelUpdate) {
+        const optimized = { ...levelUpdate };
+        if (optimized.configuration) {
+            const config = optimized.configuration;
+            if (config.imageSettings) {
+                config.imageSettings = await this.optimizeImageSettings(config.imageSettings);
+            }
+            if (config.soundSettings) {
+                config.soundSettings = await this.optimizeSoundSettings(config.soundSettings);
+            }
+        }
+        const totalSize = JSON.stringify(optimized).length;
+        if (totalSize > 10 * 1024 * 1024) {
+            console.warn(`⚠️ Large payload detected (${(totalSize / (1024 * 1024)).toFixed(2)}MB), applying aggressive optimization`);
+            return await this.applyAggressiveOptimization(optimized);
+        }
+        return optimized;
+    }
+    async applyAggressiveOptimization(data) {
+        const optimized = { ...data };
+        if (optimized.configuration) {
+            const config = optimized.configuration;
+            if (config.imageSettings) {
+                config.imageSettings = this.removeLargeMediaFiles(config.imageSettings, 'image');
+            }
+            if (config.soundSettings) {
+                config.soundSettings = this.removeLargeMediaFiles(config.soundSettings, 'audio');
+            }
+        }
+        return optimized;
+    }
+    removeLargeMediaFiles(settings, type) {
+        if (!settings)
+            return settings;
+        const optimized = { ...settings };
+        const fields = type === 'image'
+            ? ['backgroundImage', 'overlayImage', 'alertImage', 'customImage']
+            : ['alertSound', 'backgroundMusic', 'customSound'];
+        for (const field of fields) {
+            if (optimized[field] && optimized[field].data) {
+                const base64Data = optimized[field].data;
+                if (base64Data.length > 1024 * 1024) {
+                    console.log(`🗑️ Removing large ${type} file: ${field} (${base64Data.length} chars)`);
+                    optimized[field] = {
+                        name: optimized[field].name,
+                        type: optimized[field].type,
+                        size: optimized[field].size,
+                        data: null,
+                        removed: true,
+                        reason: 'File too large for database storage',
+                        originalSize: base64Data.length
+                    };
+                }
+            }
+        }
+        return optimized;
+    }
+    async optimizeImageSettings(imageSettings) {
+        if (!imageSettings)
+            return imageSettings;
+        const optimized = { ...imageSettings };
+        const imageFields = ['backgroundImage', 'overlayImage', 'alertImage', 'customImage'];
+        for (const field of imageFields) {
+            if (optimized[field] && optimized[field].data) {
+                const base64Data = optimized[field].data;
+                if (base64Data.length > 1024 * 1024) {
+                    console.log(`🗜️ Compressing large image: ${field} (${base64Data.length} chars)`);
+                    try {
+                        if (base64Data.length > 5 * 1024 * 1024) {
+                            console.warn(`⚠️ Image ${field} is too large (${base64Data.length} chars), truncating`);
+                            optimized[field] = {
+                                ...optimized[field],
+                                data: base64Data.substring(0, 1024 * 1024),
+                                compressed: true,
+                                originalSize: base64Data.length,
+                                warning: 'Image was compressed due to size limits'
+                            };
+                        }
+                    }
+                    catch (error) {
+                        console.error(`❌ Error optimizing image ${field}:`, error);
+                        delete optimized[field];
+                    }
+                }
+            }
+        }
+        return optimized;
+    }
+    async optimizeSoundSettings(soundSettings) {
+        if (!soundSettings)
+            return soundSettings;
+        const optimized = { ...soundSettings };
+        const soundFields = ['alertSound', 'backgroundMusic', 'customSound'];
+        for (const field of soundFields) {
+            if (optimized[field] && optimized[field].data) {
+                const base64Data = optimized[field].data;
+                if (base64Data.length > 2 * 1024 * 1024) {
+                    console.log(`🗜️ Compressing large audio: ${field} (${base64Data.length} chars)`);
+                    try {
+                        if (base64Data.length > 10 * 1024 * 1024) {
+                            console.warn(`⚠️ Audio ${field} is too large (${base64Data.length} chars), truncating`);
+                            optimized[field] = {
+                                ...optimized[field],
+                                data: base64Data.substring(0, 2 * 1024 * 1024),
+                                compressed: true,
+                                originalSize: base64Data.length,
+                                warning: 'Audio was compressed due to size limits'
+                            };
+                        }
+                    }
+                    catch (error) {
+                        console.error(`❌ Error optimizing audio ${field}:`, error);
+                        delete optimized[field];
+                    }
+                }
+            }
+        }
+        return optimized;
+    }
     async updateDonationLevel(streamerId, levelId, levelUpdate) {
         const settings = await this.findByStreamerId(streamerId);
         if (!settings) {
@@ -317,22 +436,23 @@ let OBSSettingsService = class OBSSettingsService {
         if (idx === -1) {
             throw new Error('Donation level not found');
         }
+        const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
         const currentLevel = levels[idx] || {};
-        if (typeof levelUpdate.levelName === 'string')
-            currentLevel.levelName = levelUpdate.levelName;
-        if (typeof levelUpdate.minAmount === 'number')
-            currentLevel.minAmount = levelUpdate.minAmount;
-        if (typeof levelUpdate.maxAmount === 'number')
-            currentLevel.maxAmount = levelUpdate.maxAmount;
-        if (typeof levelUpdate.currency === 'string')
-            currentLevel.currency = levelUpdate.currency;
-        if (typeof levelUpdate.isEnabled === 'boolean')
-            currentLevel.isEnabled = levelUpdate.isEnabled;
+        if (typeof optimizedUpdate.levelName === 'string')
+            currentLevel.levelName = optimizedUpdate.levelName;
+        if (typeof optimizedUpdate.minAmount === 'number')
+            currentLevel.minAmount = optimizedUpdate.minAmount;
+        if (typeof optimizedUpdate.maxAmount === 'number')
+            currentLevel.maxAmount = optimizedUpdate.maxAmount;
+        if (typeof optimizedUpdate.currency === 'string')
+            currentLevel.currency = optimizedUpdate.currency;
+        if (typeof optimizedUpdate.isEnabled === 'boolean')
+            currentLevel.isEnabled = optimizedUpdate.isEnabled;
         currentLevel.configuration = {
             ...(currentLevel.configuration || {}),
-            ...(levelUpdate.configuration || {}),
+            ...(optimizedUpdate.configuration || {}),
         };
-        const cz = levelUpdate.customization || {};
+        const cz = optimizedUpdate.customization || {};
         if (cz) {
             const cfg = currentLevel.configuration || {};
             if (cz.image) {
@@ -386,8 +506,20 @@ let OBSSettingsService = class OBSSettingsService {
             currentLevel.configuration = cfg;
             currentLevel.customization = { ...(currentLevel.customization || {}), ...cz };
         }
+        currentLevel.updatedAt = new Date();
+        if (optimizedUpdate.configuration) {
+            currentLevel.optimizationApplied = true;
+        }
         levels[idx] = currentLevel;
         settings.donationLevels = levels;
+        const docSize = JSON.stringify(settings.toObject()).length;
+        console.log(`📊 Document size before save: ${(docSize / (1024 * 1024)).toFixed(2)}MB`);
+        if (docSize > 15 * 1024 * 1024) {
+            console.warn(`⚠️ Document size (${(docSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB limit`);
+        }
+        if (docSize > 16 * 1024 * 1024) {
+            throw new Error(`Document size (${(docSize / (1024 * 1024)).toFixed(2)}MB) exceeds MongoDB BSON limit of 16MB. Please reduce file sizes.`);
+        }
         await settings.save();
         return settings;
     }

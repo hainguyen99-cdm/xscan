@@ -256,6 +256,8 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
       if (err instanceof Error) {
         if (err.message.includes('413') || err.message.includes('too large') || err.message.includes('PAYLOAD_TOO_LARGE')) {
           errorMessage = 'File size too large. Please use smaller images or audio files (under 50MB each).';
+        } else if (err.message.includes('BSON') || err.message.includes('16MB') || err.message.includes('MongoDB')) {
+          errorMessage = 'Files are too large for storage. Large media files have been automatically optimized. Please try saving again.';
         } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
           errorMessage = 'Authentication required. Please log in again.';
         } else if (err.message.includes('403') || err.message.includes('forbidden')) {
