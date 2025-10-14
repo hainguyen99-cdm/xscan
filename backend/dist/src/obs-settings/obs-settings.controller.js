@@ -67,7 +67,7 @@ let OBSSettingsController = class OBSSettingsController {
         });
         const result = await this.obsSettingsService.testDonationLevel(req.user.sub, body.levelId, {
             donorName: body.donorName || 'Test Donor',
-            amount: body.amount || '25.00',
+            amount: body.amount || '25000',
             currency: body.currency || 'VND',
             message: body.message || 'This is a test alert!'
         });

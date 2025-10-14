@@ -411,7 +411,11 @@ let OBSSettingsService = class OBSSettingsService {
                 levelName: donationLevel.levelName,
                 configuration: !!donationLevel.configuration
             });
-            this.obsWidgetGateway.sendTestAlert(streamerId, testData.donorName, `${testData.amount} ${testData.currency}`, testData.message, alertData);
+            this.obsWidgetGateway.sendTestAlert(streamerId, testData.donorName, `${testData.amount} ${testData.currency}`, testData.message, {
+                ...alertData,
+                currency: testData.currency || 'VND',
+                amount: `${testData.amount} ${testData.currency || 'VND'}`
+            });
             await this.obsSettingsModel.updateOne({ streamerId: new mongoose_2.Types.ObjectId(streamerId) }, { $inc: { totalAlerts: 1 } });
             return {
                 alertId,
@@ -851,14 +855,13 @@ let OBSSettingsService = class OBSSettingsService {
             }
             levelUpdate.createdAt = new Date();
             levelUpdate.updatedAt = new Date();
-            const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+            const optimizedUpdate = levelUpdate;
             levels.push(optimizedUpdate);
             const tempSettings = { ...settings.toObject(), donationLevels: levels };
             const tempDocSize = JSON.stringify(tempSettings).length;
             console.log(`📊 Document size with new level: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
-            if (tempDocSize > 12 * 1024 * 1024) {
-                console.log(`⚠️ Document too large with new level, applying document-wide optimization`);
-                return await this.optimizeEntireDocument(settings, levels, levels.length - 1, optimizedUpdate);
+            if (tempDocSize > 15 * 1024 * 1024) {
+                console.warn(`⚠️ WARNING: Document size (${(tempDocSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB 16MB limit. Consider reducing media file sizes.`);
             }
             settings.donationLevels = levels;
             await settings.save();
@@ -870,32 +873,30 @@ let OBSSettingsService = class OBSSettingsService {
             console.log(`📊 Update fields:`, Object.keys(levelUpdate));
             const existingLevel = levels[idx];
             const mergedUpdate = this.mergeDifferentialUpdate(existingLevel, levelUpdate);
-            const optimizedUpdate = await this.optimizeMediaFiles(mergedUpdate);
+            const optimizedUpdate = mergedUpdate;
             const tempLevel = { ...levels[idx], ...optimizedUpdate };
             const tempLevels = [...levels];
             tempLevels[idx] = tempLevel;
             const tempSettings = { ...settings.toObject(), donationLevels: tempLevels };
             const tempDocSize = JSON.stringify(tempSettings).length;
             console.log(`📊 Temporary document size with differential update: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
-            if (tempDocSize > 12 * 1024 * 1024) {
-                console.log(`⚠️ Document still too large after differential update, applying document-wide optimization`);
-                return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+            if (tempDocSize > 15 * 1024 * 1024) {
+                console.warn(`⚠️ WARNING: Document size (${(tempDocSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB 16MB limit. Consider reducing media file sizes.`);
             }
             levelUpdate = optimizedUpdate;
         }
         else {
-            const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+            const optimizedUpdate = levelUpdate;
             const tempLevel = { ...levels[idx], ...optimizedUpdate };
             const tempLevels = [...levels];
             tempLevels[idx] = tempLevel;
             const tempSettings = { ...settings.toObject(), donationLevels: tempLevels };
             const tempDocSize = JSON.stringify(tempSettings).length;
             console.log(`📊 Temporary document size with full update: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
-            this.analyzeDocumentSize(settings, levels, idx, optimizedUpdate);
-            if (tempDocSize > 12 * 1024 * 1024) {
-                console.log(`⚠️ Document still too large after level optimization, applying document-wide optimization`);
-                return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+            if (tempDocSize > 15 * 1024 * 1024) {
+                console.warn(`⚠️ WARNING: Document size (${(tempDocSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB 16MB limit. Consider reducing media file sizes.`);
             }
+            this.analyzeDocumentSize(settings, levels, idx, optimizedUpdate);
             levelUpdate = optimizedUpdate;
         }
         const currentLevel = levels[idx] || {};

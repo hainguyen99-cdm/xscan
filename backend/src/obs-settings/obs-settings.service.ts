@@ -495,6 +495,7 @@ export class OBSSettingsService {
 
   /**
    * Test a specific donation level by sending a test alert
+   * Fixed currency handling for VND
    */
   async testDonationLevel(
     streamerId: string, 
@@ -559,7 +560,12 @@ export class OBSSettingsService {
         testData.donorName,
         `${testData.amount} ${testData.currency}`,
         testData.message,
-        alertData
+        {
+          ...alertData,
+          // Ensure currency is properly formatted for VND
+          currency: testData.currency || 'VND',
+          amount: `${testData.amount} ${testData.currency || 'VND'}`
+        }
       );
 
       // Update the total alerts count
@@ -1126,8 +1132,9 @@ export class OBSSettingsService {
       levelUpdate.createdAt = new Date();
       levelUpdate.updatedAt = new Date();
       
-      // Optimize the new level
-      const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+      // Individual level optimization disabled
+      // const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+      const optimizedUpdate = levelUpdate;
       
       // Add to levels array
       levels.push(optimizedUpdate);
@@ -1138,10 +1145,16 @@ export class OBSSettingsService {
       
       console.log(`📊 Document size with new level: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
       
-      if (tempDocSize > 12 * 1024 * 1024) {
-        console.log(`⚠️ Document too large with new level, applying document-wide optimization`);
-        return await this.optimizeEntireDocument(settings, levels, levels.length - 1, optimizedUpdate);
+      // Warn if approaching MongoDB limit (16MB)
+      if (tempDocSize > 15 * 1024 * 1024) {
+        console.warn(`⚠️ WARNING: Document size (${(tempDocSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB 16MB limit. Consider reducing media file sizes.`);
       }
+      
+      // Document size optimization disabled
+      // if (tempDocSize > 12 * 1024 * 1024) {
+      //   console.log(`⚠️ Document too large with new level, applying document-wide optimization`);
+      //   return await this.optimizeEntireDocument(settings, levels, levels.length - 1, optimizedUpdate);
+      // }
       
       // Save the new level
       (settings as any).donationLevels = levels;
@@ -1161,8 +1174,9 @@ export class OBSSettingsService {
       const existingLevel = levels[idx];
       const mergedUpdate = this.mergeDifferentialUpdate(existingLevel, levelUpdate);
       
-      // Optimize only the merged update
-      const optimizedUpdate = await this.optimizeMediaFiles(mergedUpdate);
+      // Individual level optimization disabled
+      // const optimizedUpdate = await this.optimizeMediaFiles(mergedUpdate);
+      const optimizedUpdate = mergedUpdate;
       
       // Check if we need to optimize the entire document
       const tempLevel = { ...levels[idx], ...optimizedUpdate };
@@ -1173,16 +1187,23 @@ export class OBSSettingsService {
       
       console.log(`📊 Temporary document size with differential update: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
       
-      if (tempDocSize > 12 * 1024 * 1024) {
-        console.log(`⚠️ Document still too large after differential update, applying document-wide optimization`);
-        return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+      // Warn if approaching MongoDB limit (16MB)
+      if (tempDocSize > 15 * 1024 * 1024) {
+        console.warn(`⚠️ WARNING: Document size (${(tempDocSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB 16MB limit. Consider reducing media file sizes.`);
       }
+      
+      // Document size optimization disabled
+      // if (tempDocSize > 12 * 1024 * 1024) {
+      //   console.log(`⚠️ Document still too large after differential update, applying document-wide optimization`);
+      //   return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+      // }
       
       // Use the optimized differential update
       levelUpdate = optimizedUpdate;
     } else {
-      // Full update - use existing optimization logic
-      const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+      // Individual level optimization disabled
+      // const optimizedUpdate = await this.optimizeMediaFiles(levelUpdate);
+      const optimizedUpdate = levelUpdate;
       
       // Check if we need to optimize the entire document
       const tempLevel = { ...levels[idx], ...optimizedUpdate };
@@ -1193,13 +1214,19 @@ export class OBSSettingsService {
       
       console.log(`📊 Temporary document size with full update: ${(tempDocSize / (1024 * 1024)).toFixed(2)}MB`);
       
+      // Warn if approaching MongoDB limit (16MB)
+      if (tempDocSize > 15 * 1024 * 1024) {
+        console.warn(`⚠️ WARNING: Document size (${(tempDocSize / (1024 * 1024)).toFixed(2)}MB) approaching MongoDB 16MB limit. Consider reducing media file sizes.`);
+      }
+      
       // Analyze document structure for debugging
       this.analyzeDocumentSize(settings, levels, idx, optimizedUpdate);
       
-      if (tempDocSize > 12 * 1024 * 1024) {
-        console.log(`⚠️ Document still too large after level optimization, applying document-wide optimization`);
-        return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
-      }
+      // Document size optimization disabled
+      // if (tempDocSize > 12 * 1024 * 1024) {
+      //   console.log(`⚠️ Document still too large after level optimization, applying document-wide optimization`);
+      //   return await this.optimizeEntireDocument(settings, levels, idx, optimizedUpdate);
+      // }
       
       levelUpdate = optimizedUpdate;
     }
