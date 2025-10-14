@@ -16,5 +16,16 @@ export declare class OBSSettingsController {
         success: boolean;
         message: string;
     }>;
+    testDonationLevel(body: {
+        levelId: string;
+        donorName?: string;
+        amount?: string;
+        currency?: string;
+        message?: string;
+    }, req: any): Promise<{
+        success: boolean;
+        alertId: string;
+        message: string;
+    }>;
 }
 export {};

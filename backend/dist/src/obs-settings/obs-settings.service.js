@@ -369,6 +369,61 @@ let OBSSettingsService = class OBSSettingsService {
         });
         return merged;
     }
+    async testDonationLevel(streamerId, levelId, testData) {
+        console.log('[OBS Settings] testDonationLevel called', {
+            streamerId,
+            levelId,
+            testData
+        });
+        try {
+            const settings = await this.findByStreamerId(streamerId);
+            const donationLevel = settings.donationLevels.find(level => level.levelId === levelId);
+            if (!donationLevel) {
+                throw new Error(`Donation level with ID ${levelId} not found`);
+            }
+            if (!donationLevel.isEnabled) {
+                throw new Error(`Donation level ${donationLevel.levelName} is disabled`);
+            }
+            const alertId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const alertData = {
+                alertId,
+                streamerId,
+                type: 'testAlert',
+                donorName: testData.donorName,
+                amount: testData.amount,
+                currency: testData.currency,
+                message: testData.message,
+                timestamp: new Date(),
+                levelId: donationLevel.levelId,
+                levelName: donationLevel.levelName,
+                configuration: donationLevel.configuration || settings,
+                imageSettings: donationLevel.configuration?.imageSettings || settings.imageSettings,
+                soundSettings: donationLevel.configuration?.soundSettings || settings.soundSettings,
+                animationSettings: donationLevel.configuration?.animationSettings || settings.animationSettings,
+                styleSettings: donationLevel.configuration?.styleSettings || settings.styleSettings,
+                positionSettings: donationLevel.configuration?.positionSettings || settings.positionSettings,
+                displaySettings: donationLevel.configuration?.displaySettings || settings.displaySettings,
+                generalSettings: donationLevel.configuration?.generalSettings || settings.generalSettings,
+            };
+            console.log('[OBS Settings] Sending test alert for donation level:', {
+                alertId,
+                levelId,
+                levelName: donationLevel.levelName,
+                configuration: !!donationLevel.configuration
+            });
+            this.obsWidgetGateway.sendTestAlert(streamerId, testData.donorName, `${testData.amount} ${testData.currency}`, testData.message, alertData);
+            await this.obsSettingsModel.updateOne({ streamerId: new mongoose_2.Types.ObjectId(streamerId) }, { $inc: { totalAlerts: 1 } });
+            return {
+                alertId,
+                success: true,
+                message: `Test alert sent for donation level: ${donationLevel.levelName}`
+            };
+        }
+        catch (error) {
+            console.error('[OBS Settings] Error testing donation level:', error);
+            throw new Error(`Failed to test donation level: ${error.message}`);
+        }
+    }
     async restoreOptimizedLevels(streamerId) {
         const settings = await this.findByStreamerId(streamerId);
         if (!settings) {

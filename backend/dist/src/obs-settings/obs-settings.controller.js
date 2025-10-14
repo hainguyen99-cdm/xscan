@@ -58,6 +58,25 @@ let OBSSettingsController = class OBSSettingsController {
         await this.obsSettingsService.restoreOptimizedLevels(req.user.sub);
         return { success: true, message: 'Optimized levels restored successfully' };
     }
+    async testDonationLevel(body, req) {
+        console.log('[OBS Settings] testDonationLevel called', {
+            streamerId: req?.user?.sub,
+            levelId: body.levelId,
+            donorName: body.donorName,
+            amount: body.amount
+        });
+        const result = await this.obsSettingsService.testDonationLevel(req.user.sub, body.levelId, {
+            donorName: body.donorName || 'Test Donor',
+            amount: body.amount || '25.00',
+            currency: body.currency || 'VND',
+            message: body.message || 'This is a test alert!'
+        });
+        return {
+            success: true,
+            alertId: result.alertId,
+            message: 'Test donation level alert sent successfully'
+        };
+    }
 };
 exports.OBSSettingsController = OBSSettingsController;
 __decorate([
@@ -108,6 +127,16 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], OBSSettingsController.prototype, "restoreOptimizedLevels", null);
+__decorate([
+    (0, common_1.Post)('test-donation-level'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Test donation level alert sent successfully' }),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "testDonationLevel", null);
 exports.OBSSettingsController = OBSSettingsController = __decorate([
     (0, swagger_1.ApiTags)('OBS Settings'),
     (0, swagger_1.ApiBearerAuth)(),

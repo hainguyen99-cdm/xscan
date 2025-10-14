@@ -73,6 +73,38 @@ export class OBSSettingsController {
     await this.obsSettingsService.restoreOptimizedLevels(req.user.sub);
     return { success: true, message: 'Optimized levels restored successfully' };
   }
+
+  @Post('test-donation-level')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiResponse({ status: 200, description: 'Test donation level alert sent successfully' })
+  async testDonationLevel(
+    @Body() body: { levelId: string; donorName?: string; amount?: string; currency?: string; message?: string },
+    @Request() req
+  ): Promise<{ success: boolean; alertId: string; message: string }> {
+    console.log('[OBS Settings] testDonationLevel called', {
+      streamerId: req?.user?.sub,
+      levelId: body.levelId,
+      donorName: body.donorName,
+      amount: body.amount
+    });
+
+    const result = await this.obsSettingsService.testDonationLevel(
+      req.user.sub,
+      body.levelId,
+      {
+        donorName: body.donorName || 'Test Donor',
+        amount: body.amount || '25.00',
+        currency: body.currency || 'VND',
+        message: body.message || 'This is a test alert!'
+      }
+    );
+
+    return {
+      success: true,
+      alertId: result.alertId,
+      message: 'Test donation level alert sent successfully'
+    };
+  }
 }
 
 export {};

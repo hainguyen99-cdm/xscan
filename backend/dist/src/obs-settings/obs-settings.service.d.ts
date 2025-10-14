@@ -21,6 +21,16 @@ export declare class OBSSettingsService {
     private mapFrontendToBackendFormat;
     private optimizeMediaFiles;
     private mergeDifferentialUpdate;
+    testDonationLevel(streamerId: string, levelId: string, testData: {
+        donorName: string;
+        amount: string;
+        currency: string;
+        message: string;
+    }): Promise<{
+        alertId: string;
+        success: boolean;
+        message: string;
+    }>;
     restoreOptimizedLevels(streamerId: string): Promise<OBSSettings>;
     private analyzeDocumentSize;
     private optimizeEntireDocument;
