@@ -1342,6 +1342,33 @@ export class OBSSettingsService {
   }
 
   /**
+   * Delete a single donation level for a streamer
+   */
+  async deleteDonationLevel(streamerId: string, levelId: string): Promise<OBSSettings> {
+    const settings = await this.findByStreamerId(streamerId);
+    if (!settings) {
+      throw new Error('OBS settings not found for streamer');
+    }
+
+    if (!Array.isArray((settings as any).donationLevels)) {
+      (settings as any).donationLevels = [];
+    }
+
+    const levels: any[] = (settings as any).donationLevels as any[];
+    const originalLength = levels.length;
+    const filtered = levels.filter((lvl: any) => lvl.levelId !== levelId);
+
+    if (filtered.length === originalLength) {
+      throw new NotFoundException(`Donation level with ID ${levelId} not found`);
+    }
+
+    (settings as any).donationLevels = filtered;
+    settings.updatedAt = new Date();
+    await (settings as any).save();
+    return settings;
+  }
+
+  /**
    * Delete OBS settings for a streamer
    */
   async delete(streamerId: string): Promise<void> {

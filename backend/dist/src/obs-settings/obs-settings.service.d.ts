@@ -40,6 +40,7 @@ export declare class OBSSettingsService {
     private optimizeImageSettings;
     private optimizeSoundSettings;
     updateDonationLevel(streamerId: string, levelId: string, levelUpdate: any): Promise<OBSSettings>;
+    deleteDonationLevel(streamerId: string, levelId: string): Promise<OBSSettings>;
     delete(streamerId: string): Promise<void>;
     toggleActive(streamerId: string): Promise<OBSSettings>;
     regenerateAlertToken(streamerId: string): Promise<OBSSettings>;

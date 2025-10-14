@@ -8,6 +8,7 @@ import { Label } from './ui/label';
 import ResultModal from './ui/result-modal';
 import { DonationLevel, OBSSettings } from '../types';
 import { Upload, Play, Volume2, Image as ImageIcon, Music, Settings, Eye, Save, TestTube, Plus, Trash2, Edit3, Monitor, Info, Palette } from 'lucide-react';
+import { getStoredToken } from '@/lib/api';
 
 interface DonationLevelConfigProps {
   settings?: OBSSettings;
@@ -287,8 +288,38 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     });
   };
 
-  const handleDeleteLevel = (levelId: string) => {
-    setDonationLevels(prev => prev.filter(level => level.levelId !== levelId));
+  const handleDeleteLevel = async (levelId: string) => {
+    try {
+      const token = getStoredToken();
+      if (!token) {
+        setSaveMessage({ type: 'error', text: 'Authentication required. Please log in again.' });
+        setShowToast(true);
+        return;
+      }
+
+      const response = await fetch(`/api/obs-settings/donation-levels/${encodeURIComponent(levelId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({} as any));
+        throw new Error(errorData.error || 'Failed to delete donation level');
+      }
+
+      setDonationLevels(prev => prev.filter(level => level.levelId !== levelId));
+      if (editingLevel?.levelId === levelId) {
+        setEditingLevel(null);
+      }
+      setSaveMessage({ type: 'success', text: 'Donation level deleted successfully' });
+      setShowToast(true);
+    } catch (err: any) {
+      console.error('Error deleting level:', err);
+      setSaveMessage({ type: 'error', text: err?.message || 'Failed to delete donation level' });
+      setShowToast(true);
+    }
   };
 
   const handleSaveLevel = async () => {

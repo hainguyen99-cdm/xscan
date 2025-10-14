@@ -51,6 +51,14 @@ let OBSSettingsController = class OBSSettingsController {
         await this.obsSettingsService.updateDonationLevel(req.user.sub, levelId, body);
         return { success: true, message: 'Donation level updated successfully' };
     }
+    async deleteDonationLevel(levelId, req) {
+        console.log('[OBS Settings] deleteDonationLevel called', {
+            streamerId: req?.user?.sub,
+            levelId,
+        });
+        await this.obsSettingsService.deleteDonationLevel(req.user.sub, levelId);
+        return { success: true, message: 'Donation level deleted successfully' };
+    }
     async restoreOptimizedLevels(req) {
         console.log('[OBS Settings] restoreOptimizedLevels called', {
             streamerId: req?.user?.sub
@@ -118,6 +126,16 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], OBSSettingsController.prototype, "updateDonationLevel", null);
+__decorate([
+    (0, common_1.Delete)('donation-levels/:levelId'),
+    (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Donation level deleted successfully' }),
+    __param(0, (0, common_1.Param)('levelId')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], OBSSettingsController.prototype, "deleteDonationLevel", null);
 __decorate([
     (0, common_1.Post)('restore-optimized-levels'),
     (0, roles_decorator_1.Roles)(roles_enum_1.UserRole.STREAMER, roles_enum_1.UserRole.ADMIN),

@@ -12,6 +12,10 @@ export declare class OBSSettingsController {
         success: boolean;
         message: string;
     }>;
+    deleteDonationLevel(levelId: string, req: any): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     restoreOptimizedLevels(req: any): Promise<{
         success: boolean;
         message: string;

@@ -986,6 +986,25 @@ let OBSSettingsService = class OBSSettingsService {
         await settings.save();
         return settings;
     }
+    async deleteDonationLevel(streamerId, levelId) {
+        const settings = await this.findByStreamerId(streamerId);
+        if (!settings) {
+            throw new Error('OBS settings not found for streamer');
+        }
+        if (!Array.isArray(settings.donationLevels)) {
+            settings.donationLevels = [];
+        }
+        const levels = settings.donationLevels;
+        const originalLength = levels.length;
+        const filtered = levels.filter((lvl) => lvl.levelId !== levelId);
+        if (filtered.length === originalLength) {
+            throw new common_1.NotFoundException(`Donation level with ID ${levelId} not found`);
+        }
+        settings.donationLevels = filtered;
+        settings.updatedAt = new Date();
+        await settings.save();
+        return settings;
+    }
     async delete(streamerId) {
         const result = await this.obsSettingsModel.deleteOne({
             streamerId: new mongoose_2.Types.ObjectId(streamerId),

@@ -1,4 +1,4 @@
-import { Controller, UseGuards, Post, Body, Request, Get, Put, Param } from '@nestjs/common';
+import { Controller, UseGuards, Post, Body, Request, Get, Put, Param, Delete } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -61,6 +61,21 @@ export class OBSSettingsController {
     });
     await this.obsSettingsService.updateDonationLevel(req.user.sub, levelId, body);
     return { success: true, message: 'Donation level updated successfully' };
+  }
+
+  @Delete('donation-levels/:levelId')
+  @Roles(UserRole.STREAMER, UserRole.ADMIN)
+  @ApiResponse({ status: 200, description: 'Donation level deleted successfully' })
+  async deleteDonationLevel(
+    @Param('levelId') levelId: string,
+    @Request() req,
+  ): Promise<{ success: boolean; message: string }> {
+    console.log('[OBS Settings] deleteDonationLevel called', {
+      streamerId: req?.user?.sub,
+      levelId,
+    });
+    await this.obsSettingsService.deleteDonationLevel(req.user.sub, levelId);
+    return { success: true, message: 'Donation level deleted successfully' };
   }
 
   @Post('restore-optimized-levels')
