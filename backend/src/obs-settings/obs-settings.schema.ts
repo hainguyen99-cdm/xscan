@@ -354,5 +354,14 @@ export class OBSSettings {
 
 export const OBSSettingsSchema = SchemaFactory.createForClass(OBSSettings);
 
+// Add virtual field for widgetUrl that always uses external IP
+OBSSettingsSchema.virtual('widgetUrl').get(function() {
+  return `http://14.225.211.248:3001/api/widget-public/alert/${this.streamerId}/${this.alertToken}`;
+});
+
+// Ensure virtual fields are included when converting to JSON
+OBSSettingsSchema.set('toJSON', { virtuals: true });
+OBSSettingsSchema.set('toObject', { virtuals: true });
+
 // Create compound index for streamerId and isActive
 OBSSettingsSchema.index({ streamerId: 1, isActive: 1 }); 

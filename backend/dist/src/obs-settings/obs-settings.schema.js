@@ -248,5 +248,10 @@ exports.OBSSettings = OBSSettings = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true })
 ], OBSSettings);
 exports.OBSSettingsSchema = mongoose_1.SchemaFactory.createForClass(OBSSettings);
+exports.OBSSettingsSchema.virtual('widgetUrl').get(function () {
+    return `http://14.225.211.248:3001/api/widget-public/alert/${this.streamerId}/${this.alertToken}`;
+});
+exports.OBSSettingsSchema.set('toJSON', { virtuals: true });
+exports.OBSSettingsSchema.set('toObject', { virtuals: true });
 exports.OBSSettingsSchema.index({ streamerId: 1, isActive: 1 });
 //# sourceMappingURL=obs-settings.schema.js.map
