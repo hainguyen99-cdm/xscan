@@ -29,8 +29,8 @@ export class OBSSettingsService {
    * Generate widget URL with streamer ID for OBS integration
    */
   private generateWidgetUrl(streamerId: string, alertToken: string): string {
-    // Use external server IP for widget URLs (for OBS Browser Source)
-    const baseUrl = process.env.EXTERNAL_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:3001';
+    // Always use external server IP for widget URLs (for OBS Browser Source)
+    const baseUrl = 'http://14.225.211.248:3001';
     return `${baseUrl}/api/widget-public/alert/${streamerId}/${alertToken}`;
   }
 
@@ -38,8 +38,8 @@ export class OBSSettingsService {
    * Generate widget URL with streamer ID only (for backward compatibility)
    */
   private generateWidgetUrlWithoutToken(streamerId: string): string {
-    // Use external server IP for widget URLs (for OBS Browser Source)
-    const baseUrl = process.env.EXTERNAL_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:3001';
+    // Always use external server IP for widget URLs (for OBS Browser Source)
+    const baseUrl = 'http://14.225.211.248:3001';
     return `${baseUrl}/widget-public/alert/${streamerId}`;
   }
 
