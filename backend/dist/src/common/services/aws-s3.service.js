@@ -21,11 +21,14 @@ let AwsS3Service = AwsS3Service_1 = class AwsS3Service {
         this.configService = configService;
         this.logger = new common_1.Logger(AwsS3Service_1.name);
         this.config = {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'AKIARIQOOWP66BRC3NBQ',
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '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',
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
             region: process.env.AWS_REGION || 'ap-southeast-1',
             bucket: process.env.S3_BUCKET_NAME || 'xscan-media',
         };
+        if (!this.config.accessKeyId || !this.config.secretAccessKey) {
+            throw new Error('AWS credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.');
+        }
         this.s3Client = new client_s3_1.S3Client({
             region: this.config.region,
             credentials: {

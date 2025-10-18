@@ -36,6 +36,10 @@ services:
     container_name: xscan-backend
     restart: unless-stopped
     environment:
+      AWS_ACCESS_KEY_ID: AKIARIQOOWP66BRC3NBQ
+      AWS_SECRET_ACCESS_KEY: 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
+      AWS_REGION: ap-southeast-1
+      S3_BUCKET_NAME: xscan-media
       NODE_ENV: development
       MONGODB_URI: mongodb://admin:password@mongodb:27017/xscan?authSource=admin
       MONGODB_DB_NAME: xscan
