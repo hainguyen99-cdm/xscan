@@ -1,1 +1,0 @@
-{"version":3,"file":"setup-2fa.dto.js","sourceRoot":"","sources":["../../../../src/auth/dto/setup-2fa.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;AAAA,qDAAuD;AACvD,6CAA8C;AAE9C,MAAa,WAAW;CAQvB;AARD,kCAQC;AADC;IANC,IAAA,qBAAW,EAAC;QACX,WAAW,EAAE,uDAAuD;QACpE,OAAO,EAAE,QAAQ;KAClB,CAAC;IACD,IAAA,0BAAQ,GAAE;IACV,IAAA,4BAAU,GAAE;;yCACA"}
