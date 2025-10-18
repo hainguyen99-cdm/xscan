@@ -4,11 +4,13 @@ import { CreateOBSSettingsDto, UpdateOBSSettingsDto } from './dto';
 import { TestAlertDto, TestAlertResponseDto, DonationAlertDto, DonationAlertResponseDto } from './dto/configuration.dto';
 import { OBSWidgetGateway } from './obs-widget.gateway';
 import { OBSSecurityService } from './obs-security.service';
+import { MediaProcessingService } from '../common/services/media-processing.service';
 export declare class OBSSettingsService {
     private obsSettingsModel;
     private readonly obsWidgetGateway;
     private readonly obsSecurityService;
-    constructor(obsSettingsModel: Model<OBSSettingsDocument>, obsWidgetGateway: OBSWidgetGateway, obsSecurityService: OBSSecurityService);
+    private readonly mediaProcessingService;
+    constructor(obsSettingsModel: Model<OBSSettingsDocument>, obsWidgetGateway: OBSWidgetGateway, obsSecurityService: OBSSecurityService, mediaProcessingService: MediaProcessingService);
     private generateAlertToken;
     private generateWidgetUrl;
     private generateWidgetUrlWithoutToken;

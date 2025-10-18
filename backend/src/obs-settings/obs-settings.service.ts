@@ -6,6 +6,7 @@ import { CreateOBSSettingsDto, UpdateOBSSettingsDto } from './dto';
 import { TestAlertDto, TestAlertResponseDto, DonationAlertDto, DonationAlertResponseDto } from './dto/configuration.dto';
 import { OBSWidgetGateway } from './obs-widget.gateway';
 import { OBSSecurityService } from './obs-security.service';
+import { MediaProcessingService } from '../common/services/media-processing.service';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class OBSSettingsService {
     @Inject(forwardRef(() => OBSWidgetGateway))
     private readonly obsWidgetGateway: OBSWidgetGateway,
     private readonly obsSecurityService: OBSSecurityService,
+    private readonly mediaProcessingService: MediaProcessingService,
   ) {}
 
   /**
@@ -1105,6 +1107,9 @@ export class OBSSettingsService {
     const idx = levels.findIndex((lvl: any) => lvl.levelId === levelId);
     const isNewLevel = idx === -1;
     
+    // Store old configuration for cleanup
+    const oldConfiguration = idx >= 0 ? levels[idx].configuration : null;
+    
     if (isNewLevel) {
       console.log(`📊 Creating new donation level: ${levelId}`);
       
@@ -1315,11 +1320,39 @@ export class OBSSettingsService {
       currentLevel.customization = { ...(currentLevel.customization || {}), ...cz };
     }
 
+    // Process media files and upload to S3
+    try {
+      const mediaFiles = this.mediaProcessingService.extractMediaFiles(currentLevel.configuration);
+      if (mediaFiles.length > 0) {
+        console.log(`📁 Processing ${mediaFiles.length} media files for S3 upload`);
+        const processedMedia = await this.mediaProcessingService.processMediaFiles(mediaFiles, streamerId);
+        currentLevel.configuration = this.mediaProcessingService.replaceMediaUrlsInConfiguration(
+          currentLevel.configuration,
+          processedMedia
+        );
+        console.log(`✅ Media files uploaded to S3 successfully`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to process media files: ${error.message}`);
+      throw new Error(`Media processing failed: ${error.message}`);
+    }
+
+    // Clean up old S3 files if updating existing level
+    if (!isNewLevel && oldConfiguration) {
+      try {
+        await this.mediaProcessingService.cleanupOldMediaFiles(oldConfiguration, currentLevel.configuration);
+        console.log(`🧹 Cleaned up old media files`);
+      } catch (error) {
+        console.warn(`⚠️ Failed to cleanup old media files: ${error.message}`);
+        // Don't throw error for cleanup failures
+      }
+    }
+
     // Add optimization metadata
     currentLevel.updatedAt = new Date();
     if (levelUpdate.configuration) {
       currentLevel.optimizationApplied = true;
-      currentLevel.optimizationMessage = 'Level optimized for database storage';
+      currentLevel.optimizationMessage = 'Level optimized for CDN storage';
     }
 
     levels[idx] = currentLevel;

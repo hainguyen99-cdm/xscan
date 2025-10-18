@@ -6,6 +6,8 @@ import { PCIComplianceService } from './services/pci-compliance.service';
 import { ExchangeRateService } from './services/exchange-rate.service';
 import { FeeCalculationService } from './services/fee-calculation.service';
 import { MediaUploadService } from './services/media-upload.service';
+import { AwsS3Service } from './services/aws-s3.service';
+import { MediaProcessingService } from './services/media-processing.service';
 import { RbacService } from './services/rbac.service';
 import { SecurityController } from './controllers/security.controller';
 import { RedisModule } from '../redis/redis.module';
@@ -23,6 +25,8 @@ import { ConfigModule } from '../config/config.module';
     ExchangeRateService,
     FeeCalculationService,
     MediaUploadService,
+    AwsS3Service,
+    MediaProcessingService,
     RbacService,
     RedisService,
   ],
@@ -34,6 +38,8 @@ import { ConfigModule } from '../config/config.module';
     ExchangeRateService,
     FeeCalculationService,
     MediaUploadService,
+    AwsS3Service,
+    MediaProcessingService,
     RbacService,
     RedisService,
   ],

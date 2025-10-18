@@ -19,12 +19,14 @@ const mongoose_2 = require("mongoose");
 const obs_settings_schema_1 = require("./obs-settings.schema");
 const obs_widget_gateway_1 = require("./obs-widget.gateway");
 const obs_security_service_1 = require("./obs-security.service");
+const media_processing_service_1 = require("../common/services/media-processing.service");
 const crypto_1 = require("crypto");
 let OBSSettingsService = class OBSSettingsService {
-    constructor(obsSettingsModel, obsWidgetGateway, obsSecurityService) {
+    constructor(obsSettingsModel, obsWidgetGateway, obsSecurityService, mediaProcessingService) {
         this.obsSettingsModel = obsSettingsModel;
         this.obsWidgetGateway = obsWidgetGateway;
         this.obsSecurityService = obsSecurityService;
+        this.mediaProcessingService = mediaProcessingService;
     }
     generateAlertToken() {
         return (0, crypto_1.randomBytes)(32).toString('hex');
@@ -833,6 +835,7 @@ let OBSSettingsService = class OBSSettingsService {
         const levels = settings.donationLevels;
         const idx = levels.findIndex((lvl) => lvl.levelId === levelId);
         const isNewLevel = idx === -1;
+        const oldConfiguration = idx >= 0 ? levels[idx].configuration : null;
         if (isNewLevel) {
             console.log(`📊 Creating new donation level: ${levelId}`);
             if (!levelUpdate.levelId) {
@@ -968,10 +971,32 @@ let OBSSettingsService = class OBSSettingsService {
             currentLevel.configuration = cfg;
             currentLevel.customization = { ...(currentLevel.customization || {}), ...cz };
         }
+        try {
+            const mediaFiles = this.mediaProcessingService.extractMediaFiles(currentLevel.configuration);
+            if (mediaFiles.length > 0) {
+                console.log(`📁 Processing ${mediaFiles.length} media files for S3 upload`);
+                const processedMedia = await this.mediaProcessingService.processMediaFiles(mediaFiles, streamerId);
+                currentLevel.configuration = this.mediaProcessingService.replaceMediaUrlsInConfiguration(currentLevel.configuration, processedMedia);
+                console.log(`✅ Media files uploaded to S3 successfully`);
+            }
+        }
+        catch (error) {
+            console.error(`❌ Failed to process media files: ${error.message}`);
+            throw new Error(`Media processing failed: ${error.message}`);
+        }
+        if (!isNewLevel && oldConfiguration) {
+            try {
+                await this.mediaProcessingService.cleanupOldMediaFiles(oldConfiguration, currentLevel.configuration);
+                console.log(`🧹 Cleaned up old media files`);
+            }
+            catch (error) {
+                console.warn(`⚠️ Failed to cleanup old media files: ${error.message}`);
+            }
+        }
         currentLevel.updatedAt = new Date();
         if (levelUpdate.configuration) {
             currentLevel.optimizationApplied = true;
-            currentLevel.optimizationMessage = 'Level optimized for database storage';
+            currentLevel.optimizationMessage = 'Level optimized for CDN storage';
         }
         levels[idx] = currentLevel;
         settings.donationLevels = levels;
@@ -1981,6 +2006,7 @@ exports.OBSSettingsService = OBSSettingsService = __decorate([
     __param(1, (0, common_1.Inject)((0, common_1.forwardRef)(() => obs_widget_gateway_1.OBSWidgetGateway))),
     __metadata("design:paramtypes", [mongoose_2.Model,
         obs_widget_gateway_1.OBSWidgetGateway,
-        obs_security_service_1.OBSSecurityService])
+        obs_security_service_1.OBSSecurityService,
+        media_processing_service_1.MediaProcessingService])
 ], OBSSettingsService);
 //# sourceMappingURL=obs-settings.service.js.map

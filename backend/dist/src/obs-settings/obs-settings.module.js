@@ -13,6 +13,7 @@ const obs_settings_controller_1 = require("./obs-settings.controller");
 const widget_controller_1 = require("./widget.controller");
 const widget_public_controller_1 = require("./widget-public.controller");
 const bank_donation_total_controller_1 = require("./bank-donation-total.controller");
+const media_upload_controller_1 = require("./controllers/media-upload.controller");
 const obs_settings_service_1 = require("./obs-settings.service");
 const bank_donation_total_service_1 = require("./bank-donation-total.service");
 const obs_settings_schema_1 = require("./obs-settings.schema");
@@ -41,6 +42,7 @@ exports.OBSSettingsModule = OBSSettingsModule = __decorate([
             widget_controller_1.WidgetController,
             widget_public_controller_1.WidgetPublicController,
             bank_donation_total_controller_1.BankDonationTotalController,
+            media_upload_controller_1.MediaUploadController,
         ],
         providers: [
             obs_settings_service_1.OBSSettingsService,

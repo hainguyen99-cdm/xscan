@@ -15,6 +15,8 @@ const pci_compliance_service_1 = require("./services/pci-compliance.service");
 const exchange_rate_service_1 = require("./services/exchange-rate.service");
 const fee_calculation_service_1 = require("./services/fee-calculation.service");
 const media_upload_service_1 = require("./services/media-upload.service");
+const aws_s3_service_1 = require("./services/aws-s3.service");
+const media_processing_service_1 = require("./services/media-processing.service");
 const rbac_service_1 = require("./services/rbac.service");
 const security_controller_1 = require("./controllers/security.controller");
 const redis_module_1 = require("../redis/redis.module");
@@ -35,6 +37,8 @@ exports.CommonModule = CommonModule = __decorate([
             exchange_rate_service_1.ExchangeRateService,
             fee_calculation_service_1.FeeCalculationService,
             media_upload_service_1.MediaUploadService,
+            aws_s3_service_1.AwsS3Service,
+            media_processing_service_1.MediaProcessingService,
             rbac_service_1.RbacService,
             redis_service_1.RedisService,
         ],
@@ -46,6 +50,8 @@ exports.CommonModule = CommonModule = __decorate([
             exchange_rate_service_1.ExchangeRateService,
             fee_calculation_service_1.FeeCalculationService,
             media_upload_service_1.MediaUploadService,
+            aws_s3_service_1.AwsS3Service,
+            media_processing_service_1.MediaProcessingService,
             rbac_service_1.RbacService,
             redis_service_1.RedisService,
         ],

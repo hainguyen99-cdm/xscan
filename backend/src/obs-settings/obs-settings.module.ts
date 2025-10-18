@@ -4,6 +4,7 @@ import { OBSSettingsController } from './obs-settings.controller';
 import { WidgetController } from './widget.controller';
 import { WidgetPublicController } from './widget-public.controller';
 import { BankDonationTotalController } from './bank-donation-total.controller';
+import { MediaUploadController } from './controllers/media-upload.controller';
 import { OBSSettingsService } from './obs-settings.service';
 import { BankDonationTotalService } from './bank-donation-total.service';
 import { OBSSettings, OBSSettingsSchema } from './obs-settings.schema';
@@ -29,6 +30,7 @@ import { AuthModule } from '../auth/auth.module';
     WidgetController,
     WidgetPublicController,
     BankDonationTotalController,
+    MediaUploadController,
   ],
   providers: [
     OBSSettingsService,

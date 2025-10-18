@@ -9,6 +9,7 @@ import ResultModal from './ui/result-modal';
 import { DonationLevel, OBSSettings } from '../types';
 import { Upload, Play, Volume2, Image as ImageIcon, Music, Settings, Eye, Save, TestTube, Plus, Trash2, Edit3, Monitor, Info, Palette } from 'lucide-react';
 import { getStoredToken } from '@/lib/api';
+import { S3UploadService } from '@/lib/s3-upload.service';
 
 interface DonationLevelConfigProps {
   settings?: OBSSettings;
@@ -31,6 +32,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
   const [showWidgetInfo, setShowWidgetInfo] = useState(false);
   const [showFullEditor, setShowFullEditor] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [mediaUploadProgress, setMediaUploadProgress] = useState<{ [key: string]: number }>({});
   const levelRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const lastEditedLevelIdRef = useRef<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -566,6 +568,44 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
     }
   };
 
+  const handleFileUpload = async (
+    file: File,
+    mediaType: 'image' | 'sound',
+    onSuccess: (url: string, s3Key: string) => void,
+    onError: (error: string) => void
+  ) => {
+    // Validate file
+    const validation = S3UploadService.validateFile(file);
+    if (!validation.isValid) {
+      onError(validation.error!);
+      return;
+    }
+
+    try {
+      const uploadKey = `${mediaType}_${Date.now()}`;
+      setMediaUploadProgress(prev => ({ ...prev, [uploadKey]: 0 }));
+
+      const result = await S3UploadService.uploadFile(file, (progress) => {
+        setMediaUploadProgress(prev => ({ ...prev, [uploadKey]: progress.percentage }));
+      });
+
+      setMediaUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[uploadKey];
+        return newProgress;
+      });
+
+      onSuccess(result.url, result.s3Key);
+    } catch (error) {
+      setMediaUploadProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[`${mediaType}_${Date.now()}`];
+        return newProgress;
+      });
+      onError(error instanceof Error ? error.message : 'Upload failed');
+    }
+  };
+
   const playVideo = (videoUrl: string) => {
     if (videoRef.current) {
       videoRef.current.src = videoUrl;
@@ -799,45 +839,33 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                // Check file size (50MB limit)
-                                if (file.size > 50 * 1024 * 1024) {
-                                  setModalState({
-                                    isOpen: true,
-                                    type: 'warning',
-                                    title: 'File Too Large',
-                                    message: 'File size must be under 50MB.',
-                                    details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
-                                  });
-                                  return;
-                                }
-                                
-                                // Check if file type is supported
-                                const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm'];
-                                if (!supportedTypes.includes(file.type)) {
-                                  setModalState({
-                                    isOpen: true,
-                                    type: 'warning',
-                                    title: 'Unsupported File Type',
-                                    message: 'Please choose a supported file type.',
-                                    details: 'Supported formats: JPG, PNG, GIF, MP4, WebM'
-                                  });
-                                  return;
-                                }
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                  setEditingLevel(prev => prev ? {
-                                    ...prev,
-                                    configuration: {
-                                      ...prev.configuration,
-                                      imageSettings: {
-                                        ...prev.configuration.imageSettings,
-                                        url: e.target?.result as string,
-                                        mediaType: file.type.startsWith('video/') ? 'video' : file.type === 'image/gif' ? 'gif' : 'image'
+                                handleFileUpload(
+                                  file,
+                                  'image',
+                                  (url, s3Key) => {
+                                    setEditingLevel(prev => prev ? {
+                                      ...prev,
+                                      configuration: {
+                                        ...prev.configuration,
+                                        imageSettings: {
+                                          ...prev.configuration.imageSettings,
+                                          url,
+                                          s3Key,
+                                          mediaType: file.type.startsWith('video/') ? 'video' : file.type === 'image/gif' ? 'gif' : 'image'
+                                        }
                                       }
-                                    }
-                                  } : null);
-                                };
-                                reader.readAsDataURL(file);
+                                    } : null);
+                                  },
+                                  (error) => {
+                                    setModalState({
+                                      isOpen: true,
+                                      type: 'error',
+                                      title: 'Upload Failed',
+                                      message: error,
+                                      details: 'Please try again with a different file.'
+                                    });
+                                  }
+                                );
                               }
                             }}
                             className="border-0 bg-transparent p-0 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
@@ -845,6 +873,26 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 mt-2">Maximum file size: 50MB. Supported formats: Images (JPG, PNG, GIF), Videos (MP4, WebM)</p>
+                      
+                      {/* Media Upload Progress */}
+                      {Object.keys(mediaUploadProgress).length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {Object.entries(mediaUploadProgress).map(([key, progress]) => (
+                            <div key={key} className="space-y-1">
+                              <div className="flex justify-between text-sm text-gray-600">
+                                <span>Uploading {key.includes('image') ? 'image' : 'sound'}...</span>
+                                <span>{progress}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${progress}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -863,44 +911,33 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                // Check file size (50MB limit)
-                                if (file.size > 50 * 1024 * 1024) {
-                                  setModalState({
-                                    isOpen: true,
-                                    type: 'warning',
-                                    title: 'File Too Large',
-                                    message: 'File size must be under 50MB.',
-                                    details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
-                                  });
-                                  return;
-                                }
-                                
-                                // Check if file type is supported
-                                const supportedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3'];
-                                if (!supportedTypes.includes(file.type)) {
-                                  setModalState({
-                                    isOpen: true,
-                                    type: 'warning',
-                                    title: 'Unsupported File Type',
-                                    message: 'Please choose a supported audio file type.',
-                                    details: 'Supported formats: MP3, WAV, OGG'
-                                  });
-                                  return;
-                                }
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                  setEditingLevel(prev => prev ? {
-                                    ...prev,
-                                    configuration: {
-                                      ...prev.configuration,
-                                      soundSettings: {
-                                        ...prev.configuration.soundSettings,
-                                        url: e.target?.result as string
+                                handleFileUpload(
+                                  file,
+                                  'sound',
+                                  (url, s3Key) => {
+                                    setEditingLevel(prev => prev ? {
+                                      ...prev,
+                                      configuration: {
+                                        ...prev.configuration,
+                                        soundSettings: {
+                                          ...prev.configuration.soundSettings,
+                                          url,
+                                          s3Key,
+                                          mediaType: file.type
+                                        }
                                       }
-                                    }
-                                  } : null);
-                                };
-                                reader.readAsDataURL(file);
+                                    } : null);
+                                  },
+                                  (error) => {
+                                    setModalState({
+                                      isOpen: true,
+                                      type: 'error',
+                                      title: 'Upload Failed',
+                                      message: error,
+                                      details: 'Please try again with a different file.'
+                                    });
+                                  }
+                                );
                               }
                             }}
                             className="border-0 bg-transparent p-0 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
@@ -1411,44 +1448,33 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            // Check file size (10MB limit)
-                            if (file.size > 10 * 1024 * 1024) {
-                              setModalState({
-                                isOpen: true,
-                                type: 'warning',
-                                title: 'File Too Large',
-                                message: 'File size must be under 10MB.',
-                                details: `Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Please choose a smaller file to continue.`
-                              });
-                              return;
-                            }
-                            
-                            // Check if file type is supported
-                            const supportedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3'];
-                            if (!supportedTypes.includes(file.type)) {
-                              setModalState({
-                                isOpen: true,
-                                type: 'warning',
-                                title: 'Unsupported File Type',
-                                message: 'Please choose a supported audio file type.',
-                                details: 'Supported formats: MP3, WAV, OGG'
-                              });
-                              return;
-                            }
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setEditingLevel(prev => prev ? {
-                                ...prev,
-                                configuration: {
-                                  ...prev.configuration,
-                                  soundSettings: {
-                                    ...prev.configuration.soundSettings,
-                                    url: e.target?.result as string
+                            handleFileUpload(
+                              file,
+                              'sound',
+                              (url, s3Key) => {
+                                setEditingLevel(prev => prev ? {
+                                  ...prev,
+                                  configuration: {
+                                    ...prev.configuration,
+                                    soundSettings: {
+                                      ...prev.configuration.soundSettings,
+                                      url,
+                                      s3Key,
+                                      mediaType: file.type
+                                    }
                                   }
-                                }
-                              } : null);
-                            };
-                            reader.readAsDataURL(file);
+                                } : null);
+                              },
+                              (error) => {
+                                setModalState({
+                                  isOpen: true,
+                                  type: 'error',
+                                  title: 'Upload Failed',
+                                  message: error,
+                                  details: 'Please try again with a different file.'
+                                });
+                              }
+                            );
                           }
                         }}
                         className="border-0 bg-transparent p-0 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
@@ -1465,6 +1491,26 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">Maximum file size: 50MB. Supported formats: MP3, WAV, OGG</p>
+                  
+                  {/* Media Upload Progress */}
+                  {Object.keys(mediaUploadProgress).length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {Object.entries(mediaUploadProgress).map(([key, progress]) => (
+                        <div key={key} className="space-y-1">
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span>Uploading {key.includes('image') ? 'image' : 'sound'}...</span>
+                            <span>{progress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
