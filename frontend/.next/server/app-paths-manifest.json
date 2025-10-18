@@ -1,5 +1,8 @@
 {
   "/login/page": "app/login/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js"
+  "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js",
+  "/api/obs-settings/test-donation-level/route": "app/api/obs-settings/test-donation-level/route.js",
+  "/api/auth/profile/route": "app/api/auth/profile/route.js",
+  "/api/obs-settings/route": "app/api/obs-settings/route.js"
 }

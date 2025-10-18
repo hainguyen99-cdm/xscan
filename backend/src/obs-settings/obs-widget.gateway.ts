@@ -287,6 +287,10 @@ export class OBSWidgetGateway
         if (lvlSnd) {
           const sndSettings = ensureSettingsBranch(alertSettings, 'soundSettings');
           sndSettings.url = lvlSnd;
+          // Ensure sound is enabled when we have a URL
+          if (sndSettings.enabled === undefined) {
+            sndSettings.enabled = true;
+          }
         }
       }
       
@@ -320,8 +324,9 @@ export class OBSWidgetGateway
     try {
       const imgUrl = (alert.settings as any)?.imageSettings?.url;
       const sndUrl = (alert.settings as any)?.soundSettings?.url;
+      const sndEnabled = (alert.settings as any)?.soundSettings?.enabled;
       const short = (u?: string) => (u ? (u.length > 80 ? u.substring(0, 77) + '...' : u) : 'none');
-      this.logger.log(`Alert media debug - img: ${short(imgUrl)}, sound: ${short(sndUrl)}`);
+      this.logger.log(`Alert media debug - img: ${short(imgUrl)}, sound: ${short(sndUrl)}, soundEnabled: ${sndEnabled}`);
     } catch {}
 
     this.server.to(roomName).emit('donationAlert', alert);

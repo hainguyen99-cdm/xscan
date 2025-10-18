@@ -88,6 +88,11 @@ export class AwsS3Service {
           uploadedAt: new Date().toISOString(),
         },
         ACL: undefined,
+        // Add CORS headers for audio files
+        ...(contentType.startsWith('audio/') && {
+          CacheControl: 'public, max-age=31536000',
+          ContentDisposition: 'inline',
+        }),
       });
 
       await this.s3Client.send(command);

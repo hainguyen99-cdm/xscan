@@ -876,6 +876,13 @@ export class WidgetController {
                   fadeOut: sound.fadeOut,
                   loop: sound.loop
                 });
+                
+                // Ensure sound settings are properly merged
+                if (!this.settings.soundSettings) {
+                  this.settings.soundSettings = {};
+                }
+                this.settings.soundSettings = { ...this.settings.soundSettings, ...sound };
+                console.log('🔧 Merged sound settings:', this.settings.soundSettings);
               }
               
               // Apply display settings
@@ -1143,28 +1150,47 @@ export class WidgetController {
                 audioSource = alertData.settings.soundSettings.url;
                 audioSourceType = 'alert.settings.soundSettings.url (level-specific)';
                 console.log('🔍 Using level-specific audio from alert settings:', audioSource.substring(0, 100) + (audioSource.length > 100 ? '...' : ''));
+                console.log('🔍 Audio source type:', this.getAudioUrlType(audioSource));
               } else if (alertData.audioUrl) {
                 audioSource = alertData.audioUrl;
                 audioSourceType = 'audioUrl';
                 console.log('🔍 Using audioUrl field:', audioSource);
+                console.log('🔍 Audio source type:', this.getAudioUrlType(audioSource));
               } else if (alertData.soundUrl) {
                 audioSource = alertData.soundUrl;
                 audioSourceType = 'soundUrl';
                 console.log('🔍 Using soundUrl field:', audioSource);
-              } else if (alertData.url && alertData.url.startsWith('data:audio/')) {
+                console.log('🔍 Audio source type:', this.getAudioUrlType(audioSource));
+              } else if (alertData.url && (alertData.url.startsWith('data:audio/') || this.isAudioUrl(alertData.url))) {
                 audioSource = alertData.url;
                 audioSourceType = 'url (audio data)';
                 console.log('🔍 Using url field (audio):', audioSource.substring(0, 50) + '...');
+                console.log('🔍 Audio source type:', this.getAudioUrlType(audioSource));
               } else if (this.settings?.soundSettings?.url) {
                 audioSource = this.settings.soundSettings.url;
                 audioSourceType = 'settings.soundSettings.url (default)';
                 console.log('🔍 Using configured sound from settings:', audioSource);
+                console.log('🔍 Audio source type:', this.getAudioUrlType(audioSource));
               }
               
-              if (this.settings.soundSettings.enabled && audioSource) {
+              // Get sound settings with proper fallbacks
+              const soundEnabled = (alertData.settings?.soundSettings?.enabled !== undefined) 
+                ? alertData.settings.soundSettings.enabled 
+                : (this.settings?.soundSettings?.enabled !== undefined) 
+                  ? this.settings.soundSettings.enabled 
+                  : true; // Default to enabled if not specified
+              
+              console.log('🔍 Audio Debug - Sound enabled check:', {
+                alertSoundEnabled: alertData.settings?.soundSettings?.enabled,
+                widgetSoundEnabled: this.settings?.soundSettings?.enabled,
+                finalSoundEnabled: soundEnabled,
+                hasAudioSource: !!audioSource
+              });
+              
+              if (soundEnabled && audioSource) {
                 console.log('🔊 Playing audio from', audioSourceType, ':', audioSource.substring(0, 100) + (audioSource.length > 100 ? '...' : ''));
                 this.playAudio(audioSource);
-              } else if (this.settings.soundSettings.enabled) {
+              } else if (soundEnabled) {
                 console.log('🔊 No audio source found, playing default beep');
                 this.playDefaultBeep();
               } else {
@@ -1258,8 +1284,32 @@ export class WidgetController {
               }
             }
 
+            // Helper method to validate audio URL
+            async validateAudioUrl(audioUrl) {
+              try {
+                console.log('🔍 Validating audio URL:', audioUrl);
+                
+                // Test if URL is accessible
+                const response = await fetch(audioUrl, { 
+                  method: 'HEAD',
+                  mode: 'no-cors' // Use no-cors to avoid CORS issues
+                });
+                
+                console.log('🔍 Audio URL validation result:', {
+                  url: audioUrl,
+                  accessible: true,
+                  note: 'HEAD request completed (no-cors mode)'
+                });
+                
+                return true;
+              } catch (error) {
+                console.warn('🔍 Audio URL validation failed:', error);
+                return false;
+              }
+            }
+
             // Helper method to play audio
-            playAudio(audioUrl) {
+            async playAudio(audioUrl) {
               try {
                 if (!audioUrl) {
                   console.log('🔊 No audio URL provided');
@@ -1267,9 +1317,65 @@ export class WidgetController {
                 }
                 
                 console.log('🔊 Creating audio element for:', audioUrl);
+                console.log('🔊 Audio URL type:', this.getAudioUrlType(audioUrl));
+                
+                // Validate URL first (non-blocking)
+                this.validateAudioUrl(audioUrl).then(isValid => {
+                  if (!isValid) {
+                    console.warn('🔊 Audio URL validation failed, but continuing with playback attempt');
+                  }
+                });
+                
                 const audio = new Audio(audioUrl);
                 audio.setAttribute('playsinline', '');
                 audio.setAttribute('preload', 'auto');
+                // Note: Removed crossOrigin to avoid CORS issues with CDN
+                
+                // Add error handling for audio loading
+                audio.addEventListener('error', (e) => {
+                  console.error('🔊 Audio loading error:', e);
+                  console.error('🔊 Failed URL:', audioUrl);
+                  console.error('🔊 Error details:', {
+                    code: audio.error?.code,
+                    message: audio.error?.message,
+                    networkState: audio.networkState,
+                    readyState: audio.readyState
+                  });
+                  
+                  // Log specific error types
+                  if (audio.error) {
+                    switch (audio.error.code) {
+                      case 1:
+                        console.error('🔊 MEDIA_ERR_ABORTED: Audio loading was aborted');
+                        break;
+                      case 2:
+                        console.error('🔊 MEDIA_ERR_NETWORK: Network error occurred');
+                        break;
+                      case 3:
+                        console.error('🔊 MEDIA_ERR_DECODE: Audio decoding error');
+                        break;
+                      case 4:
+                        console.error('🔊 MEDIA_ERR_SRC_NOT_SUPPORTED: Audio format not supported');
+                        break;
+                    }
+                  }
+                  
+                  // Try fallback beep if audio fails to load
+                  console.log('🔊 Attempting fallback beep due to audio loading failure');
+                  this.playDefaultBeep();
+                });
+                
+                audio.addEventListener('loadstart', () => {
+                  console.log('🔊 Audio loading started');
+                });
+                
+                audio.addEventListener('canplay', () => {
+                  console.log('🔊 Audio can play');
+                });
+                
+                audio.addEventListener('loadeddata', () => {
+                  console.log('🔊 Audio data loaded');
+                });
                 
                 // Apply sound settings
                 audio.volume = (this.settings.soundSettings.volume || 80) / 100;
@@ -1293,19 +1399,46 @@ export class WidgetController {
                 audio.play().then(() => {
                   console.log('🔊 Audio started playing successfully');
                 }).catch((error) => {
-                  console.warn('🔇 Autoplay blocked, attempting muted autoplay fallback:', error?.name || error);
-                  // Try muted autoplay, then unmute shortly after start
-                  audio.muted = true;
-                  audio.play().then(() => {
-                    setTimeout(() => { audio.muted = false; }, 50);
-                    console.log('🔊 Muted autoplay succeeded, unmuted audio');
-                  }).catch((err2) => {
-                    console.error('🔊 Muted autoplay also failed:', err2?.name || err2);
+                  console.warn('🔇 Autoplay blocked:', error?.name || error);
+                  
+                  // Check if we're in OBS environment or have user interaction
+                  if (this.isOBSEnvironment() || this.audioEnabled) {
+                    console.log('🔊 In OBS environment or audio enabled, trying alternative approach');
+                    // Try to resume audio context first
+                    if (window.AudioContext || window.webkitAudioContext) {
+                      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                      const ctx = new AudioCtx();
+                      if (ctx.state === 'suspended') {
+                        ctx.resume().then(() => {
+                          console.log('🔊 Audio context resumed, retrying audio play');
+                          audio.play().catch((retryError) => {
+                            console.error('🔊 Retry also failed:', retryError?.name || retryError);
+                            this.playDefaultBeep();
+                          });
+                        }).catch((ctxError) => {
+                          console.error('🔊 Failed to resume audio context:', ctxError);
+                          this.playDefaultBeep();
+                        });
+                      } else {
+                        // Audio context is already running, try muted autoplay
+                        audio.muted = true;
+                        audio.play().then(() => {
+                          setTimeout(() => { audio.muted = false; }, 50);
+                          console.log('🔊 Muted autoplay succeeded, unmuted audio');
+                        }).catch((err2) => {
+                          console.error('🔊 Muted autoplay failed:', err2?.name || err2);
+                          this.playDefaultBeep();
+                        });
+                      }
+                    } else {
+                      this.playDefaultBeep();
+                    }
+                  } else {
                     // Show enable sound banner and retry when enabled
                     this.showSoundBanner(audioUrl);
                     // Final fallback: play short beep
                     this.playDefaultBeep();
-                  });
+                  }
                 });
                 
                 // Handle fade out if enabled
@@ -1341,7 +1474,46 @@ export class WidgetController {
                 
               } catch (error) {
                 console.error('🔊 Error playing audio:', error);
+                // Fallback to default beep
+                this.playDefaultBeep();
               }
+            }
+            
+            // Helper method to determine audio URL type
+            getAudioUrlType(url) {
+              if (!url) return 'none';
+              if (url.startsWith('data:audio/')) return 'base64-audio';
+              if (url.startsWith('https://cdn.xscan.top/')) return 'cdn-audio';
+              if (url.startsWith('https://') || url.startsWith('http://')) return 'http-audio';
+              if (url.includes('.mp3') || url.includes('.wav') || url.includes('.ogg')) return 'file-audio';
+              return 'unknown';
+            }
+            
+            // Helper method to check if URL contains audio
+            isAudioUrl(url) {
+              if (!url) return false;
+              
+              // Check for data URLs
+              if (url.startsWith('data:audio/')) return true;
+              
+              // Check for CDN URLs (assume they could be audio)
+              if (url.startsWith('https://cdn.xscan.top/')) return true;
+              
+              // Check for HTTP/HTTPS URLs with audio extensions
+              if (url.startsWith('http://') || url.startsWith('https://')) {
+                const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'];
+                const lowerUrl = url.toLowerCase();
+                return audioExtensions.some(ext => lowerUrl.includes(ext));
+              }
+              
+              // Check for relative URLs with audio extensions
+              if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
+                const audioExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'];
+                const lowerUrl = url.toLowerCase();
+                return audioExtensions.some(ext => lowerUrl.includes(ext));
+              }
+              
+              return false;
             }
             
             playDefaultBeep() {
@@ -1431,12 +1603,15 @@ export class WidgetController {
             // Debug method to check sound settings
             getSoundSettings() {
               return {
-                soundEnabled: this.settings.soundSettings.enabled,
-                volume: this.settings.soundSettings.volume,
-                fadeIn: this.settings.soundSettings.fadeIn,
-                fadeOut: this.settings.soundSettings.fadeOut,
-                loop: this.settings.soundSettings.loop,
-                rawSettings: this.settings.soundSettings
+                soundEnabled: this.settings?.soundSettings?.enabled,
+                volume: this.settings?.soundSettings?.volume,
+                fadeIn: this.settings?.soundSettings?.fadeIn,
+                fadeOut: this.settings?.soundSettings?.fadeOut,
+                loop: this.settings?.soundSettings?.loop,
+                url: this.settings?.soundSettings?.url,
+                rawSettings: this.settings?.soundSettings,
+                hasSettings: !!this.settings?.soundSettings,
+                settingsKeys: this.settings?.soundSettings ? Object.keys(this.settings.soundSettings) : []
               };
             }
             
@@ -1469,8 +1644,8 @@ export class WidgetController {
                   results[field] = {
                     exists: true,
                     value: alertData[field],
-                    isAudio: alertData[field].startsWith('data:audio/'),
-                    type: alertData[field].startsWith('data:audio/') ? 'audio-data' : 'other'
+                    isAudio: this.isAudioUrl(alertData[field]),
+                    type: this.getAudioUrlType(alertData[field])
                   };
                 } else {
                   results[field] = {
@@ -1492,8 +1667,8 @@ export class WidgetController {
                 results['levelAudio'] = {
                   exists: true,
                   value: levelAudioSource,
-                  isAudio: levelAudioSource.startsWith('data:audio/') || levelAudioSource.includes('.mp3') || levelAudioSource.includes('.wav'),
-                  type: 'level-specific'
+                  isAudio: this.isAudioUrl(levelAudioSource),
+                  type: this.getAudioUrlType(levelAudioSource)
                 };
               } else {
                 results['levelAudio'] = {
@@ -1517,7 +1692,7 @@ export class WidgetController {
               } else if (alertData.soundUrl) {
                 selectedSource = 'soundUrl';
                 selectedValue = alertData.soundUrl;
-              } else if (alertData.url && alertData.url.startsWith('data:audio/')) {
+              } else if (alertData.url && this.isAudioUrl(alertData.url)) {
                 selectedSource = 'url';
                 selectedValue = alertData.url;
               } else if (this.settings?.soundSettings?.url) {
@@ -1529,6 +1704,7 @@ export class WidgetController {
                 fieldAnalysis: results,
                 selectedSource: selectedSource,
                 selectedValue: selectedValue,
+                selectedValueType: selectedValue ? this.getAudioUrlType(selectedValue) : 'none',
                 willUseDefault: selectedSource === 'default-settings',
                 willUseBeep: selectedSource === 'none',
                 recommendation: this.getAudioRecommendation(results, selectedSource)
@@ -1822,7 +1998,93 @@ export class WidgetController {
               getDisplaySettings: () => widget.getDisplaySettings(),
               testAudioSourceDetection: (data) => widget.testAudioSourceDetection(data),
               testUrlField: (url) => widget.testUrlField(url),
-              testImageHandling: (data) => widget.testImageHandling(data)
+              testImageHandling: (data) => widget.testImageHandling(data),
+              testAudioUrl: (url) => ({
+                url: url,
+                isAudio: widget.isAudioUrl(url),
+                type: widget.getAudioUrlType(url),
+                recommendation: widget.isAudioUrl(url) ? 'Valid audio URL' : 'Not a valid audio URL'
+              }),
+              testAudioPlayback: async (url) => {
+                if (!url) return { error: 'No URL provided' };
+                
+                try {
+                  console.log('🧪 Testing audio playback for:', url);
+                  
+                  // Test URL validation
+                  const isValid = await widget.validateAudioUrl(url);
+                  
+                  // Test audio element creation
+                  const audio = new Audio(url);
+                  audio.setAttribute('playsinline', '');
+                  audio.setAttribute('preload', 'auto');
+                  
+                  return new Promise((resolve) => {
+                    const timeout = setTimeout(() => {
+                      resolve({
+                        url: url,
+                        validation: isValid,
+                        audioElementCreated: true,
+                        canPlay: false,
+                        error: 'Timeout waiting for audio to load',
+                        recommendation: 'Audio may be too large or slow to load'
+                      });
+                    }, 5000);
+                    
+                    audio.addEventListener('canplay', () => {
+                      clearTimeout(timeout);
+                      resolve({
+                        url: url,
+                        validation: isValid,
+                        audioElementCreated: true,
+                        canPlay: true,
+                        duration: audio.duration,
+                        recommendation: 'Audio should play successfully'
+                      });
+                    });
+                    
+                    audio.addEventListener('error', (e) => {
+                      clearTimeout(timeout);
+                      resolve({
+                        url: url,
+                        validation: isValid,
+                        audioElementCreated: true,
+                        canPlay: false,
+                        error: audio.error?.message || 'Unknown error',
+                        errorCode: audio.error?.code,
+                        recommendation: 'Audio failed to load - check URL and format'
+                      });
+                    });
+                  });
+                } catch (error) {
+                  return {
+                    url: url,
+                    error: error.message,
+                    recommendation: 'Failed to create audio element'
+                  };
+                }
+              },
+              testLastAlertAudio: () => {
+                if (window.lastAlertData) {
+                  return widget.testAudioSourceDetection(window.lastAlertData);
+                } else {
+                  return { error: 'No last alert data found. Trigger an alert first.' };
+                }
+              },
+              checkAlertSettings: () => {
+                if (window.lastAlertData) {
+                  return {
+                    hasSettings: !!window.lastAlertData.settings,
+                    hasSoundSettings: !!window.lastAlertData.settings?.soundSettings,
+                    soundSettings: window.lastAlertData.settings?.soundSettings,
+                    soundEnabled: window.lastAlertData.settings?.soundSettings?.enabled,
+                    soundUrl: window.lastAlertData.settings?.soundSettings?.url,
+                    fullAlertData: window.lastAlertData
+                  };
+                } else {
+                  return { error: 'No last alert data found. Trigger an alert first.' };
+                }
+              }
             };
             
             // Clean up widget when page is unloaded
