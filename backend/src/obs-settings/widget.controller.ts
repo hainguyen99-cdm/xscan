@@ -302,8 +302,8 @@ export class WidgetController {
     const imageSettings = {
       enabled: true,
       mediaType: 'image',
-      width: 300,
-      height: 200,
+      width: 600,  // Increased alert container width
+      height: 400, // Increased alert container height
       borderRadius: 8,
       shadow: true,
       shadowColor: '#000000',
@@ -330,7 +330,7 @@ export class WidgetController {
       borderWidth: 2,
       borderStyle: 'solid',
       fontFamily: 'Arial, sans-serif',
-      fontSize: 16,
+      fontSize: 20,  // Increased base font size
       fontWeight: 'normal',
       fontStyle: 'normal',
       textShadow: true,
@@ -344,7 +344,7 @@ export class WidgetController {
     const positionSettings = {
       x: 100,
       y: 100,
-      anchor: 'top-left',
+      anchor: 'top-center', // Better default for responsive positioning
       zIndex: 1000,
       responsive: true,
       mobileScale: 0.8,
@@ -408,11 +408,9 @@ export class WidgetController {
             position: absolute;
             background: transparent;
             color: ${styleSettings.textColor};
-            padding: 0;
+            padding: 20px;
             border-radius: 0;
             box-shadow: none;
-            max-width: ${imageSettings.width}px;
-            max-height: ${imageSettings.height}px;
             border: none;
             z-index: ${positionSettings.zIndex};
             font-family: ${this.escapeFontFamily(styleSettings.fontFamily)};
@@ -421,19 +419,10 @@ export class WidgetController {
             font-style: ${styleSettings.fontStyle};
             text-shadow: ${styleSettings.textShadow ? `${styleSettings.textShadowOffsetX}px ${styleSettings.textShadowOffsetY}px ${styleSettings.textShadowBlur}px ${styleSettings.textShadowColor}` : 'none'};
             
-            /* Position based on OBS settings */
-            left: ${positionSettings.x}px;
-            top: ${positionSettings.y}px;
-            
-            /* Anchor positioning */
-            ${positionSettings.anchor === 'top-center' ? 'left: 50%; transform: translateX(-50%);' : ''}
-            ${positionSettings.anchor === 'top-right' ? 'left: auto; right: ' + positionSettings.x + 'px;' : ''}
-            ${positionSettings.anchor === 'middle-left' ? 'top: 50%; transform: translateY(-50%);' : ''}
-            ${positionSettings.anchor === 'middle-center' ? 'left: 50%; top: 50%; transform: translate(-50%, -50%);' : ''}
-            ${positionSettings.anchor === 'middle-right' ? 'left: auto; right: ' + positionSettings.x + 'px; top: 50%; transform: translateY(-50%);' : ''}
-            ${positionSettings.anchor === 'bottom-left' ? 'top: auto; bottom: ' + positionSettings.y + 'px;' : ''}
-            ${positionSettings.anchor === 'bottom-center' ? 'left: 50%; top: auto; bottom: ' + positionSettings.y + 'px; transform: translateX(-50%);' : ''}
-            ${positionSettings.anchor === 'bottom-right' ? 'left: auto; right: ' + positionSettings.x + 'px; top: auto; bottom: ' + positionSettings.y + 'px;' : ''}
+            /* Responsive positioning based on window size - will be overridden by JavaScript */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
             
             ${positionSettings.responsive ? `
               @media (max-width: 768px) {
@@ -448,8 +437,8 @@ export class WidgetController {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 15px;
+            gap: 20px;
+            margin-bottom: 25px;
           }
           
           .donor-avatar {
@@ -459,11 +448,9 @@ export class WidgetController {
           .alert-media {
             display: none;
             width: 100%;
-            max-width: ${imageSettings.width}px;
-            max-height: ${imageSettings.height}px;
             border-radius: ${imageSettings.borderRadius}px;
             object-fit: contain;
-            margin-bottom: 12px;
+            margin-bottom: 20px;
           }
           
           .donor-name {
@@ -603,12 +590,14 @@ export class WidgetController {
               if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
                   this.setupElements();
+                  this.setupResponsivePositioning();
                   this.bindUserGestureUnlock();
                   this.restoreSoundPreference();
                   this.init();
                 });
               } else {
                 this.setupElements();
+                this.setupResponsivePositioning();
                 this.bindUserGestureUnlock();
                 this.restoreSoundPreference();
                 this.init();
@@ -641,6 +630,138 @@ export class WidgetController {
                 console.log('🔊 OBS environment detected - auto-enabling sound');
                 this.enableSound();
               }
+            }
+            
+            setupResponsivePositioning() {
+              // Set up responsive positioning based on window size
+              const updatePosition = () => {
+                if (!this.alertContainer) return;
+                
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+                
+                // Calculate responsive margins based on window size
+                const marginX = Math.max(20, windowWidth * 0.02); // 2% of window width, min 20px
+                const marginY = Math.max(20, windowHeight * 0.02); // 2% of window height, min 20px
+                
+                // Get anchor from settings - try multiple sources
+                let anchor = 'top-center'; // Default fallback
+                
+                if (this.settings?.positionSettings?.anchor) {
+                  anchor = this.settings.positionSettings.anchor;
+                } else if (window.lastAlertData?.settings?.positionSettings?.anchor) {
+                  anchor = window.lastAlertData.settings.positionSettings.anchor;
+                } else if (window.widgetSettings?.positionSettings?.anchor) {
+                  anchor = window.widgetSettings.positionSettings.anchor;
+                }
+                
+                console.log('📐 Positioning with anchor:', anchor, 'Window size:', windowWidth + 'x' + windowHeight);
+                
+                switch (anchor) {
+                  case 'top-left':
+                    this.alertContainer.style.left = marginX + 'px';
+                    this.alertContainer.style.top = marginY + 'px';
+                    this.alertContainer.style.right = 'auto';
+                    this.alertContainer.style.bottom = 'auto';
+                    this.alertContainer.style.transform = 'none';
+                    break;
+                    
+                  case 'top-center':
+                    this.alertContainer.style.left = '50%';
+                    this.alertContainer.style.top = marginY + 'px';
+                    this.alertContainer.style.right = 'auto';
+                    this.alertContainer.style.bottom = 'auto';
+                    this.alertContainer.style.transform = 'translateX(-50%)';
+                    break;
+                    
+                  case 'top-right':
+                    this.alertContainer.style.left = 'auto';
+                    this.alertContainer.style.top = marginY + 'px';
+                    this.alertContainer.style.right = marginX + 'px';
+                    this.alertContainer.style.bottom = 'auto';
+                    this.alertContainer.style.transform = 'none';
+                    break;
+                    
+                  case 'middle-left':
+                    this.alertContainer.style.left = marginX + 'px';
+                    this.alertContainer.style.top = '50%';
+                    this.alertContainer.style.right = 'auto';
+                    this.alertContainer.style.bottom = 'auto';
+                    this.alertContainer.style.transform = 'translateY(-50%)';
+                    break;
+                    
+                  case 'middle-center':
+                    this.alertContainer.style.left = '50%';
+                    this.alertContainer.style.top = '50%';
+                    this.alertContainer.style.right = 'auto';
+                    this.alertContainer.style.bottom = 'auto';
+                    this.alertContainer.style.transform = 'translate(-50%, -50%)';
+                    break;
+                    
+                  case 'middle-right':
+                    this.alertContainer.style.left = 'auto';
+                    this.alertContainer.style.top = '50%';
+                    this.alertContainer.style.right = marginX + 'px';
+                    this.alertContainer.style.bottom = 'auto';
+                    this.alertContainer.style.transform = 'translateY(-50%)';
+                    break;
+                    
+                  case 'bottom-left':
+                    this.alertContainer.style.left = marginX + 'px';
+                    this.alertContainer.style.top = 'auto';
+                    this.alertContainer.style.right = 'auto';
+                    this.alertContainer.style.bottom = marginY + 'px';
+                    this.alertContainer.style.transform = 'none';
+                    break;
+                    
+                  case 'bottom-center':
+                    this.alertContainer.style.left = '50%';
+                    this.alertContainer.style.top = 'auto';
+                    this.alertContainer.style.right = 'auto';
+                    this.alertContainer.style.bottom = marginY + 'px';
+                    this.alertContainer.style.transform = 'translateX(-50%)';
+                    break;
+                    
+                  case 'bottom-right':
+                    this.alertContainer.style.left = 'auto';
+                    this.alertContainer.style.top = 'auto';
+                    this.alertContainer.style.right = marginX + 'px';
+                    this.alertContainer.style.bottom = marginY + 'px';
+                    this.alertContainer.style.transform = 'none';
+                    break;
+                    
+                  case 'custom':
+                    // Use custom x,y values
+                    this.alertContainer.style.left = (this.settings?.positionSettings?.x || 100) + 'px';
+                    this.alertContainer.style.top = (this.settings?.positionSettings?.y || 100) + 'px';
+                    this.alertContainer.style.right = 'auto';
+                    this.alertContainer.style.bottom = 'auto';
+                    this.alertContainer.style.transform = 'none';
+                    break;
+                }
+                
+                console.log('📐 Updated responsive positioning:', {
+                  anchor,
+                  windowSize: windowWidth + 'x' + windowHeight,
+                  margins: marginX + 'x' + marginY,
+                  position: {
+                    left: this.alertContainer.style.left,
+                    top: this.alertContainer.style.top,
+                    right: this.alertContainer.style.right,
+                    bottom: this.alertContainer.style.bottom,
+                    transform: this.alertContainer.style.transform
+                  }
+                });
+              };
+              
+              // Initial positioning
+              updatePosition();
+              
+              // Update on window resize
+              window.addEventListener('resize', updatePosition);
+              
+              // Store reference for cleanup
+              this._updatePosition = updatePosition;
             }
             
             bindUserGestureUnlock() {
@@ -922,6 +1043,20 @@ export class WidgetController {
                 console.log('🔧 Generated alertId for alert without ID:', alertId);
               }
               
+              // Update position settings from alert data if available
+              if (alertData.settings?.positionSettings) {
+                this.settings.positionSettings = { ...this.settings.positionSettings, ...alertData.settings.positionSettings };
+                console.log('🔧 Updated position settings from alert data:', this.settings.positionSettings);
+                console.log('🔧 Full alert data settings:', JSON.stringify(alertData.settings, null, 2));
+                // Update positioning immediately
+                if (this._updatePosition) {
+                  this._updatePosition();
+                }
+              } else {
+                console.log('⚠️ No position settings found in alert data');
+                console.log('🔧 Available settings keys:', Object.keys(alertData.settings || {}));
+              }
+              
               console.log('📊 Processing alert:', {
                 alertId: alertId,
                 donorName: alertData.donorName,
@@ -1126,6 +1261,16 @@ export class WidgetController {
                   this.alertMedia.src = imageSource;
                   this.alertMedia.style.display = 'block';
                   console.log('✅ Image set successfully from', imageSourceType, 'field');
+                  
+                  // Set up dynamic sizing based on actual image dimensions
+                  this.alertMedia.onload = () => {
+                    this.resizeContainerToImage();
+                  };
+                  
+                  // If image is already loaded (cached), resize immediately
+                  if (this.alertMedia.complete) {
+                    this.resizeContainerToImage();
+                  }
                 } else {
                   this.alertMedia.style.display = 'none';
                 }
@@ -1542,6 +1687,47 @@ export class WidgetController {
               }
             }
             
+            resizeContainerToImage() {
+              if (!this.alertContainer || !this.alertMedia) return;
+              
+              // Get the actual image dimensions
+              const imageWidth = this.alertMedia.naturalWidth;
+              const imageHeight = this.alertMedia.naturalHeight;
+              
+              if (imageWidth > 0 && imageHeight > 0) {
+                // Add padding for text content (header, message, timestamp)
+                const padding = 40; // 20px on each side
+                const textHeight = 120; // Estimated height for text content
+                
+                // Calculate container dimensions based on image size
+                const containerWidth = Math.min(imageWidth + padding, 1200); // Max width of 1200px
+                const containerHeight = Math.min(imageHeight + textHeight, 800); // Max height of 800px
+                
+                // Apply the calculated dimensions
+                this.alertContainer.style.maxWidth = containerWidth + 'px';
+                this.alertContainer.style.maxHeight = containerHeight + 'px';
+                this.alertContainer.style.width = containerWidth + 'px';
+                this.alertContainer.style.height = containerHeight + 'px';
+                
+                // Also update the image element to fit within the container
+                this.alertMedia.style.maxWidth = (containerWidth - padding) + 'px';
+                this.alertMedia.style.maxHeight = (containerHeight - textHeight) + 'px';
+                this.alertMedia.style.width = '100%';
+                this.alertMedia.style.height = 'auto';
+                
+                console.log('🖼️ Resized container to match image:', {
+                  imageDimensions: imageWidth + 'x' + imageHeight,
+                  containerDimensions: containerWidth + 'x' + containerHeight,
+                  imageMaxDimensions: (containerWidth - padding) + 'x' + (containerHeight - textHeight)
+                });
+              } else {
+                console.warn('🖼️ Could not get image dimensions, using default container size');
+                // Fallback to default size
+                this.alertContainer.style.maxWidth = '600px';
+                this.alertContainer.style.maxHeight = '400px';
+              }
+            }
+            
             resetDuplicateTracking() {
               console.log('🔄 Resetting duplicate alert tracking');
               this.shownAlerts.clear();
@@ -1887,6 +2073,12 @@ export class WidgetController {
                 this.socket = null;
               }
               
+              // Clean up responsive positioning event listener
+              if (this._updatePosition) {
+                window.removeEventListener('resize', this._updatePosition);
+                this._updatePosition = null;
+              }
+              
               this.isConnected = false;
             }
             
@@ -1986,7 +2178,8 @@ export class WidgetController {
               generalSettings: ${JSON.stringify(generalSettings)}
             });
             
-            // Expose debug methods on window for testing
+            // Expose widget and debug methods on window for testing
+            window.widget = widget;
             window.widgetDebug = {
               resetTracking: () => widget.resetDuplicateTracking(),
               resetCooldown: () => widget.resetCooldown(),
@@ -2005,65 +2198,6 @@ export class WidgetController {
                 type: widget.getAudioUrlType(url),
                 recommendation: widget.isAudioUrl(url) ? 'Valid audio URL' : 'Not a valid audio URL'
               }),
-              testAudioPlayback: async (url) => {
-                if (!url) return { error: 'No URL provided' };
-                
-                try {
-                  console.log('🧪 Testing audio playback for:', url);
-                  
-                  // Test URL validation
-                  const isValid = await widget.validateAudioUrl(url);
-                  
-                  // Test audio element creation
-                  const audio = new Audio(url);
-                  audio.setAttribute('playsinline', '');
-                  audio.setAttribute('preload', 'auto');
-                  
-                  return new Promise((resolve) => {
-                    const timeout = setTimeout(() => {
-                      resolve({
-                        url: url,
-                        validation: isValid,
-                        audioElementCreated: true,
-                        canPlay: false,
-                        error: 'Timeout waiting for audio to load',
-                        recommendation: 'Audio may be too large or slow to load'
-                      });
-                    }, 5000);
-                    
-                    audio.addEventListener('canplay', () => {
-                      clearTimeout(timeout);
-                      resolve({
-                        url: url,
-                        validation: isValid,
-                        audioElementCreated: true,
-                        canPlay: true,
-                        duration: audio.duration,
-                        recommendation: 'Audio should play successfully'
-                      });
-                    });
-                    
-                    audio.addEventListener('error', (e) => {
-                      clearTimeout(timeout);
-                      resolve({
-                        url: url,
-                        validation: isValid,
-                        audioElementCreated: true,
-                        canPlay: false,
-                        error: audio.error?.message || 'Unknown error',
-                        errorCode: audio.error?.code,
-                        recommendation: 'Audio failed to load - check URL and format'
-                      });
-                    });
-                  });
-                } catch (error) {
-                  return {
-                    url: url,
-                    error: error.message,
-                    recommendation: 'Failed to create audio element'
-                  };
-                }
-              },
               testLastAlertAudio: () => {
                 if (window.lastAlertData) {
                   return widget.testAudioSourceDetection(window.lastAlertData);
@@ -2083,6 +2217,83 @@ export class WidgetController {
                   };
                 } else {
                   return { error: 'No last alert data found. Trigger an alert first.' };
+                }
+              },
+              checkContainerDimensions: () => {
+                const container = document.getElementById('alertContainer');
+                const media = document.getElementById('alertMedia');
+                if (container) {
+                  const computedStyle = window.getComputedStyle(container);
+                  const result = {
+                    element: 'alertContainer',
+                    maxWidth: container.style.maxWidth || computedStyle.maxWidth,
+                    maxHeight: container.style.maxHeight || computedStyle.maxHeight,
+                    width: container.style.width || computedStyle.width,
+                    height: container.style.height || computedStyle.height,
+                    actualDimensions: {
+                      width: container.offsetWidth,
+                      height: container.offsetHeight
+                    }
+                  };
+                  
+                  if (media && media.naturalWidth > 0) {
+                    result.imageDimensions = {
+                      naturalWidth: media.naturalWidth,
+                      naturalHeight: media.naturalHeight,
+                      displayWidth: media.offsetWidth,
+                      displayHeight: media.offsetHeight
+                    };
+                    result.recommendation = 'Container dynamically sized to match image: ' + media.naturalWidth + 'x' + media.naturalHeight;
+                  } else {
+                    result.recommendation = 'No image loaded or image dimensions not available';
+                  }
+                  
+                  return result;
+                } else {
+                  return { error: 'Alert container not found' };
+                }
+              },
+              checkPositioning: () => {
+                const container = document.getElementById('alertContainer');
+                if (container) {
+                  const computedStyle = window.getComputedStyle(container);
+                  const windowWidth = window.innerWidth;
+                  const windowHeight = window.innerHeight;
+                  
+                  return {
+                    windowSize: windowWidth + 'x' + windowHeight,
+                    containerPosition: {
+                      left: container.style.left || computedStyle.left,
+                      top: container.style.top || computedStyle.top,
+                      right: container.style.right || computedStyle.right,
+                      bottom: container.style.bottom || computedStyle.bottom,
+                      transform: container.style.transform || computedStyle.transform
+                    },
+                    containerDimensions: {
+                      width: container.offsetWidth,
+                      height: container.offsetHeight
+                    },
+                    responsiveMargins: {
+                      marginX: Math.max(20, windowWidth * 0.02),
+                      marginY: Math.max(20, windowHeight * 0.02)
+                    },
+                    currentSettings: {
+                      anchor: window.widget?.settings?.positionSettings?.anchor || 'not set',
+                      x: window.widget?.settings?.positionSettings?.x || 'not set',
+                      y: window.widget?.settings?.positionSettings?.y || 'not set'
+                    },
+                    recommendation: 'Position updates automatically on window resize. Use different anchor points for different positioning.'
+                  };
+                } else {
+                  return { error: 'Alert container not found' };
+                }
+              },
+              updatePositioning: () => {
+                if (window.widget && window.widget._updatePosition) {
+                  window.widget._updatePosition();
+                  return { success: true, message: 'Positioning updated' };
+                } else {
+                  return { error: 'Widget or positioning method not found' };
                 }
               }
             };

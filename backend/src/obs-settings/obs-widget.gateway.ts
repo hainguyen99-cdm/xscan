@@ -320,13 +320,15 @@ export class OBSWidgetGateway
       } : (settings ? settings.toObject() : null),
     };
 
-    // Debug: log media URLs being sent to the widget
+    // Debug: log media URLs and position settings being sent to the widget
     try {
       const imgUrl = (alert.settings as any)?.imageSettings?.url;
       const sndUrl = (alert.settings as any)?.soundSettings?.url;
       const sndEnabled = (alert.settings as any)?.soundSettings?.enabled;
+      const posSettings = (alert.settings as any)?.positionSettings;
       const short = (u?: string) => (u ? (u.length > 80 ? u.substring(0, 77) + '...' : u) : 'none');
       this.logger.log(`Alert media debug - img: ${short(imgUrl)}, sound: ${short(sndUrl)}, soundEnabled: ${sndEnabled}`);
+      this.logger.log(`Alert position debug - positionSettings: ${JSON.stringify(posSettings)}`);
     } catch {}
 
     this.server.to(roomName).emit('donationAlert', alert);

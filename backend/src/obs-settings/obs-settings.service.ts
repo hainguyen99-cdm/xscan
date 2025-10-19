@@ -2642,7 +2642,7 @@ export class OBSSettingsService {
       }
     };
 
-    // Debug: ensure level media overrides are present
+    // Debug: ensure level media overrides and position settings are present
     try {
       console.log('🎥 Level merge debug', {
         levelName: level.levelName,
@@ -2650,6 +2650,9 @@ export class OBSSettingsService {
         imgType: (mergedSettings as any).imageSettings?.mediaType,
         soundUrl: (mergedSettings as any).soundSettings?.url,
         soundVol: (mergedSettings as any).soundSettings?.volume,
+        positionSettings: (mergedSettings as any).positionSettings,
+        levelPositionSettings: configuration.positionSettings,
+        customizationPosition: customization.position,
       });
     } catch {}
 
