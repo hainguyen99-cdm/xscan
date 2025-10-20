@@ -186,7 +186,7 @@ export class OBSSettings {
     type: {
       x: { type: Number, min: 0, max: 1920, default: 100 },
       y: { type: Number, min: 0, max: 1080, default: 100 },
-      anchor: { type: String, enum: ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'], default: 'top-left' },
+      anchor: { type: String, enum: ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'], default: 'middle-center' },
       zIndex: { type: Number, min: 0, max: 9999, default: 1000 },
       responsive: { type: Boolean, default: true },
       mobileScale: { type: Number, min: 0.1, max: 2, default: 0.8 },

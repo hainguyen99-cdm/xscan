@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alert Container Center Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .widget-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .alert {
+            position: absolute;
+            background: rgba(26, 26, 26, 0.95);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid #3b82f6;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+            font-weight: normal;
+            text-shadow: 1px 1px 3px #000000;
+            
+            /* Center positioning */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            
+            max-width: 500px;
+            text-align: center;
+            opacity: 1;
+            transition: all 0.3s ease;
+        }
+        
+        .alert-media {
+            width: 100%;
+            border-radius: 8px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            max-height: 300px;
+            display: block;
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .donation-line {
+            margin: 0;
+            font-size: 20px;
+            font-weight: normal;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .donor-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+        
+        .donor-message {
+            font-size: 18px;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2000;
+            max-width: 300px;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 2000;
+        }
+        
+        .controls button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #2563eb;
+        }
+        
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .grid-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .grid-line.vertical {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .grid-line.horizontal {
+            height: 1px;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Grid overlay for visual reference -->
+    <div class="grid-overlay">
+        <div class="grid-line vertical"></div>
+        <div class="grid-line horizontal"></div>
+    </div>
+    
+    <!-- Debug info -->
+    <div class="debug-info" id="debug-info">
+        <div>Window: <span id="window-size">1920x1080</span></div>
+        <div>Container Position: <span id="container-pos">Calculating...</span></div>
+        <div>Center Offset: <span id="center-offset">Calculating...</span></div>
+        <div>Transform: translate(-50%, -50%)</div>
+        <div>Status: <span id="status">Ready</span></div>
+    </div>
+    
+    <!-- Widget container -->
+    <div class="widget-container">
+        <div class="alert" id="alertContainer" style="display: none;">
+            <!-- Test image -->
+            <img 
+                src="https://via.placeholder.com/400x200/3b82f6/ffffff?text=Alert+Container+Test" 
+                alt="Alert Container Test Image" 
+                class="alert-media"
+                id="alertMedia"
+            >
+            
+            <!-- Alert content -->
+            <div class="alert-header">
+                <div class="donation-line">
+                    <span class="donor-name">Test User</span>
+                    <span class="donation-verb">đã donate</span>
+                    <span class="donor-amount">$25.00</span>
+                </div>
+            </div>
+            <div class="donor-message">Cảm ơn bạn đã donate! Alert container này hiện ở giữa màn hình.</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button onclick="showAlert()">Show Alert</button>
+        <button onclick="hideAlert()">Hide Alert</button>
+        <button onclick="testCenterPosition()">Test Center Position</button>
+    </div>
+
+    <script>
+        function updateDebugInfo() {
+            const windowSize = document.getElementById('window-size');
+            const containerPos = document.getElementById('container-pos');
+            const centerOffset = document.getElementById('center-offset');
+            const status = document.getElementById('status');
+            
+            // Update window size
+            windowSize.textContent = `${window.innerWidth}x${window.innerHeight}`;
+            
+            // Get container position
+            const container = document.getElementById('alertContainer');
+            const rect = container.getBoundingClientRect();
+            
+            // Calculate center of screen
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            // Calculate container center
+            const containerCenterX = rect.left + rect.width / 2;
+            const containerCenterY = rect.top + rect.height / 2;
+            
+            // Calculate offset from center
+            const offsetX = Math.abs(centerX - containerCenterX);
+            const offsetY = Math.abs(centerY - containerCenterY);
+            
+            containerPos.textContent = `${Math.round(containerCenterX)}, ${Math.round(containerCenterY)}`;
+            centerOffset.textContent = `${Math.round(offsetX)}px, ${Math.round(offsetY)}px`;
+            
+            if (offsetX < 5 && offsetY < 5) {
+                status.textContent = '✅ Perfectly Centered';
+                status.style.color = '#00ff00';
+            } else if (offsetX < 20 && offsetY < 20) {
+                status.textContent = '⚠️ Almost Centered';
+                status.style.color = '#ffaa00';
+            } else {
+                status.textContent = '❌ Not Centered';
+                status.style.color = '#ff4444';
+            }
+            
+            // Log to console for debugging
+            console.log('Alert Container positioning debug:');
+            console.log('Window center:', centerX, centerY);
+            console.log('Container center:', containerCenterX, containerCenterY);
+            console.log('Offset from center:', offsetX, offsetY);
+            console.log('Container rect:', rect);
+            console.log('Container computed style:', window.getComputedStyle(container));
+        }
+        
+        function showAlert() {
+            const container = document.getElementById('alertContainer');
+            container.style.display = 'block';
+            
+            // Set center positioning (like in the real widget)
+            container.style.left = '50%';
+            container.style.top = '50%';
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+            container.style.transform = 'translate(-50%, -50%)';
+            
+            updateDebugInfo();
+        }
+        
+        function hideAlert() {
+            const container = document.getElementById('alertContainer');
+            container.style.display = 'none';
+            updateDebugInfo();
+        }
+        
+        function testCenterPosition() {
+            const container = document.getElementById('alertContainer');
+            container.style.left = '50%';
+            container.style.top = '50%';
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+            container.style.transform = 'translate(-50%, -50%)';
+            updateDebugInfo();
+        }
+        
+        // Update debug info on load and resize
+        window.addEventListener('load', updateDebugInfo);
+        window.addEventListener('resize', updateDebugInfo);
+        
+        // Update debug info every second for real-time monitoring
+        setInterval(updateDebugInfo, 1000);
+        
+        // Initial update
+        updateDebugInfo();
+        
+        console.log('🎯 Alert Container Test Loaded');
+        console.log('🎯 This tests the alert container positioning');
+        console.log('🎯 Use the controls to test show/hide functionality');
+    </script>
+</body>
+</html>

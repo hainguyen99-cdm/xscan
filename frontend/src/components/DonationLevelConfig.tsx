@@ -227,7 +227,7 @@ const DonationLevelConfig: React.FC<DonationLevelConfigProps> = ({
         positionSettings: {
           x: 100,
           y: 100,
-          anchor: 'top-left',
+          anchor: 'middle-center',
           zIndex: 1000,
           responsive: true,
           mobileScale: 0.8,

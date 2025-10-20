@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Position Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(45deg, #1a1a1a, #2d2d2d);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .test-container {
+            position: absolute;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid #3b82f6;
+            max-width: 400px;
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .center-position {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .top-left {
+            top: 20px;
+            left: 20px;
+            transform: none;
+        }
+        
+        .top-right {
+            top: 20px;
+            right: 20px;
+            transform: none;
+        }
+        
+        .bottom-left {
+            bottom: 20px;
+            left: 20px;
+            transform: none;
+        }
+        
+        .bottom-right {
+            bottom: 20px;
+            right: 20px;
+            transform: none;
+        }
+        
+        .position-info {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 2000;
+        }
+        
+        .controls button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #2563eb;
+        }
+        
+        .controls button.active {
+            background: #10b981;
+        }
+        
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .grid-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .grid-line.vertical {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .grid-line.horizontal {
+            height: 1px;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <!-- Grid overlay for visual reference -->
+    <div class="grid-overlay">
+        <div class="grid-line vertical"></div>
+        <div class="grid-line horizontal"></div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="controls">
+        <h4>Position Test</h4>
+        <button onclick="setPosition('center')" class="active" id="btn-center">Center</button>
+        <button onclick="setPosition('top-left')" id="btn-top-left">Top Left</button>
+        <button onclick="setPosition('top-right')" id="btn-top-right">Top Right</button>
+        <button onclick="setPosition('bottom-left')" id="btn-bottom-left">Bottom Left</button>
+        <button onclick="setPosition('bottom-right')" id="btn-bottom-right">Bottom Right</button>
+        <div class="position-info" id="position-info">Current: Center</div>
+    </div>
+    
+    <!-- Test widget -->
+    <div class="test-container center-position" id="test-widget">
+        <h3>🎯 Widget Position Test</h3>
+        <p>This widget should be perfectly centered on the screen.</p>
+        <div class="position-info">
+            Position: <span id="current-position">center</span><br>
+            Window: <span id="window-size">1920x1080</span><br>
+            Transform: translate(-50%, -50%)
+        </div>
+    </div>
+
+    <script>
+        function setPosition(position) {
+            const widget = document.getElementById('test-widget');
+            const info = document.getElementById('position-info');
+            const currentPos = document.getElementById('current-position');
+            
+            // Remove all position classes
+            widget.className = 'test-container';
+            
+            // Add the selected position class
+            widget.classList.add(position.replace('-', '-'));
+            
+            // Update info
+            currentPos.textContent = position;
+            info.textContent = `Current: ${position}`;
+            
+            // Update button states
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`btn-${position}`).classList.add('active');
+            
+            // Update window size info
+            updateWindowSize();
+        }
+        
+        function updateWindowSize() {
+            const windowSize = document.getElementById('window-size');
+            windowSize.textContent = `${window.innerWidth}x${window.innerHeight}`;
+        }
+        
+        // Update window size on resize
+        window.addEventListener('resize', updateWindowSize);
+        
+        // Initial update
+        updateWindowSize();
+        
+        // Test center positioning
+        console.log('Testing center positioning...');
+        const widget = document.getElementById('test-widget');
+        const rect = widget.getBoundingClientRect();
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const widgetCenterX = rect.left + rect.width / 2;
+        const widgetCenterY = rect.top + rect.height / 2;
+        
+        console.log('Window center:', centerX, centerY);
+        console.log('Widget center:', widgetCenterX, widgetCenterY);
+        console.log('Offset from center:', Math.abs(centerX - widgetCenterX), Math.abs(centerY - widgetCenterY));
+    </script>
+</body>
+</html>

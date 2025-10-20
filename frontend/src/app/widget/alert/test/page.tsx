@@ -126,9 +126,12 @@ export default function WidgetTestPage() {
               
               {/* Simulated Widget */}
               <div
-                className="absolute top-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg max-w-[280px] animate-fade-in"
+                className="absolute bg-gray-800 text-white p-4 rounded-lg shadow-lg max-w-[280px] animate-fade-in"
                 style={{
-                  border: '2px solid #3b82f6'
+                  border: '2px solid #3b82f6',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)'
                 }}
               >
                 <div className="mb-3">

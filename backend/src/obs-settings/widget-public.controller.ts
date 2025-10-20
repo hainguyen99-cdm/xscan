@@ -218,7 +218,7 @@ export class WidgetPublicController {
     const positionSettings = {
       x: 100,
       y: 100,
-      anchor: 'top-left',
+      anchor: 'middle-center', // Center the widget on screen by default
       zIndex: 1000,
       responsive: true,
       mobileScale: 0.8,
@@ -306,24 +306,30 @@ export class WidgetPublicController {
             max-height: ${imageSettings.height}px;
             border: ${styleSettings.borderStyle !== 'none' ? `${styleSettings.borderWidth}px ${styleSettings.borderStyle} ${styleSettings.borderColor}` : 'none'};
             opacity: 0;
-            transform: translateY(-20px);
             transition: all ${animationSettings.duration}ms ${animationSettings.easing};
             z-index: ${positionSettings.zIndex};
+            overflow: visible;
+            
+            /* Center positioning - will be overridden by JavaScript */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            
             ${positionSettings.responsive ? `
               @media (max-width: 768px) {
-                transform: scale(${positionSettings.mobileScale});
+                transform: translate(-50%, -50%) scale(${positionSettings.mobileScale});
               }
             ` : ''}
           }
           
           .alert.show {
             opacity: 1;
-            transform: translateY(0);
+            transform: translate(-50%, -50%);
           }
           
           .alert.hide {
             opacity: 0;
-            transform: translateY(-20px);
+            transform: translate(-50%, -50%);
           }
           
           .alert.fade-in {
@@ -930,6 +936,9 @@ export class WidgetPublicController {
               this.alertContainer.style.display = 'block';
               this.alertContainer.classList.add('fade-in');
               
+              // Apply position settings from alert data or use default center
+              this.applyPositionSettings(alertData);
+              
               console.log('🎬 ALERT NOW VISIBLE ON SCREEN:', this.currentAlert.donorName, 'ID:', this.currentAlert.alertId);
               console.log('🎬 Display timestamp:', new Date().toISOString());
               console.log('🎬 Time since last alert:', Date.now() - this.lastAlertTime, 'ms');
@@ -944,6 +953,113 @@ export class WidgetPublicController {
               setTimeout(() => {
                 this.hideAlert();
               }, displayDuration);
+            }
+            
+            applyPositionSettings(alertData) {
+              // Get position settings from alert data or use default
+              const positionSettings = alertData.settings?.positionSettings || this.settings.positionSettings || {};
+              const anchor = positionSettings.anchor || 'middle-center';
+              const x = positionSettings.x || 100;
+              const y = positionSettings.y || 100;
+              
+              console.log('📍 Applying position settings:', {
+                anchor,
+                x,
+                y,
+                source: alertData.settings?.positionSettings ? 'alert data' : 'widget settings'
+              });
+              
+              // Reset all positioning styles
+              this.alertContainer.style.left = '';
+              this.alertContainer.style.right = '';
+              this.alertContainer.style.top = '';
+              this.alertContainer.style.bottom = '';
+              this.alertContainer.style.transform = '';
+              
+              // Calculate responsive margins
+              const windowWidth = window.innerWidth;
+              const windowHeight = window.innerHeight;
+              const marginX = Math.max(20, windowWidth * 0.02);
+              const marginY = Math.max(20, windowHeight * 0.02);
+              
+              // Apply positioning based on anchor
+              switch (anchor) {
+                case 'top-left':
+                  this.alertContainer.style.left = (x + marginX) + 'px';
+                  this.alertContainer.style.top = (y + marginY) + 'px';
+                  this.alertContainer.style.transform = 'none';
+                  break;
+                  
+                case 'top-center':
+                  this.alertContainer.style.left = '50%';
+                  this.alertContainer.style.top = (y + marginY) + 'px';
+                  this.alertContainer.style.transform = 'translateX(-50%)';
+                  break;
+                  
+                case 'top-right':
+                  this.alertContainer.style.left = 'auto';
+                  this.alertContainer.style.top = (y + marginY) + 'px';
+                  this.alertContainer.style.right = (x + marginX) + 'px';
+                  this.alertContainer.style.transform = 'none';
+                  break;
+                  
+                case 'middle-left':
+                  this.alertContainer.style.left = (x + marginX) + 'px';
+                  this.alertContainer.style.top = '50%';
+                  this.alertContainer.style.transform = 'translateY(-50%)';
+                  break;
+                  
+                case 'middle-center':
+                  this.alertContainer.style.left = '50%';
+                  this.alertContainer.style.top = '50%';
+                  this.alertContainer.style.transform = 'translate(-50%, -50%)';
+                  break;
+                  
+                case 'middle-right':
+                  this.alertContainer.style.left = 'auto';
+                  this.alertContainer.style.top = '50%';
+                  this.alertContainer.style.right = (x + marginX) + 'px';
+                  this.alertContainer.style.transform = 'translateY(-50%)';
+                  break;
+                  
+                case 'bottom-left':
+                  this.alertContainer.style.left = (x + marginX) + 'px';
+                  this.alertContainer.style.top = 'auto';
+                  this.alertContainer.style.bottom = (y + marginY) + 'px';
+                  this.alertContainer.style.transform = 'none';
+                  break;
+                  
+                case 'bottom-center':
+                  this.alertContainer.style.left = '50%';
+                  this.alertContainer.style.top = 'auto';
+                  this.alertContainer.style.bottom = (y + marginY) + 'px';
+                  this.alertContainer.style.transform = 'translateX(-50%)';
+                  break;
+                  
+                case 'bottom-right':
+                  this.alertContainer.style.left = 'auto';
+                  this.alertContainer.style.top = 'auto';
+                  this.alertContainer.style.right = (x + marginX) + 'px';
+                  this.alertContainer.style.bottom = (y + marginY) + 'px';
+                  this.alertContainer.style.transform = 'none';
+                  break;
+                  
+                default:
+                  // Fallback to center
+                  this.alertContainer.style.left = '50%';
+                  this.alertContainer.style.top = '50%';
+                  this.alertContainer.style.transform = 'translate(-50%, -50%)';
+                  break;
+              }
+              
+              console.log('📍 Position applied:', {
+                anchor,
+                left: this.alertContainer.style.left,
+                top: this.alertContainer.style.top,
+                right: this.alertContainer.style.right,
+                bottom: this.alertContainer.style.bottom,
+                transform: this.alertContainer.style.transform
+              });
             }
             
             // NEW METHOD: Apply level-specific settings to the alert

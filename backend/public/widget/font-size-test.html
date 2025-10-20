@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Size Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .widget-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .alert {
+            display: none;
+            position: absolute;
+            background: rgba(26, 26, 26, 0.95);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid #3b82f6;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-weight: normal;
+            text-shadow: 1px 1px 3px #000000;
+            overflow: visible;
+            
+            /* Center positioning */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            
+            max-width: 600px;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .donation-line {
+            margin: 0;
+            font-weight: normal;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+        }
+        
+        .donor-name {
+            font-weight: normal;
+            margin: 0;
+        }
+        
+        .donation-verb {
+            margin: 0 6px;
+            opacity: 0.9;
+        }
+        
+        .donor-amount {
+            font-weight: bold;
+            color: #3b82f6;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+            display: inline-block;
+        }
+        
+        .donor-message {
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2000;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 2000;
+        }
+        
+        .controls button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #2563eb;
+        }
+        
+        .font-size-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .font-size-buttons button {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+        
+        .amount-test-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .amount-test-buttons button {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Debug info -->
+    <div class="debug-info" id="debug-info">
+        <div><strong>Font Size Test</strong></div>
+        <div>Current Font Size: <span id="font-size-info">16px</span></div>
+        <div>Donor Amount Font Size: <span id="amount-font-size-info">21px</span></div>
+        <div>Container Width: <span id="container-width">-</span></div>
+        <div>Container Height: <span id="container-height">-</span></div>
+        <div>Text Overflow: <span id="text-overflow">visible</span></div>
+        <div>Status: <span id="status">Ready</span></div>
+    </div>
+    
+    <!-- Widget container -->
+    <div class="widget-container">
+        <div class="alert" id="alertContainer" style="display: none;">
+            <!-- Alert content -->
+            <div class="alert-header">
+                <div class="donation-line">
+                    <span class="donor-name" id="donorName">Test User</span>
+                    <span class="donation-verb" id="donationVerb">đã donate</span>
+                    <span class="donor-amount" id="donorAmount">$1,000,000.00</span>
+                </div>
+            </div>
+            <div class="donor-message" id="donorMessage">Cảm ơn bạn đã donate! Test font size và text overflow.</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="font-size-buttons">
+            <button onclick="testFontSize(12)">12px</button>
+            <button onclick="testFontSize(16)">16px</button>
+            <button onclick="testFontSize(20)">20px</button>
+            <button onclick="testFontSize(24)">24px</button>
+            <button onclick="testFontSize(28)">28px</button>
+            <button onclick="testFontSize(32)">32px</button>
+            <button onclick="testFontSize(40)">40px</button>
+            <button onclick="testFontSize(48)">48px</button>
+        </div>
+        <div class="amount-test-buttons">
+            <button onclick="testAmount('$25.00')">$25.00</button>
+            <button onclick="testAmount('$1,000.00')">$1,000.00</button>
+            <button onclick="testAmount('$1,000,000.00')">$1,000,000.00</button>
+        </div>
+        <button onclick="hideAlert()">Hide Alert</button>
+        <button onclick="testLargeAmount()">Test Large Amount</button>
+    </div>
+
+    <script>
+        let currentFontSize = 16;
+        
+        function updateDebugInfo() {
+            const fontSizeInfo = document.getElementById('font-size-info');
+            const amountFontSizeInfo = document.getElementById('amount-font-size-info');
+            const containerWidth = document.getElementById('container-width');
+            const containerHeight = document.getElementById('container-height');
+            const textOverflow = document.getElementById('text-overflow');
+            const status = document.getElementById('status');
+            
+            // Update font size info
+            fontSizeInfo.textContent = currentFontSize + 'px';
+            amountFontSizeInfo.textContent = Math.floor(currentFontSize * 1.3) + 'px';
+            
+            // Get container dimensions
+            const container = document.getElementById('alertContainer');
+            const rect = container.getBoundingClientRect();
+            
+            containerWidth.textContent = Math.round(rect.width) + 'px';
+            containerHeight.textContent = Math.round(rect.height) + 'px';
+            
+            // Get computed style for text overflow
+            const computedStyle = window.getComputedStyle(container);
+            textOverflow.textContent = computedStyle.overflow;
+            
+            if (container.style.display === 'block') {
+                status.textContent = '✅ Alert Visible';
+                status.style.color = '#00ff00';
+            } else {
+                status.textContent = '⏸️ Alert Hidden';
+                status.style.color = '#ffaa00';
+            }
+        }
+        
+        function applyFontSize(fontSize) {
+            const container = document.getElementById('alertContainer');
+            const donorName = document.getElementById('donorName');
+            const donationVerb = document.getElementById('donationVerb');
+            const donorAmount = document.getElementById('donorAmount');
+            const donorMessage = document.getElementById('donorMessage');
+            
+            currentFontSize = fontSize;
+            
+            // Apply font size to container
+            container.style.fontSize = fontSize + 'px';
+            
+            // Apply font size to individual elements
+            donorName.style.fontSize = fontSize + 'px';
+            donationVerb.style.fontSize = fontSize + 'px';
+            donorAmount.style.fontSize = Math.floor(fontSize * 1.3) + 'px';
+            donorMessage.style.fontSize = fontSize + 'px';
+            
+            console.log('🔤 Applied font size:', {
+                baseFontSize: fontSize + 'px',
+                amountFontSize: Math.floor(fontSize * 1.3) + 'px'
+            });
+        }
+        
+        function testFontSize(fontSize) {
+            const container = document.getElementById('alertContainer');
+            
+            // Apply font size
+            applyFontSize(fontSize);
+            
+            // Show alert
+            container.style.display = 'block';
+            container.style.opacity = '0';
+            
+            // Fade in
+            setTimeout(() => {
+                container.style.transition = 'opacity 300ms ease-out';
+                container.style.opacity = '1';
+            }, 10);
+            
+            updateDebugInfo();
+        }
+        
+        function testAmount(amount) {
+            const donorAmount = document.getElementById('donorAmount');
+            donorAmount.textContent = amount;
+            
+            console.log('💰 Testing amount:', amount);
+            updateDebugInfo();
+        }
+        
+        function testLargeAmount() {
+            const donorAmount = document.getElementById('donorAmount');
+            donorAmount.textContent = '$999,999,999.99 VND';
+            
+            console.log('💰 Testing large amount');
+            updateDebugInfo();
+        }
+        
+        function hideAlert() {
+            const container = document.getElementById('alertContainer');
+            container.style.transition = 'opacity 300ms ease-in';
+            container.style.opacity = '0';
+            
+            setTimeout(() => {
+                container.style.display = 'none';
+                container.style.transition = '';
+            }, 300);
+            
+            updateDebugInfo();
+        }
+        
+        // Update debug info on load and resize
+        window.addEventListener('load', updateDebugInfo);
+        window.addEventListener('resize', updateDebugInfo);
+        
+        // Update debug info every second for real-time monitoring
+        setInterval(updateDebugInfo, 1000);
+        
+        // Initial update
+        updateDebugInfo();
+        
+        console.log('🔤 Font Size Test Loaded');
+        console.log('🔤 This tests font size and text overflow issues');
+        console.log('🔤 Use the buttons to test different font sizes and amounts');
+    </script>
+</body>
+</html>

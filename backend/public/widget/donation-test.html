@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donation Alert Test - Center Position</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .widget-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .alert {
+            position: absolute;
+            background: rgba(26, 26, 26, 0.95);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid #3b82f6;
+            z-index: 1000;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            font-weight: normal;
+            text-shadow: 1px 1px 3px #000000;
+            
+            /* Center positioning - this is the key! */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            
+            max-width: 400px;
+            text-align: center;
+            animation: fadeInScale 0.5s ease-out;
+        }
+        
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        .alert-media {
+            width: 100%;
+            border-radius: 8px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            max-height: 200px;
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .donation-line {
+            margin: 0;
+            font-size: 16px;
+            font-weight: normal;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .donor-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+        
+        .donor-message {
+            font-size: 16px;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .test-image {
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .grid-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .grid-line.vertical {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .grid-line.horizontal {
+            height: 1px;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2000;
+            max-width: 300px;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 2000;
+        }
+        
+        .controls button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <!-- Grid overlay for visual reference -->
+    <div class="grid-overlay">
+        <div class="grid-line vertical"></div>
+        <div class="grid-line horizontal"></div>
+    </div>
+    
+    <!-- Debug info -->
+    <div class="debug-info" id="debug-info">
+        <div>Window: <span id="window-size">1920x1080</span></div>
+        <div>Widget Position: <span id="widget-pos">Calculating...</span></div>
+        <div>Center Offset: <span id="center-offset">Calculating...</span></div>
+        <div>Transform: translate(-50%, -50%)</div>
+        <div>Status: <span id="status">Ready</span></div>
+    </div>
+    
+    <!-- Widget container -->
+    <div class="widget-container">
+        <div class="alert" id="alertContainer">
+            <!-- Test image -->
+            <div class="test-image">
+                🎯 Donation Alert Image
+            </div>
+            
+            <!-- Alert content -->
+            <div class="alert-header">
+                <div class="donation-line">
+                    <span class="donor-name">Test User</span>
+                    <span class="donation-verb">đã donate</span>
+                    <span class="donor-amount">$25.00</span>
+                </div>
+            </div>
+            <div class="donor-message">Cảm ơn bạn đã donate! Hình ảnh này hiện ở giữa màn hình.</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button onclick="showAlert()">Show Alert</button>
+        <button onclick="hideAlert()">Hide Alert</button>
+        <button onclick="testPosition()">Test Position</button>
+    </div>
+
+    <script>
+        let isVisible = true;
+        
+        function updateDebugInfo() {
+            const windowSize = document.getElementById('window-size');
+            const widgetPos = document.getElementById('widget-pos');
+            const centerOffset = document.getElementById('center-offset');
+            const status = document.getElementById('status');
+            
+            // Update window size
+            windowSize.textContent = `${window.innerWidth}x${window.innerHeight}`;
+            
+            // Get widget position
+            const widget = document.getElementById('alertContainer');
+            const rect = widget.getBoundingClientRect();
+            
+            // Calculate center of screen
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            // Calculate widget center
+            const widgetCenterX = rect.left + rect.width / 2;
+            const widgetCenterY = rect.top + rect.height / 2;
+            
+            // Calculate offset from center
+            const offsetX = Math.abs(centerX - widgetCenterX);
+            const offsetY = Math.abs(centerY - widgetCenterY);
+            
+            widgetPos.textContent = `${Math.round(widgetCenterX)}, ${Math.round(widgetCenterY)}`;
+            centerOffset.textContent = `${Math.round(offsetX)}px, ${Math.round(offsetY)}px`;
+            
+            if (offsetX < 5 && offsetY < 5) {
+                status.textContent = '✅ Perfectly Centered';
+                status.style.color = '#00ff00';
+            } else if (offsetX < 20 && offsetY < 20) {
+                status.textContent = '⚠️ Almost Centered';
+                status.style.color = '#ffaa00';
+            } else {
+                status.textContent = '❌ Not Centered';
+                status.style.color = '#ff4444';
+            }
+            
+            // Log to console for debugging
+            console.log('Donation Alert positioning debug:');
+            console.log('Window center:', centerX, centerY);
+            console.log('Widget center:', widgetCenterX, widgetCenterY);
+            console.log('Offset from center:', offsetX, offsetY);
+            console.log('Widget rect:', rect);
+        }
+        
+        function showAlert() {
+            const widget = document.getElementById('alertContainer');
+            widget.style.display = 'block';
+            widget.style.animation = 'fadeInScale 0.5s ease-out';
+            isVisible = true;
+            updateDebugInfo();
+        }
+        
+        function hideAlert() {
+            const widget = document.getElementById('alertContainer');
+            widget.style.animation = 'fadeOut 0.3s ease-in';
+            setTimeout(() => {
+                widget.style.display = 'none';
+            }, 300);
+            isVisible = false;
+        }
+        
+        function testPosition() {
+            const widget = document.getElementById('alertContainer');
+            widget.style.left = '50%';
+            widget.style.top = '50%';
+            widget.style.transform = 'translate(-50%, -50%)';
+            widget.style.right = 'auto';
+            widget.style.bottom = 'auto';
+            updateDebugInfo();
+        }
+        
+        // Add fadeOut animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                0% {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+                100% {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.8);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Update debug info on load and resize
+        window.addEventListener('load', updateDebugInfo);
+        window.addEventListener('resize', updateDebugInfo);
+        
+        // Update debug info every second for real-time monitoring
+        setInterval(updateDebugInfo, 1000);
+        
+        // Initial update
+        updateDebugInfo();
+        
+        console.log('🎯 Donation Alert Test Widget Loaded');
+        console.log('🎯 This widget should be perfectly centered on screen');
+        console.log('🎯 Use the controls to test show/hide functionality');
+    </script>
+</body>
+</html>

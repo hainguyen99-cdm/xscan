@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Position Debug Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .widget-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .alert {
+            display: none;
+            position: absolute;
+            background: rgba(26, 26, 26, 0.95);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid #3b82f6;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+            font-weight: normal;
+            text-shadow: 1px 1px 3px #000000;
+            
+            max-width: 500px;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .alert-media {
+            width: 100%;
+            border-radius: 8px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            max-height: 300px;
+            display: block;
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .donation-line {
+            margin: 0;
+            font-size: 20px;
+            font-weight: normal;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .donor-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+        
+        .donor-message {
+            font-size: 18px;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2000;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 2000;
+        }
+        
+        .controls button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #2563eb;
+        }
+        
+        .position-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .position-buttons button {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+        
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .grid-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .grid-line.vertical {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .grid-line.horizontal {
+            height: 1px;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .position-labels {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2000;
+        }
+        
+        .position-labels div {
+            margin: 2px 0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .highlight {
+            background: rgba(255, 255, 0, 0.3) !important;
+            border: 2px solid #ffff00 !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Grid overlay for visual reference -->
+    <div class="grid-overlay">
+        <div class="grid-line vertical"></div>
+        <div class="grid-line horizontal"></div>
+    </div>
+    
+    <!-- Debug info -->
+    <div class="debug-info" id="debug-info">
+        <div><strong>Position Debug Info</strong></div>
+        <div>Window: <span id="window-size">1920x1080</span></div>
+        <div>Current Anchor: <span id="anchor-info">None</span></div>
+        <div>Container Position:</div>
+        <div>&nbsp;&nbsp;Left: <span id="left-info">-</span></div>
+        <div>&nbsp;&nbsp;Top: <span id="top-info">-</span></div>
+        <div>&nbsp;&nbsp;Right: <span id="right-info">-</span></div>
+        <div>&nbsp;&nbsp;Bottom: <span id="bottom-info">-</span></div>
+        <div>&nbsp;&nbsp;Transform: <span id="transform-info">-</span></div>
+        <div>Computed Style:</div>
+        <div>&nbsp;&nbsp;Left: <span id="computed-left">-</span></div>
+        <div>&nbsp;&nbsp;Top: <span id="computed-top">-</span></div>
+        <div>&nbsp;&nbsp;Right: <span id="computed-right">-</span></div>
+        <div>&nbsp;&nbsp;Bottom: <span id="computed-bottom">-</span></div>
+        <div>&nbsp;&nbsp;Transform: <span id="computed-transform">-</span></div>
+        <div>Status: <span id="status">Ready</span></div>
+    </div>
+    
+    <!-- Position labels -->
+    <div class="position-labels">
+        <div>Top Left</div>
+        <div>Top Center</div>
+        <div>Top Right</div>
+        <div>Middle Left</div>
+        <div>Middle Center</div>
+        <div>Middle Right</div>
+        <div>Bottom Left</div>
+        <div>Bottom Center</div>
+        <div>Bottom Right</div>
+    </div>
+    
+    <!-- Widget container -->
+    <div class="widget-container">
+        <div class="alert" id="alertContainer" style="display: none;">
+            <!-- Test image -->
+            <img 
+                src="https://via.placeholder.com/400x200/3b82f6/ffffff?text=Position+Debug" 
+                alt="Position Debug Image" 
+                class="alert-media"
+                id="alertMedia"
+            >
+            
+            <!-- Alert content -->
+            <div class="alert-header">
+                <div class="donation-line">
+                    <span class="donor-name">Test User</span>
+                    <span class="donation-verb">đã donate</span>
+                    <span class="donor-amount">$25.00</span>
+                </div>
+            </div>
+            <div class="donor-message">Debug: Widget này hiện ở vị trí được cấu hình.</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="position-buttons">
+            <button onclick="testPosition('top-left')">Top Left</button>
+            <button onclick="testPosition('top-center')">Top Center</button>
+            <button onclick="testPosition('top-right')">Top Right</button>
+            <button onclick="testPosition('middle-left')">Middle Left</button>
+            <button onclick="testPosition('middle-center')">Middle Center</button>
+            <button onclick="testPosition('middle-right')">Middle Right</button>
+            <button onclick="testPosition('bottom-left')">Bottom Left</button>
+            <button onclick="testPosition('bottom-center')">Bottom Center</button>
+            <button onclick="testPosition('bottom-right')">Bottom Right</button>
+        </div>
+        <button onclick="hideAlert()">Hide Alert</button>
+        <button onclick="testTopBottom()">Test Top vs Bottom</button>
+        <button onclick="testLeftRight()">Test Left vs Right</button>
+    </div>
+
+    <script>
+        let currentAnchor = 'None';
+        
+        function updateDebugInfo() {
+            const windowSize = document.getElementById('window-size');
+            const anchorInfo = document.getElementById('anchor-info');
+            const leftInfo = document.getElementById('left-info');
+            const topInfo = document.getElementById('top-info');
+            const rightInfo = document.getElementById('right-info');
+            const bottomInfo = document.getElementById('bottom-info');
+            const transformInfo = document.getElementById('transform-info');
+            const computedLeft = document.getElementById('computed-left');
+            const computedTop = document.getElementById('computed-top');
+            const computedRight = document.getElementById('computed-right');
+            const computedBottom = document.getElementById('computed-bottom');
+            const computedTransform = document.getElementById('computed-transform');
+            const status = document.getElementById('status');
+            
+            // Update window size
+            windowSize.textContent = `${window.innerWidth}x${window.innerHeight}`;
+            
+            // Get container
+            const container = document.getElementById('alertContainer');
+            const rect = container.getBoundingClientRect();
+            const computedStyle = window.getComputedStyle(container);
+            
+            // Update position info
+            anchorInfo.textContent = currentAnchor;
+            leftInfo.textContent = container.style.left || 'auto';
+            topInfo.textContent = container.style.top || 'auto';
+            rightInfo.textContent = container.style.right || 'auto';
+            bottomInfo.textContent = container.style.bottom || 'auto';
+            transformInfo.textContent = container.style.transform || 'none';
+            
+            // Update computed style info
+            computedLeft.textContent = computedStyle.left;
+            computedTop.textContent = computedStyle.top;
+            computedRight.textContent = computedStyle.right;
+            computedBottom.textContent = computedStyle.bottom;
+            computedTransform.textContent = computedStyle.transform;
+            
+            if (container.style.display === 'block') {
+                status.textContent = '✅ Alert Visible';
+                status.style.color = '#00ff00';
+            } else {
+                status.textContent = '⏸️ Alert Hidden';
+                status.style.color = '#ffaa00';
+            }
+        }
+        
+        function applyPositionSettings(anchor, x = 100, y = 100) {
+            const container = document.getElementById('alertContainer');
+            currentAnchor = anchor;
+            
+            console.log('📍 Applying position settings:', { anchor, x, y });
+            
+            // Reset all positioning styles explicitly
+            container.style.left = '';
+            container.style.right = '';
+            container.style.top = '';
+            container.style.bottom = '';
+            container.style.transform = '';
+            
+            // Force reset by setting to initial values
+            container.style.left = 'initial';
+            container.style.right = 'initial';
+            container.style.top = 'initial';
+            container.style.bottom = 'initial';
+            container.style.transform = 'initial';
+            
+            // Then clear them
+            container.style.left = '';
+            container.style.right = '';
+            container.style.top = '';
+            container.style.bottom = '';
+            container.style.transform = '';
+            
+            // Calculate responsive margins
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const marginX = Math.max(20, windowWidth * 0.02);
+            const marginY = Math.max(20, windowHeight * 0.02);
+            
+            console.log('📍 Margins calculated:', { marginX, marginY, windowWidth, windowHeight });
+            
+            // Apply positioning based on anchor
+            switch (anchor) {
+                case 'top-left':
+                    container.style.left = (x + marginX) + 'px';
+                    container.style.top = (y + marginY) + 'px';
+                    container.style.transform = 'none';
+                    console.log('📍 Applied top-left:', { left: container.style.left, top: container.style.top });
+                    break;
+                    
+                case 'top-center':
+                    container.style.left = '50%';
+                    container.style.top = (y + marginY) + 'px';
+                    container.style.transform = 'translateX(-50%)';
+                    console.log('📍 Applied top-center:', { left: container.style.left, top: container.style.top, transform: container.style.transform });
+                    break;
+                    
+                case 'top-right':
+                    container.style.left = 'auto';
+                    container.style.top = (y + marginY) + 'px';
+                    container.style.right = (x + marginX) + 'px';
+                    container.style.transform = 'none';
+                    console.log('📍 Applied top-right:', { right: container.style.right, top: container.style.top });
+                    break;
+                    
+                case 'middle-left':
+                    container.style.left = (x + marginX) + 'px';
+                    container.style.top = '50%';
+                    container.style.transform = 'translateY(-50%)';
+                    console.log('📍 Applied middle-left:', { left: container.style.left, top: container.style.top, transform: container.style.transform });
+                    break;
+                    
+                case 'middle-center':
+                    container.style.left = '50%';
+                    container.style.top = '50%';
+                    container.style.transform = 'translate(-50%, -50%)';
+                    console.log('📍 Applied middle-center:', { left: container.style.left, top: container.style.top, transform: container.style.transform });
+                    break;
+                    
+                case 'middle-right':
+                    container.style.left = 'auto';
+                    container.style.top = '50%';
+                    container.style.right = (x + marginX) + 'px';
+                    container.style.transform = 'translateY(-50%)';
+                    console.log('📍 Applied middle-right:', { right: container.style.right, top: container.style.top, transform: container.style.transform });
+                    break;
+                    
+                case 'bottom-left':
+                    container.style.left = (x + marginX) + 'px';
+                    container.style.top = 'auto';
+                    container.style.bottom = (y + marginY) + 'px';
+                    container.style.transform = 'none';
+                    console.log('📍 Applied bottom-left:', { left: container.style.left, bottom: container.style.bottom });
+                    break;
+                    
+                case 'bottom-center':
+                    container.style.left = '50%';
+                    container.style.top = 'auto';
+                    container.style.bottom = (y + marginY) + 'px';
+                    container.style.transform = 'translateX(-50%)';
+                    console.log('📍 Applied bottom-center:', { left: container.style.left, bottom: container.style.bottom, transform: container.style.transform });
+                    break;
+                    
+                case 'bottom-right':
+                    container.style.left = 'auto';
+                    container.style.top = 'auto';
+                    container.style.right = (x + marginX) + 'px';
+                    container.style.bottom = (y + marginY) + 'px';
+                    container.style.transform = 'none';
+                    console.log('📍 Applied bottom-right:', { right: container.style.right, bottom: container.style.bottom });
+                    break;
+                    
+                default:
+                    // Fallback to center
+                    container.style.left = '50%';
+                    container.style.top = '50%';
+                    container.style.transform = 'translate(-50%, -50%)';
+                    console.log('📍 Applied default center');
+                    break;
+            }
+            
+            // Log final computed values
+            setTimeout(() => {
+                const computedStyle = window.getComputedStyle(container);
+                console.log('📍 Final computed values:', {
+                    left: computedStyle.left,
+                    top: computedStyle.top,
+                    right: computedStyle.right,
+                    bottom: computedStyle.bottom,
+                    transform: computedStyle.transform
+                });
+            }, 10);
+        }
+        
+        function testPosition(anchor) {
+            const container = document.getElementById('alertContainer');
+            
+            // Apply position settings
+            applyPositionSettings(anchor);
+            
+            // Show alert with animation
+            container.style.display = 'block';
+            container.style.opacity = '0';
+            
+            // Fade in
+            setTimeout(() => {
+                container.style.transition = 'opacity 300ms ease-out';
+                container.style.opacity = '1';
+            }, 10);
+            
+            updateDebugInfo();
+        }
+        
+        function hideAlert() {
+            const container = document.getElementById('alertContainer');
+            container.style.transition = 'opacity 300ms ease-in';
+            container.style.opacity = '0';
+            
+            setTimeout(() => {
+                container.style.display = 'none';
+                container.style.transition = '';
+            }, 300);
+            
+            currentAnchor = 'None';
+            updateDebugInfo();
+        }
+        
+        function testTopBottom() {
+            console.log('🧪 Testing Top vs Bottom positioning');
+            testPosition('top-left');
+            setTimeout(() => {
+                testPosition('bottom-left');
+            }, 2000);
+        }
+        
+        function testLeftRight() {
+            console.log('🧪 Testing Left vs Right positioning');
+            testPosition('top-left');
+            setTimeout(() => {
+                testPosition('top-right');
+            }, 2000);
+        }
+        
+        // Update debug info on load and resize
+        window.addEventListener('load', updateDebugInfo);
+        window.addEventListener('resize', updateDebugInfo);
+        
+        // Update debug info every second for real-time monitoring
+        setInterval(updateDebugInfo, 1000);
+        
+        // Initial update
+        updateDebugInfo();
+        
+        console.log('🎯 Position Debug Test Loaded');
+        console.log('🎯 This tests positioning with detailed debug info');
+        console.log('🎯 Use the buttons to test different positions');
+    </script>
+</body>
+</html>

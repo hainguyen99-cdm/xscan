@@ -126,7 +126,7 @@ const fetchOBSSettings = async (streamerId: string): Promise<OBSSettings | null>
         backgroundColor: '#1a1a1a',
         animation: 'fade',
       },
-      position: 'top-right',
+      position: 'center',
       duration: 5000, // milliseconds
     },
   };
@@ -370,7 +370,7 @@ export default function AlertWidgetPage({ params }: WidgetPageProps) {
 
   // Calculate position based on settings
   const getPositionStyles = () => {
-    const position = settings.customization?.position || 'top-right';
+    const position = settings.customization?.position || 'center';
 
     switch (position) {
       case 'top-left':
@@ -384,7 +384,7 @@ export default function AlertWidgetPage({ params }: WidgetPageProps) {
       case 'center':
         return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
       default:
-        return { top: '20px', right: '20px' };
+        return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
     }
   };
 
