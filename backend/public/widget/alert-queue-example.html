@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alert Queue Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            min-width: 400px;
+            text-align: center;
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+            transition: all 0.5s ease;
+        }
+        
+        .alert-container.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .alert-container.hide {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+        }
+        
+        .donor-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+        
+        .message {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .alert-id {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 10px;
+        }
+        
+        .queue-info {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+        }
+        
+        .test-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #5a6fd8;
+        }
+    </style>
+</head>
+<body>
+    <div class="alert-container" id="alertContainer">
+        <div class="donor-name" id="donorName">Anonymous</div>
+        <div class="amount" id="amount">0 VND</div>
+        <div class="message" id="message">Thank you for your donation!</div>
+        <div class="alert-id" id="alertId">Alert ID: -</div>
+    </div>
+    
+    <div class="queue-info" id="queueInfo">
+        <div>Queue Size: <span id="queueSize">0</span></div>
+        <div>Processing: <span id="processing">false</span></div>
+        <div>Current Alert: <span id="currentAlert">none</span></div>
+    </div>
+    
+    <div class="test-controls">
+        <h3>Test Controls</h3>
+        <button onclick="testSingleAlert()">Test Single Alert</button>
+        <button onclick="testMultipleAlerts()">Test Multiple Alerts</button>
+        <button onclick="testRapidAlerts()">Test Rapid Alerts</button>
+        <button onclick="clearQueue()">Clear Queue</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class AlertManager {
+            constructor() {
+                this.alertQueue = [];
+                this.isProcessing = false;
+                this.currentAlert = null;
+                this.socket = null;
+                this.alertContainer = document.getElementById('alertContainer');
+                this.donorName = document.getElementById('donorName');
+                this.amount = document.getElementById('amount');
+                this.message = document.getElementById('message');
+                this.alertId = document.getElementById('alertId');
+                this.queueSize = document.getElementById('queueSize');
+                this.processing = document.getElementById('processing');
+                this.currentAlertSpan = document.getElementById('currentAlert');
+                
+                this.initSocket();
+                this.updateQueueInfo();
+            }
+            
+            initSocket() {
+                // Connect to WebSocket (replace with your actual endpoint)
+                this.socket = io('/obs-widget', {
+                    query: {
+                        alertToken: 'your-alert-token-here' // Replace with actual token
+                    }
+                });
+                
+                this.socket.on('connect', () => {
+                    console.log('Connected to OBS Widget WebSocket');
+                });
+                
+                this.socket.on('donationAlert', (alert) => {
+                    console.log('Received donation alert:', alert);
+                    this.handleDonationAlert(alert);
+                });
+                
+                this.socket.on('disconnect', () => {
+                    console.log('Disconnected from OBS Widget WebSocket');
+                });
+            }
+            
+            handleDonationAlert(alert) {
+                if (this.isProcessing) {
+                    // Queue the alert if one is currently being displayed
+                    this.alertQueue.push(alert);
+                    console.log(`Queued alert ${alert.alertId}, queue size: ${this.alertQueue.length}`);
+                } else {
+                    this.displayAlert(alert);
+                }
+                this.updateQueueInfo();
+            }
+            
+            async displayAlert(alert) {
+                this.isProcessing = true;
+                this.currentAlert = alert;
+                this.updateQueueInfo();
+                
+                console.log(`Displaying alert ${alert.alertId}: ${alert.donorName} - ${alert.amount}`);
+                
+                // Update UI
+                this.donorName.textContent = alert.donorName;
+                this.amount.textContent = alert.amount;
+                this.message.textContent = alert.message || 'Thank you for your donation!';
+                this.alertId.textContent = `Alert ID: ${alert.alertId}`;
+                
+                // Show alert with animation
+                this.alertContainer.classList.remove('hide');
+                this.alertContainer.classList.add('show');
+                
+                // Wait for display duration
+                const duration = alert.settings?.displaySettings?.duration || 5000;
+                await this.waitForDisplayComplete(duration);
+                
+                // Hide alert with animation
+                this.alertContainer.classList.remove('show');
+                this.alertContainer.classList.add('hide');
+                
+                // Wait for hide animation
+                await this.delay(500);
+                
+                // Notify server that alert is completed
+                this.socket.emit('alertCompleted', {
+                    alertId: alert.alertId,
+                    streamerId: alert.streamerId
+                });
+                
+                console.log(`Alert ${alert.alertId} completed`);
+                
+                this.currentAlert = null;
+                this.isProcessing = false;
+                this.updateQueueInfo();
+                
+                // Process next alert in queue
+                if (this.alertQueue.length > 0) {
+                    const nextAlert = this.alertQueue.shift();
+                    this.displayAlert(nextAlert);
+                }
+            }
+            
+            async waitForDisplayComplete(duration) {
+                return new Promise(resolve => setTimeout(resolve, duration));
+            }
+            
+            async delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            updateQueueInfo() {
+                this.queueSize.textContent = this.alertQueue.length;
+                this.processing.textContent = this.isProcessing;
+                this.currentAlertSpan.textContent = this.currentAlert ? this.currentAlert.alertId : 'none';
+            }
+            
+            // Test methods
+            testSingleAlert() {
+                const testAlert = {
+                    alertId: `test_${Date.now()}`,
+                    streamerId: 'test-streamer',
+                    donorName: 'Test Donor',
+                    amount: '50,000 VND',
+                    message: 'This is a test donation!',
+                    timestamp: new Date(),
+                    settings: {
+                        displaySettings: {
+                            duration: 3000
+                        }
+                    }
+                };
+                this.handleDonationAlert(testAlert);
+            }
+            
+            testMultipleAlerts() {
+                const donors = ['Alice', 'Bob', 'Charlie', 'Diana'];
+                const amounts = ['25,000', '50,000', '75,000', '100,000'];
+                const messages = [
+                    'Great stream!',
+                    'Keep it up!',
+                    'Amazing content!',
+                    'Love your work!'
+                ];
+                
+                for (let i = 0; i < 4; i++) {
+                    setTimeout(() => {
+                        const testAlert = {
+                            alertId: `test_${Date.now()}_${i}`,
+                            streamerId: 'test-streamer',
+                            donorName: donors[i],
+                            amount: `${amounts[i]} VND`,
+                            message: messages[i],
+                            timestamp: new Date(),
+                            settings: {
+                                displaySettings: {
+                                    duration: 2000
+                                }
+                            }
+                        };
+                        this.handleDonationAlert(testAlert);
+                    }, i * 1000); // 1 second apart
+                }
+            }
+            
+            testRapidAlerts() {
+                const donors = ['Fast Donor 1', 'Fast Donor 2', 'Fast Donor 3', 'Fast Donor 4', 'Fast Donor 5'];
+                
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        const testAlert = {
+                            alertId: `rapid_${Date.now()}_${i}`,
+                            streamerId: 'test-streamer',
+                            donorName: donors[i],
+                            amount: `${Math.floor(Math.random() * 100000) + 10000} VND`,
+                            message: `Rapid donation #${i + 1}`,
+                            timestamp: new Date(),
+                            settings: {
+                                displaySettings: {
+                                    duration: 3000
+                                }
+                            }
+                        };
+                        this.handleDonationAlert(testAlert);
+                    }, i * 200); // 200ms apart - very rapid
+                }
+            }
+            
+            clearQueue() {
+                this.alertQueue = [];
+                this.updateQueueInfo();
+                console.log('Queue cleared');
+            }
+        }
+        
+        // Initialize alert manager when page loads
+        let alertManager;
+        document.addEventListener('DOMContentLoaded', () => {
+            alertManager = new AlertManager();
+        });
+        
+        // Global test functions for buttons
+        function testSingleAlert() {
+            if (alertManager) alertManager.testSingleAlert();
+        }
+        
+        function testMultipleAlerts() {
+            if (alertManager) alertManager.testMultipleAlerts();
+        }
+        
+        function testRapidAlerts() {
+            if (alertManager) alertManager.testRapidAlerts();
+        }
+        
+        function clearQueue() {
+            if (alertManager) alertManager.clearQueue();
+        }
+    </script>
+</body>
+</html>

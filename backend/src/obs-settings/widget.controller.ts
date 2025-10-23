@@ -419,6 +419,7 @@ export class WidgetController {
             font-style: ${styleSettings.fontStyle};
             text-shadow: ${styleSettings.textShadow ? `${styleSettings.textShadowOffsetX}px ${styleSettings.textShadowOffsetY}px ${styleSettings.textShadowBlur}px ${styleSettings.textShadowColor}` : 'none'};
             overflow: visible;
+            text-align: center;
             
             /* Responsive positioning based on window size - will be overridden by JavaScript */
             left: 50%;
@@ -437,9 +438,9 @@ export class WidgetController {
           .alert-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             gap: 20px;
-            margin-bottom: 25px;
+            margin-bottom: 10px;
           }
           
           .donor-avatar {
@@ -451,7 +452,7 @@ export class WidgetController {
             width: 100%;
             border-radius: ${imageSettings.borderRadius}px;
             object-fit: contain;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
           }
           
           .donor-name {
@@ -472,6 +473,7 @@ export class WidgetController {
             font-weight: ${styleSettings.fontWeight};
             display: flex;
             align-items: baseline;
+            justify-content: center;
             gap: 6px;
             flex-wrap: nowrap;
             white-space: nowrap;
@@ -493,6 +495,7 @@ export class WidgetController {
             font-size: ${styleSettings.fontSize}px;
             line-height: 1.4;
             opacity: 0.9;
+            text-align: center;
           }
           
           .alert-timestamp {
@@ -582,6 +585,8 @@ export class WidgetController {
               this.settings = settings;
               this.socket = null;
               this.isConnected = false;
+              this.alertQueue = [];
+              this.isShowing = false;
               this.shownAlerts = new Set(); // Simple tracking - just what's been shown
               this.lastAlertTime = 0; // Simple cooldown
               this.alertCooldown = this.settings.generalSettings?.cooldown || 1000; // Use settings cooldown (in ms) or default to 1 second
@@ -856,7 +861,7 @@ export class WidgetController {
                 
                 this.socket.on('donationAlert', (alertData) => {
                   console.log('Received donation alert:', alertData);
-                  this.showAlert(alertData);
+                  this.enqueueAlert(alertData);
                 });
                 
                 this.socket.on('testAlert', (alertData) => {
@@ -886,8 +891,63 @@ export class WidgetController {
                 this.isConnected = false;
               }
             }
+
+            enqueueAlert(alertData) {
+              try {
+                if (!alertData) return;
+                this.alertQueue.push(alertData);
+                console.log('🧵 Enqueued alert', alertData.alertId, 'queue size =', this.alertQueue.length);
+                if (!this.isShowing) {
+                  this.processNextAlert();
+                }
+              } catch (e) {
+                console.error('enqueueAlert error', e);
+              }
+            }
+
+            processNextAlert() {
+              if (this.isShowing) return;
+              const next = this.alertQueue.shift();
+              if (!next) return;
+              this.isShowing = true;
+              this.showAlert(next);
+            }
             
             
+            recreateImageElement() {
+              try {
+                const oldEl = document.getElementById('alertMedia');
+                if (!oldEl || !oldEl.parentElement) return;
+                const parent = oldEl.parentElement;
+                const newEl = document.createElement('img');
+                newEl.id = 'alertMedia';
+                newEl.className = 'alert-media';
+                newEl.setAttribute('alt', 'Alert Media');
+                newEl.style.display = 'none';
+                parent.replaceChild(newEl, oldEl);
+                this.alertMedia = newEl;
+              } catch (e) { console.warn('recreateImageElement failed', e); }
+            }
+
+            setImageSourceWithRestart(imageSource, onReady) {
+              try {
+                // Always recreate the image element so GIF restarts from first frame
+                this.recreateImageElement();
+                if (!this.alertMedia) return;
+                const cacheBustedUrl = imageSource ? (imageSource + (imageSource.includes('?') ? '&' : '?') + 'cb=' + Date.now()) : '';
+                this.alertMedia.onload = () => {
+                  try { if (typeof onReady === 'function') onReady(); } catch(_) {}
+                };
+                if (cacheBustedUrl) {
+                  this.alertMedia.src = cacheBustedUrl;
+                  this.alertMedia.style.display = 'block';
+                } else {
+                  this.alertMedia.removeAttribute('src');
+                  this.alertMedia.style.display = 'none';
+                }
+              } catch (e) { console.warn('setImageSourceWithRestart failed', e); }
+            }
+
             applySettings(newSettings) {
               console.log('🔧 Applying new settings to widget:', newSettings);
               
@@ -1087,9 +1147,11 @@ export class WidgetController {
               }
               
               // SIMPLE CHECK: Is there a cooldown active?
+              // Bypass cooldown for server-queued alerts (they have an alertId from backend)
               const now = Date.now();
-              if (now - this.lastAlertTime < this.alertCooldown) {
-                console.log('⏱️ Cooldown active, skipping:', alertData.donorName, 'Time since last alert:', now - this.lastAlertTime, 'ms');
+              const isServerQueued = !!alertId && !alertId.startsWith('test_');
+              if (!isServerQueued && (now - this.lastAlertTime < this.alertCooldown)) {
+                console.log('⏱️ Cooldown active (test/manual alert), skipping:', alertData.donorName, 'Time since last alert:', now - this.lastAlertTime, 'ms');
                 return;
               }
               
@@ -1263,21 +1325,10 @@ export class WidgetController {
                 }
 
                 if (imageSource && this.isValidImageSource(imageSource)) {
-                  this.alertMedia.src = imageSource;
-                  this.alertMedia.style.display = 'block';
-                  console.log('✅ Image set successfully from', imageSourceType, 'field');
-                  
-                  // Set up dynamic sizing based on actual image dimensions
-                  this.alertMedia.onload = () => {
-                    this.resizeContainerToImage();
-                  };
-                  
-                  // If image is already loaded (cached), resize immediately
-                  if (this.alertMedia.complete) {
-                    this.resizeContainerToImage();
-                  }
+                  console.log('✅ Setting image from', imageSourceType, 'with restart');
+                  this.setImageSourceWithRestart(imageSource, () => this.resizeContainerToImage());
                 } else {
-                  this.alertMedia.style.display = 'none';
+                  if (this.alertMedia) this.alertMedia.style.display = 'none';
                 }
               }
               
@@ -1347,11 +1398,15 @@ export class WidgetController {
                 console.log('🔇 Audio is disabled in settings');
               }
               
-              // Calculate display timing based on settings
-              const displaySettings = this.settings.displaySettings || {};
-              const fadeInDuration = displaySettings.fadeInDuration || 300;
-              const fadeOutDuration = displaySettings.fadeOutDuration || 300;
-              const mainDuration = displaySettings.duration || 5000;
+              // Calculate display timing based on merged settings (level-specific overrides widget defaults)
+              const mergedDisplay = Object.assign(
+                {},
+                (this.settings && this.settings.displaySettings) ? this.settings.displaySettings : {},
+                (alertData && alertData.settings && alertData.settings.displaySettings) ? alertData.settings.displaySettings : {}
+              );
+              const fadeInDuration = typeof mergedDisplay.fadeInDuration === 'number' ? mergedDisplay.fadeInDuration : 300;
+              const fadeOutDuration = typeof mergedDisplay.fadeOutDuration === 'number' ? mergedDisplay.fadeOutDuration : 300;
+              const mainDuration = typeof mergedDisplay.duration === 'number' ? mergedDisplay.duration : 5000;
               const totalDuration = fadeInDuration + mainDuration + fadeOutDuration;
               
               console.log('🎬 Display timing:', {
@@ -1402,6 +1457,22 @@ export class WidgetController {
                   this.alertContainer.style.transition = '';
                 }, fadeOutDuration);
               }, fadeInDuration + mainDuration);
+
+              // Completion ACK back to server and continue queue
+              const completionDelay = fadeInDuration + mainDuration + fadeOutDuration + 20;
+              setTimeout(() => {
+                try {
+                  if (this.socket && alertId) {
+                    this.socket.emit('alertCompleted', {
+                      alertId: alertId,
+                      streamerId: alertData.streamerId
+                    });
+                    console.log('✅ Sent alertCompleted for', alertId);
+                  }
+                } catch (_) {}
+                this.isShowing = false;
+                this.processNextAlert();
+              }, completionDelay);
             }
             
             applyPositionSettings(alertData) {
@@ -1705,11 +1776,15 @@ export class WidgetController {
                   }
                 });
                 
-                // Handle fade out if enabled
-                if (this.settings.soundSettings.fadeOut > 0) {
+              // Handle fade out if enabled
+              if (this.settings.soundSettings.fadeOut > 0) {
                   const displaySettings = this.settings.displaySettings || {};
-                  const fadeInDuration = displaySettings.fadeInDuration || 300;
-                  const mainDuration = displaySettings.duration || 5000;
+                  const fadeInDuration = (alertData && alertData.settings && alertData.settings.displaySettings && typeof alertData.settings.displaySettings.fadeInDuration === 'number')
+                    ? alertData.settings.displaySettings.fadeInDuration
+                    : (typeof displaySettings.fadeInDuration === 'number' ? displaySettings.fadeInDuration : 300);
+                  const mainDuration = (alertData && alertData.settings && alertData.settings.displaySettings && typeof alertData.settings.displaySettings.duration === 'number')
+                    ? alertData.settings.displaySettings.duration
+                    : (typeof displaySettings.duration === 'number' ? displaySettings.duration : 5000);
                   const fadeOutStart = fadeInDuration + mainDuration - this.settings.soundSettings.fadeOut;
                   
                   setTimeout(() => {
@@ -1725,9 +1800,15 @@ export class WidgetController {
                 } else {
                   // Stop audio when total alert duration ends
                   const displaySettings = this.settings.displaySettings || {};
-                  const fadeInDuration = displaySettings.fadeInDuration || 300;
-                  const mainDuration = displaySettings.duration || 5000;
-                  const fadeOutDuration = displaySettings.fadeOutDuration || 300;
+                  const fadeInDuration = (alertData && alertData.settings && alertData.settings.displaySettings && typeof alertData.settings.displaySettings.fadeInDuration === 'number')
+                    ? alertData.settings.displaySettings.fadeInDuration
+                    : (typeof displaySettings.fadeInDuration === 'number' ? displaySettings.fadeInDuration : 300);
+                  const mainDuration = (alertData && alertData.settings && alertData.settings.displaySettings && typeof alertData.settings.displaySettings.duration === 'number')
+                    ? alertData.settings.displaySettings.duration
+                    : (typeof displaySettings.duration === 'number' ? displaySettings.duration : 5000);
+                  const fadeOutDuration = (alertData && alertData.settings && alertData.settings.displaySettings && typeof alertData.settings.displaySettings.fadeOutDuration === 'number')
+                    ? alertData.settings.displaySettings.fadeOutDuration
+                    : (typeof displaySettings.fadeOutDuration === 'number' ? displaySettings.fadeOutDuration : 300);
                   const totalDuration = fadeInDuration + mainDuration + fadeOutDuration;
                   
                   setTimeout(() => {

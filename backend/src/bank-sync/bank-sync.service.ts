@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
 import { InjectModel } from '@nestjs/mongoose';
@@ -26,14 +26,15 @@ interface VcbResponse {
 }
 
 @Injectable()
-export class BankSyncService {
+export class BankSyncService implements OnModuleInit {
 	private readonly logger = new Logger(BankSyncService.name);
 	private readonly REQUEST_TIMEOUT_MS = this.configService.bankRequestTimeoutMs;
 	private readonly MAX_RETRIES = this.configService.bankMaxRetries;
 	private readonly RETRY_DELAY_MS = this.configService.bankRetryDelayMs;
 	private readonly DEFAULT_DONATION_DISPLAY_MS = 5000; // default display duration per donation to space alerts
 
-	private readonly alertQueues = new Map<string, { queue: DonationAlert[]; processing: boolean; inQueueRefs: Set<string> }>();
+	private readonly alertQueues = new Map<string, AlertState>();
+	private readonly alertTimeouts = new Map<string, NodeJS.Timeout>();
 
 	constructor(
 		@InjectModel(BankTransaction.name) private readonly bankTxModel: Model<BankTransactionDocument>,
@@ -43,6 +44,16 @@ export class BankSyncService {
 		@Inject(forwardRef(() => OBSSettingsService)) private readonly obsSettingsService: OBSSettingsService,
 		private readonly configService: ConfigService,
 	) {}
+
+	onModuleInit() {
+		// Setup event listener after module initialization
+		if (this.obsWidgetGateway && this.obsWidgetGateway.server) {
+			this.obsWidgetGateway.server.on('alertCompleted', (data: { alertId: string, streamerId: string }) => {
+				this.handleAlertCompleted(data.streamerId, data.alertId);
+			});
+			this.logger.log('Alert completion event listener setup completed');
+		}
+	}
 
 	@Cron(process.env.BANK_POLL_CRON || '*/10 * * * * *')
 	async pollAllStreamers(): Promise<void> {
@@ -176,11 +187,24 @@ export class BankSyncService {
 	private enqueueDonation(streamerId: string, alert: DonationAlert): void {
 		let state = this.alertQueues.get(streamerId);
 		if (!state) {
-			state = { queue: [], processing: false, inQueueRefs: new Set<string>() };
+			state = { 
+				queue: [], 
+				processing: false, 
+				inQueueRefs: new Set<string>(),
+				waitingForAck: false
+			};
 			this.alertQueues.set(streamerId, state);
 		}
 		if (state.inQueueRefs.has(alert.reference)) return;
-		state.queue.push(alert);
+		
+		// Add timestamp and alertId if not present
+		const enhancedAlert: DonationAlert = {
+			...alert,
+			timestamp: alert.timestamp || new Date(),
+			alertId: alert.alertId || `${streamerId}_${alert.reference}_${Date.now()}`
+		};
+		
+		state.queue.push(enhancedAlert);
 		state.inQueueRefs.add(alert.reference);
 		if (!state.processing) {
 			void this.processQueue(streamerId);
@@ -192,6 +216,7 @@ export class BankSyncService {
 		if (!state) return;
 		if (state.processing) return;
 		state.processing = true;
+		
 		try {
 			// Get OBS settings to determine display duration
 			let displayDuration = this.DEFAULT_DONATION_DISPLAY_MS;
@@ -211,8 +236,19 @@ export class BankSyncService {
 				const next = state.queue.shift() as DonationAlert;
 				state.inQueueRefs.delete(next.reference);
 				
-				// Send donation alert for OBS alerts
-				this.obsWidgetGateway.sendDonationAlert(next.streamerId, next.donorName, next.amount, next.currency, next.message);
+				// Set current alert and waiting state
+				state.currentAlertId = next.alertId;
+				state.waitingForAck = true;
+				
+				// Send donation alert with unique ID
+				this.obsWidgetGateway.sendDonationAlertWithId(
+					next.streamerId, 
+					next.donorName, 
+					next.amount, 
+					next.currency, 
+					next.message,
+					next.alertId
+				);
 				
 				// Update bank donation total for OBS bank total widgets
 				this.bankDonationTotalService.handleNewBankDonation(next.streamerId, {
@@ -221,12 +257,75 @@ export class BankSyncService {
 					transactionId: next.reference,
 				});
 				
-				await this.delay(displayDuration);
+				// Compute effective display duration based on per-level settings (fadeIn + duration + fadeOut)
+				let effectiveMs = displayDuration;
+				try {
+					const settings = await this.obsSettingsService.findByStreamerId(next.streamerId);
+					if (settings) {
+						const settingsResult: any = (this.obsSettingsService as any).getSettingsForDonation?.(settings, next.amount, next.currency);
+						const alertSettings = settingsResult?.settings || {};
+						const disp = alertSettings.displaySettings || settings.displaySettings || {};
+						const fadeIn = typeof disp.fadeInDuration === 'number' ? disp.fadeInDuration : 300;
+						const main = typeof disp.duration === 'number' ? disp.duration : this.DEFAULT_DONATION_DISPLAY_MS;
+						const fadeOut = typeof disp.fadeOutDuration === 'number' ? disp.fadeOutDuration : 300;
+						effectiveMs = fadeIn + main + fadeOut;
+					}
+				} catch (e) {
+					this.logger.warn(`Failed to compute effective display duration for ${next.streamerId}: ${e?.message || e}`);
+				}
+				
+				// Set timeout for acknowledgment (fallback) with buffer
+				const timeout = setTimeout(() => {
+					this.logger.warn(`Alert ${next.alertId} timeout for streamer ${streamerId}, proceeding to next`);
+					this.handleAlertCompleted(streamerId, next.alertId!);
+				}, effectiveMs + 2000); // buffer to allow client animation completion
+				
+				this.alertTimeouts.set(next.alertId!, timeout);
+				
+				// Wait for acknowledgment or timeout
+				await this.waitForAlertCompletion(streamerId, next.alertId!);
 			}
 		} catch (err) {
 			this.logger.warn(`Queue processing error for ${streamerId}: ${err?.message || err}`);
 		} finally {
 			state.processing = false;
+		}
+	}
+
+	private async waitForAlertCompletion(streamerId: string, alertId: string): Promise<void> {
+		const state = this.alertQueues.get(streamerId);
+		if (!state) return;
+		
+		return new Promise((resolve) => {
+			const checkInterval = setInterval(() => {
+				if (!state.waitingForAck || state.currentAlertId !== alertId) {
+					clearInterval(checkInterval);
+					resolve();
+				}
+			}, 100);
+		});
+	}
+
+	// Method to be called when frontend acknowledges alert completion
+	handleAlertCompleted(streamerId: string, alertId: string): void {
+		const state = this.alertQueues.get(streamerId);
+		if (!state) return;
+		
+		if (state.currentAlertId === alertId) {
+			state.waitingForAck = false;
+			state.currentAlertId = undefined;
+			
+			// Clear timeout
+			const timeout = this.alertTimeouts.get(alertId);
+			if (timeout) {
+				clearTimeout(timeout);
+				this.alertTimeouts.delete(alertId);
+			}
+			
+			// Continue processing queue
+			if (state.queue.length > 0) {
+				void this.processQueue(streamerId);
+			}
 		}
 	}
 }
@@ -238,6 +337,16 @@ interface DonationAlert {
 	readonly currency: string;
 	readonly message: string;
 	readonly reference: string;
+	readonly alertId?: string;
+	readonly timestamp?: Date;
+}
+
+interface AlertState {
+	queue: DonationAlert[];
+	processing: boolean;
+	inQueueRefs: Set<string>;
+	currentAlertId?: string;
+	waitingForAck: boolean;
 }
 
 

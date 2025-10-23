@@ -309,6 +309,7 @@ export class WidgetPublicController {
             transition: all ${animationSettings.duration}ms ${animationSettings.easing};
             z-index: ${positionSettings.zIndex};
             overflow: visible;
+            text-align: center;
             
             /* Center positioning - will be overridden by JavaScript */
             left: 50%;
@@ -353,7 +354,8 @@ export class WidgetPublicController {
           .alert-header {
             display: flex;
             align-items: center;
-            margin-bottom: 15px;
+            justify-content: center;
+            margin-bottom: 8px;
           }
           
           .donor-avatar {
@@ -385,6 +387,7 @@ export class WidgetPublicController {
             font-size: ${styleSettings.fontSize}px;
             line-height: 1.4;
             opacity: 0.9;
+            text-align: center;
           }
           
           .alert-timestamp {
@@ -412,7 +415,7 @@ export class WidgetPublicController {
                 <div class="donor-amount" id="donorAmount">0.00</div>
               </div>
             </div>
-            <div class="alert-media" id="alertMedia" style="margin-bottom:12px;">
+            <div class="alert-media" id="alertMedia" style="margin-bottom:6px;">
               <img id="alertImage" alt="Alert Media" style="display:none; max-width:100%; max-height:100%; object-fit:contain;" />
               <video id="alertVideo" style="display:none; max-width:100%; max-height:100%;" autoplay playsinline muted></video>
             </div>

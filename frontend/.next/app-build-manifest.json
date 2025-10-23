@@ -36,10 +36,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/page.js"
     ],
-    "/widget/alert/test/page": [
+    "/dashboard/donation-links/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/widget/alert/test/page.js"
+      "static/chunks/app/dashboard/donation-links/page.js"
     ]
   }
 }

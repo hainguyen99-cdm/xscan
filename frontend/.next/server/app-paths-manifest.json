@@ -1,10 +1,11 @@
 {
   "/page": "app/page.js",
-  "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js",
-  "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/widget/alert/test/page": "app/widget/alert/test/page.js",
+  "/not-found": "app/not-found.js",
   "/api/obs-settings/route": "app/api/obs-settings/route.js",
-  "/api/obs-settings/test-donation-level/route": "app/api/obs-settings/test-donation-level/route.js",
-  "/api/auth/profile/route": "app/api/auth/profile/route.js"
+  "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/login/page": "app/login/page.js",
+  "/dashboard/obs-settings/page": "app/dashboard/obs-settings/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/donation-links/page": "app/dashboard/donation-links/page.js",
+  "/api/donation-links/route": "app/api/donation-links/route.js"
 }

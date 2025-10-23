@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spacing Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .widget-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .alert {
+            display: none;
+            position: absolute;
+            background: rgba(26, 26, 26, 0.95);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 2px solid #3b82f6;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+            font-weight: normal;
+            text-shadow: 1px 1px 3px #000000;
+            overflow: visible;
+            
+            /* Center positioning */
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            
+            max-width: 500px;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .donor-avatar {
+            display: none;
+        }
+        
+        .alert-media {
+            width: 100%;
+            border-radius: 8px;
+            object-fit: contain;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .donor-name {
+            font-size: 20px;
+            font-weight: normal;
+            margin: 0;
+        }
+        
+        .donation-verb {
+            font-size: 20px;
+            margin: 0 6px;
+            opacity: 0.9;
+        }
+        
+        .donation-line {
+            margin: 0;
+            font-size: 20px;
+            font-weight: normal;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+        }
+        
+        .donor-amount {
+            font-size: 26px;
+            font-weight: bold;
+            color: #3b82f6;
+            white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+            display: inline-block;
+        }
+        
+        .donor-message {
+            font-size: 18px;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+        
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2000;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 2000;
+        }
+        
+        .controls button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #2563eb;
+        }
+        
+        .spacing-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .spacing-buttons button {
+            font-size: 12px;
+            padding: 6px 8px;
+        }
+        
+        .spacing-visual {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 2000;
+        }
+        
+        .spacing-visual div {
+            margin: 2px 0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Debug info -->
+    <div class="debug-info" id="debug-info">
+        <div><strong>Spacing Test</strong></div>
+        <div>Alert Header Margin: <span id="header-margin">10px</span></div>
+        <div>Alert Media Margin: <span id="media-margin">8px</span></div>
+        <div>Container Width: <span id="container-width">-</span></div>
+        <div>Container Height: <span id="container-height">-</span></div>
+        <div>Status: <span id="status">Ready</span></div>
+    </div>
+    
+    <!-- Spacing visual guide -->
+    <div class="spacing-visual">
+        <div>Spacing Guide:</div>
+        <div>Header → 10px → Media</div>
+        <div>Media → 8px → Message</div>
+        <div>Total: 18px gap</div>
+    </div>
+    
+    <!-- Widget container -->
+    <div class="widget-container">
+        <div class="alert" id="alertContainer" style="display: none;">
+            <!-- Test image -->
+            <img 
+                src="https://via.placeholder.com/400x200/3b82f6/ffffff?text=Spacing+Test" 
+                alt="Spacing Test Image" 
+                class="alert-media"
+                id="alertMedia"
+            >
+            
+            <!-- Alert content -->
+            <div class="alert-header">
+                <div class="donation-line">
+                    <span class="donor-name">Test User</span>
+                    <span class="donation-verb">đã donate</span>
+                    <span class="donor-amount">$25.00</span>
+                </div>
+            </div>
+            <div class="donor-message">Cảm ơn bạn đã donate! Test khoảng cách giữa ảnh và chữ.</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="spacing-buttons">
+            <button onclick="testSpacing(5, 3)">Tight (5px, 3px)</button>
+            <button onclick="testSpacing(8, 6)">Normal (8px, 6px)</button>
+            <button onclick="testSpacing(12, 10)">Loose (12px, 10px)</button>
+        </div>
+        <button onclick="showAlert()">Show Alert</button>
+        <button onclick="hideAlert()">Hide Alert</button>
+        <button onclick="testCurrentSpacing()">Test Current Spacing</button>
+    </div>
+
+    <script>
+        function updateDebugInfo() {
+            const headerMargin = document.getElementById('header-margin');
+            const mediaMargin = document.getElementById('media-margin');
+            const containerWidth = document.getElementById('container-width');
+            const containerHeight = document.getElementById('container-height');
+            const status = document.getElementById('status');
+            
+            // Get current spacing values
+            const alertHeader = document.querySelector('.alert-header');
+            const alertMedia = document.querySelector('.alert-media');
+            const container = document.getElementById('alertContainer');
+            
+            const headerMarginValue = window.getComputedStyle(alertHeader).marginBottom;
+            const mediaMarginValue = window.getComputedStyle(alertMedia).marginBottom;
+            
+            headerMargin.textContent = headerMarginValue;
+            mediaMargin.textContent = mediaMarginValue;
+            
+            // Get container dimensions
+            const rect = container.getBoundingClientRect();
+            containerWidth.textContent = Math.round(rect.width) + 'px';
+            containerHeight.textContent = Math.round(rect.height) + 'px';
+            
+            if (container.style.display === 'block') {
+                status.textContent = '✅ Alert Visible';
+                status.style.color = '#00ff00';
+            } else {
+                status.textContent = '⏸️ Alert Hidden';
+                status.style.color = '#ffaa00';
+            }
+        }
+        
+        function testSpacing(headerMargin, mediaMargin) {
+            const alertHeader = document.querySelector('.alert-header');
+            const alertMedia = document.querySelector('.alert-media');
+            
+            // Apply new spacing
+            alertHeader.style.marginBottom = headerMargin + 'px';
+            alertMedia.style.marginBottom = mediaMargin + 'px';
+            
+            console.log('📏 Applied spacing:', {
+                headerMargin: headerMargin + 'px',
+                mediaMargin: mediaMargin + 'px'
+            });
+            
+            updateDebugInfo();
+        }
+        
+        function showAlert() {
+            const container = document.getElementById('alertContainer');
+            
+            // Show alert
+            container.style.display = 'block';
+            container.style.opacity = '0';
+            
+            // Fade in
+            setTimeout(() => {
+                container.style.transition = 'opacity 300ms ease-out';
+                container.style.opacity = '1';
+            }, 10);
+            
+            updateDebugInfo();
+        }
+        
+        function hideAlert() {
+            const container = document.getElementById('alertContainer');
+            container.style.transition = 'opacity 300ms ease-in';
+            container.style.opacity = '0';
+            
+            setTimeout(() => {
+                container.style.display = 'none';
+                container.style.transition = '';
+            }, 300);
+            
+            updateDebugInfo();
+        }
+        
+        function testCurrentSpacing() {
+            showAlert();
+            console.log('📏 Testing current spacing configuration');
+        }
+        
+        // Update debug info on load and resize
+        window.addEventListener('load', updateDebugInfo);
+        window.addEventListener('resize', updateDebugInfo);
+        
+        // Update debug info every second for real-time monitoring
+        setInterval(updateDebugInfo, 1000);
+        
+        // Initial update
+        updateDebugInfo();
+        
+        console.log('📏 Spacing Test Loaded');
+        console.log('📏 This tests spacing between image and text');
+        console.log('📏 Use the buttons to test different spacing values');
+    </script>
+</body>
+</html>

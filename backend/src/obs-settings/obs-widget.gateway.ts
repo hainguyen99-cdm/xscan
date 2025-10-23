@@ -18,6 +18,7 @@ export interface OBSWidgetAlert {
   message?: string;
   timestamp: Date;
   isTest?: boolean;
+  alertId?: string; // Add unique alert ID
   // Add optional settings data for both donation and test alerts
   settings?: {
     imageSettings?: any;
@@ -189,6 +190,14 @@ export class OBSWidgetGateway
     client.emit('pong', { timestamp: new Date().toISOString() });
   }
 
+  @SubscribeMessage('alertCompleted')
+  handleAlertCompleted(client: Socket, data: { alertId: string, streamerId: string }) {
+    this.logger.log(`Alert ${data.alertId} completed for streamer ${data.streamerId}`);
+    
+    // Forward to BankSyncService via event emission
+    this.server.emit('alertCompleted', { alertId: data.alertId, streamerId: data.streamerId });
+  }
+
   @SubscribeMessage('joinBankTotalRoom')
   handleJoinBankTotalRoom(client: Socket, data: { streamerId: string }) {
     const { streamerId } = data;
@@ -334,6 +343,109 @@ export class OBSWidgetGateway
     this.server.to(roomName).emit('donationAlert', alert);
     this.logger.log(
       `Sent donation alert to OBS widgets in room ${roomName}: ${donorName} donated ${amount} ${currency} (behavior: ${behavior})`,
+    );
+  }
+
+  /**
+   * Send donation alert with unique ID to all OBS widgets in a streamer's room
+   */
+  async sendDonationAlertWithId(
+    streamerId: string, 
+    donorName: string, 
+    amount: number, 
+    currency: string, 
+    message?: string,
+    alertId?: string
+  ) {
+    const roomName = `streamer:${streamerId}`;
+    
+    // Get OBS settings and determine which settings to use
+    let settings;
+    let alertSettings = null;
+    let matchingLevel = null;
+    let behavior = 'unknown';
+    
+    try {
+      settings = await this.obsSettingsService.findByStreamerId(streamerId);
+      
+      // Get the appropriate settings based on streamer's configuration
+      const settingsResult = this.obsSettingsService.getSettingsForDonation(settings, amount, currency);
+      alertSettings = settingsResult.settings;
+      matchingLevel = settingsResult.level;
+      behavior = settingsResult.behavior;
+
+      // Final enforcement: if behavior is donation-levels and a level matched,
+      // force media URLs from the level (no basic fallback), even if merge leaked.
+      if (behavior.startsWith('donation-levels') && matchingLevel && alertSettings) {
+        const levelCfg: any = matchingLevel.configuration || {};
+        const levelCz: any = (matchingLevel as any).customization || {};
+        const resolveLevelImageUrl = () => (
+          levelCz.image?.url || levelCfg.imageSettings?.url || (levelCfg as any).imageUrl
+        );
+        const resolveLevelSoundUrl = () => (
+          levelCz.sound?.url || levelCfg.soundSettings?.url || (levelCfg as any).soundUrl
+        );
+        const ensureSettingsBranch = (obj: any, key: string) => {
+          if (!obj[key]) obj[key] = {};
+          return obj[key];
+        };
+        const lvlImg = resolveLevelImageUrl();
+        const lvlSnd = resolveLevelSoundUrl();
+        if (lvlImg) {
+          const imgSettings = ensureSettingsBranch(alertSettings, 'imageSettings');
+          imgSettings.url = lvlImg;
+        }
+        if (lvlSnd) {
+          const sndSettings = ensureSettingsBranch(alertSettings, 'soundSettings');
+          sndSettings.url = lvlSnd;
+          // Ensure sound is enabled when we have a URL
+          if (sndSettings.enabled === undefined) {
+            sndSettings.enabled = true;
+          }
+        }
+      }
+      
+      this.logger.log(`Settings behavior: ${behavior} for amount ${amount} ${currency}`);
+    } catch (error) {
+      this.logger.warn(`Failed to get settings for donation level determination: ${error.message}`);
+    }
+
+    const alert: OBSWidgetAlert = {
+      type: 'donationAlert',
+      streamerId,
+      donorName,
+      amount: `${amount} ${currency}`,
+      message,
+      timestamp: new Date(),
+      alertId, // Include the alert ID
+      // Include the determined settings
+      settings: alertSettings ? {
+        ...alertSettings,
+        donationLevel: matchingLevel ? {
+          levelId: matchingLevel.levelId,
+          levelName: matchingLevel.levelName,
+          minAmount: matchingLevel.minAmount,
+          maxAmount: matchingLevel.maxAmount,
+          currency: matchingLevel.currency
+        } : undefined,
+        settingsBehavior: behavior
+      } : (settings ? settings.toObject() : null),
+    };
+
+    // Debug: log media URLs and position settings being sent to the widget
+    try {
+      const imgUrl = (alert.settings as any)?.imageSettings?.url;
+      const sndUrl = (alert.settings as any)?.soundSettings?.url;
+      const sndEnabled = (alert.settings as any)?.soundSettings?.enabled;
+      const posSettings = (alert.settings as any)?.positionSettings;
+      const short = (u?: string) => (u ? (u.length > 80 ? u.substring(0, 77) + '...' : u) : 'none');
+      this.logger.log(`Alert media debug - img: ${short(imgUrl)}, sound: ${short(sndUrl)}, soundEnabled: ${sndEnabled}`);
+      this.logger.log(`Alert position debug - positionSettings: ${JSON.stringify(posSettings)}`);
+    } catch {}
+
+    this.server.to(roomName).emit('donationAlert', alert);
+    this.logger.log(
+      `Sent donation alert with ID ${alertId} to OBS widgets in room ${roomName}: ${donorName} donated ${amount} ${currency} (behavior: ${behavior})`,
     );
   }
 
