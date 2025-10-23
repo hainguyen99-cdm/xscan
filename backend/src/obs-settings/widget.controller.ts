@@ -1391,7 +1391,7 @@ export class WidgetController {
               if (soundEnabled && audioSource) {
                 console.log('🔊 Playing audio from', audioSourceType, ':', audioSource.substring(0, 100) + (audioSource.length > 100 ? '...' : ''));
                 this.playAudio(audioSource);
-              } else if (soundEnabled) {
+              } else if (soundEnabled && !audioSource) {
                 console.log('🔊 No audio source found, playing default beep');
                 this.playDefaultBeep();
               } else {
@@ -1695,9 +1695,8 @@ export class WidgetController {
                     }
                   }
                   
-                  // Try fallback beep if audio fails to load
-                  console.log('🔊 Attempting fallback beep due to audio loading failure');
-                  this.playDefaultBeep();
+                  // Don't play fallback beep for level-specific audio to avoid double audio
+                  console.log('🔊 Audio loading failed, no fallback beep for level-specific audio');
                 });
                 
                 audio.addEventListener('loadstart', () => {
@@ -1748,11 +1747,11 @@ export class WidgetController {
                           console.log('🔊 Audio context resumed, retrying audio play');
                           audio.play().catch((retryError) => {
                             console.error('🔊 Retry also failed:', retryError?.name || retryError);
-                            this.playDefaultBeep();
+                            // Don't play fallback beep for level-specific audio
                           });
                         }).catch((ctxError) => {
                           console.error('🔊 Failed to resume audio context:', ctxError);
-                          this.playDefaultBeep();
+                          // Don't play fallback beep for level-specific audio
                         });
                       } else {
                         // Audio context is already running, try muted autoplay
@@ -1762,17 +1761,16 @@ export class WidgetController {
                           console.log('🔊 Muted autoplay succeeded, unmuted audio');
                         }).catch((err2) => {
                           console.error('🔊 Muted autoplay failed:', err2?.name || err2);
-                          this.playDefaultBeep();
+                          // Don't play fallback beep for level-specific audio
                         });
                       }
                     } else {
-                      this.playDefaultBeep();
+                      // Don't play fallback beep for level-specific audio
                     }
                   } else {
                     // Show enable sound banner and retry when enabled
                     this.showSoundBanner(audioUrl);
-                    // Final fallback: play short beep
-                    this.playDefaultBeep();
+                    // Don't play fallback beep for level-specific audio
                   }
                 });
                 
@@ -1819,8 +1817,7 @@ export class WidgetController {
                 
               } catch (error) {
                 console.error('🔊 Error playing audio:', error);
-                // Fallback to default beep
-                this.playDefaultBeep();
+                // Don't play fallback beep for level-specific audio
               }
             }
             
